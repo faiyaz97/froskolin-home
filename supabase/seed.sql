@@ -1,0 +1,1 @@
+-- Froskolin Home intentionally starts empty. Households are created through the app.

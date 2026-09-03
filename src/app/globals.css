@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #172033;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --paper: #ffffff;
+  --canvas: #f8fafc;
+  --line: #e2e8f0;
+  --soft-line: #f1f5f9;
+  --brand: #0f766e;
+  --brand-strong: #115e59;
+  --brand-soft: #ccfbf1;
+  --violet: #7c3aed;
+  --violet-strong: #6d28d9;
+  --violet-soft: #ede9fe;
+  --peach: #ea580c;
+  --peach-soft: #ffedd5;
+  --sky: #0369a1;
+  --sky-soft: #e0f2fe;
+  --positive: #15803d;
+  --positive-soft: #dcfce7;
+  --negative: #dc2626;
+  --negative-soft: #fee2e2;
+  --warning: #a16207;
+  --warning-soft: #fef3c7;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow: 0 14px 40px rgb(15 23 42 / 0.09);
+  --shadow-float: 0 14px 28px rgb(15 118 110 / 0.24);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--canvas);
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: var(--ink);
+  background: #99f6e4;
+}
+
+:focus-visible {
+  outline: 3px solid #2dd4bf;
+  outline-offset: 3px;
+}
+
+.screen-reader-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-safe-bottom {
+  padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom)));
+}
+
+@media (min-width: 1024px) {
+  .app-safe-bottom {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
