@@ -5,8 +5,10 @@ import { useState, useTransition, type FormEvent } from "react";
 
 import { saveRecurringExpenseRuleAction, updateRecurringExpenseRuleAction } from "@/lib/actions";
 import { Button } from "../ui/button";
-import { Field, inputClass } from "../ui/field";
+import { DateInput } from "../ui/date-input";
+import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
+import { SelectInput } from "../ui/select-input";
 
 export function RecurringForm({
   householdId,
@@ -110,9 +112,8 @@ export function RecurringForm({
         </StatusNote>
       )}
       <Field label="Name">
-        <input
+        <Input
           name="title"
-          className={inputClass}
           placeholder="Internet"
           defaultValue={initial?.title}
           required
@@ -121,9 +122,8 @@ export function RecurringForm({
       </Field>
       <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
         <Field label="Amount">
-          <input
+          <Input
             name="amount"
-            className={inputClass}
             inputMode="decimal"
             min="0.01"
             step="0.01"
@@ -134,37 +134,37 @@ export function RecurringForm({
           />
         </Field>
         <Field label="Currency">
-          <select
+          <SelectInput
             name="currency"
-            className={inputClass}
             defaultValue={initial?.currency ?? defaultCurrency}
+            ariaLabel="Currency"
             disabled={pending}
-          >
-            <option>EUR</option>
-            <option>GBP</option>
-            <option>USD</option>
-          </select>
+            options={[
+              { value: "EUR", label: "EUR" },
+              { value: "GBP", label: "GBP" },
+              { value: "USD", label: "USD" },
+            ]}
+          />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Paid by">
-          <select
+          <SelectInput
             name="payerMemberId"
-            className={inputClass}
             defaultValue={initial?.payerMemberId ?? members[0]?.id}
+            ariaLabel="Paid by"
             disabled={pending}
-          >
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
+            options={members.map((member) => ({ value: member.id, label: member.name }))}
+          />
         </Field>
         <Field label="Frequency">
-          <select className={inputClass} disabled>
-            <option>Monthly</option>
-          </select>
+          <SelectInput
+            name="frequency"
+            defaultValue="monthly"
+            ariaLabel="Frequency"
+            disabled
+            options={[{ value: "monthly", label: "Monthly" }]}
+          />
         </Field>
       </div>
       <fieldset disabled={pending}>
@@ -224,9 +224,8 @@ export function RecurringForm({
               .map((member) => (
                 <Field key={member.id} label={member.name}>
                   <div className="relative">
-                    <input
+                    <Input
                       name={`share-${member.id}`}
-                      className={inputClass}
                       min="0"
                       step="0.01"
                       type="number"
@@ -258,21 +257,19 @@ export function RecurringForm({
       </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Starts">
-          <input
+          <DateInput
             name="startDate"
-            type="date"
-            className={inputClass}
+            ariaLabel="Start date"
             defaultValue={initial?.startDate ?? new Date().toISOString().slice(0, 10)}
-            required
             disabled={pending}
           />
         </Field>
         <Field label="Ends (optional)">
-          <input
+          <DateInput
             name="endDate"
-            type="date"
-            className={inputClass}
+            ariaLabel="End date"
             defaultValue={initial?.endDate}
+            allowClear
             disabled={pending}
           />
         </Field>

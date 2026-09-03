@@ -28,8 +28,9 @@ import {
 import { forgetRememberedDevice, updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
 import { Button, ButtonLink } from "../ui/button";
-import { Field, inputClass } from "../ui/field";
+import { Field, Input } from "../ui/field";
 import { SectionTitle, StatusNote } from "../ui/page";
+import { SelectInput } from "../ui/select-input";
 import { MemberAvatar } from "./member-avatar";
 
 type Props = {
@@ -118,42 +119,32 @@ export function SettingsPanel({
             onSubmit={saveHome}
           >
             <Field label="Household name">
-              <input
-                name="name"
-                className={inputClass}
-                defaultValue={home.name}
-                disabled={!isOwner || pending}
-              />
+              <Input name="name" defaultValue={home.name} disabled={!isOwner || pending} />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Default currency">
-                <select
+                <SelectInput
                   name="defaultCurrency"
-                  className={inputClass}
                   defaultValue={home.defaultCurrency}
+                  ariaLabel="Default currency"
                   disabled={!isOwner || pending}
-                >
-                  <option>EUR</option>
-                  <option>GBP</option>
-                  <option>USD</option>
-                </select>
+                  options={[
+                    { value: "EUR", label: "EUR" },
+                    { value: "GBP", label: "GBP" },
+                    { value: "USD", label: "USD" },
+                  ]}
+                />
               </Field>
               <Field label="Timezone">
-                <input
+                <Input
                   name="timezone"
-                  className={inputClass}
                   defaultValue={home.timezone}
                   disabled={!isOwner || pending}
                 />
               </Field>
             </div>
             <Field label="Locale">
-              <input
-                name="locale"
-                className={inputClass}
-                defaultValue={home.locale}
-                disabled={!isOwner || pending}
-              />
+              <Input name="locale" defaultValue={home.locale} disabled={!isOwner || pending} />
             </Field>
             <label className="flex items-center gap-3 text-sm font-bold">
               <input
@@ -411,9 +402,8 @@ export function SettingsPanel({
               <p className="text-sm font-extrabold">House Join PIN</p>
               <div className="mt-3 grid gap-3">
                 <Field label="New 6-digit Join PIN">
-                  <input
+                  <Input
                     name="joinPin"
-                    className={inputClass}
                     inputMode="numeric"
                     autoComplete="new-password"
                     pattern="[0-9]{6}"
@@ -423,9 +413,8 @@ export function SettingsPanel({
                   />
                 </Field>
                 <Field label="Confirm Join PIN">
-                  <input
+                  <Input
                     name="joinPinConfirmation"
-                    className={inputClass}
                     inputMode="numeric"
                     autoComplete="new-password"
                     pattern="[0-9]{6}"

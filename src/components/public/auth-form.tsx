@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
-import { Home, UserRound } from "lucide-react";
+import { Home, KeyRound, UserRound, type LucideIcon } from "lucide-react";
 
 import {
   changePinAction,
@@ -18,9 +18,32 @@ import {
   type RememberedDevice,
 } from "@/lib/device-memory";
 import { Button } from "../ui/button";
-import { Field, inputClass } from "../ui/field";
+import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
+
+function AuthGroup({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset className="grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--canvas)]/55 p-2.5 [&_[aria-haspopup=listbox]]:min-h-10 [&_[aria-haspopup=listbox]]:px-3 [&_[aria-haspopup=listbox]]:text-sm [&_input:not([type=hidden])]:min-h-10 [&_input:not([type=hidden])]:px-3 [&_input:not([type=hidden])]:text-sm [&_label]:gap-1 [&_label]:text-xs">
+      <legend className="screen-reader-only">{title}</legend>
+      <div className="flex items-center gap-2 border-b border-[var(--soft-line)] pb-2">
+        <span className="grid size-7 place-items-center rounded-[9px] bg-white text-[var(--brand)] shadow-[var(--shadow-sm)]">
+          <Icon className="size-3.5" aria-hidden="true" />
+        </span>
+        <h2 className="text-sm font-black">{title}</h2>
+      </div>
+      {children}
+    </fieldset>
+  );
+}
 
 export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin" }) {
   const router = useRouter();
@@ -109,16 +132,195 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
 
   return (
     <section>
-      <h1 className="text-3xl font-black tracking-[-0.045em]">{content.title}</h1>
-      <form className="mt-6 grid gap-5" onSubmit={submit} aria-busy={pending}>
+      <h1 className="text-2xl leading-7 font-black tracking-[-0.045em]">{content.title}</h1>
+      <form className="mt-2 grid gap-2" onSubmit={submit} aria-busy={pending}>
         {error && <StatusNote tone="error" title={error} />}
 
+        {kind === "create" && (
+          <div className="grid gap-2">
+            <AuthGroup title="Household details" icon={Home}>
+              <Field label="Household name" error={fieldErrors.householdName?.[0]}>
+                <Input
+                  name="householdName"
+                  placeholder="Via dei Gatti"
+                  autoComplete="organization"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="House Join PIN" error={fieldErrors.joinPin?.[0]}>
+                <Input
+                  name="joinPin"
+                  className="tracking-[0.35em]"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="Household currency" error={fieldErrors.defaultCurrency?.[0]}>
+                <SelectInput
+                  name="defaultCurrency"
+                  defaultValue="EUR"
+                  ariaLabel="Household currency"
+                  disabled={pending}
+                  options={[
+                    { value: "EUR", label: "EUR · Euro" },
+                    { value: "GBP", label: "GBP · British pound" },
+                    { value: "USD", label: "USD · US dollar" },
+                  ]}
+                />
+              </Field>
+            </AuthGroup>
+            <AuthGroup title="Owner details" icon={UserRound}>
+              <Field label="Owner name" error={fieldErrors.displayName?.[0]}>
+                <Input
+                  name="displayName"
+                  placeholder="Andrea"
+                  autoComplete="nickname"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="Personal PIN" error={fieldErrors.pin?.[0]}>
+                <Input
+                  name="pin"
+                  className="tracking-[0.35em]"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+            </AuthGroup>
+          </div>
+        )}
+
+        {kind === "join" && (
+          <div className="grid gap-2">
+            <AuthGroup title="Household details" icon={Home}>
+              <Field label="House Code" error={fieldErrors.houseCode?.[0]}>
+                <Input
+                  name="houseCode"
+                  className="tracking-[0.08em] uppercase"
+                  placeholder="FROSKO-2847"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  pattern="FROSKO-[0-9]{4}"
+                  maxLength={11}
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="House Join PIN" error={fieldErrors.joinPin?.[0]}>
+                <Input
+                  name="joinPin"
+                  className="tracking-[0.35em]"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+            </AuthGroup>
+            <AuthGroup title="Your details" icon={UserRound}>
+              <Field label="Your name" error={fieldErrors.displayName?.[0]}>
+                <Input
+                  name="displayName"
+                  placeholder="Andrea"
+                  autoComplete="nickname"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="Personal PIN" error={fieldErrors.pin?.[0]}>
+                <Input
+                  name="pin"
+                  className="tracking-[0.35em]"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+            </AuthGroup>
+          </div>
+        )}
+
+        {kind === "login" && !useRememberedLogin && (
+          <div className="grid gap-2">
+            <AuthGroup title="Household details" icon={Home}>
+              <Field label="House Code" error={fieldErrors.houseCode?.[0]}>
+                <Input
+                  name="houseCode"
+                  className="tracking-[0.08em] uppercase"
+                  placeholder="FROSKO-2847"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  pattern="FROSKO-[0-9]{4}"
+                  maxLength={11}
+                  required
+                  disabled={pending}
+                />
+              </Field>
+            </AuthGroup>
+            <AuthGroup title="Your details" icon={UserRound}>
+              <Field label="Member name" error={fieldErrors.displayName?.[0]}>
+                <Input
+                  name="displayName"
+                  placeholder="Andrea"
+                  autoComplete="nickname"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="Personal PIN" error={fieldErrors.pin?.[0]}>
+                <Input
+                  name="pin"
+                  className="tracking-[0.35em]"
+                  inputMode="numeric"
+                  pattern="(?:[0-9]{4}|[0-9]{6})"
+                  minLength={4}
+                  maxLength={6}
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••"
+                  required
+                  disabled={pending}
+                />
+              </Field>
+            </AuthGroup>
+          </div>
+        )}
+
         {useRememberedLogin && (
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+          <AuthGroup title="Your details" icon={UserRound}>
             <input type="hidden" name="houseCode" value={rememberedDevice.houseCode} />
             <input type="hidden" name="displayName" value={rememberedDevice.memberName} />
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand)]">
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white p-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand)]">
                 <UserRound className="size-5" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
@@ -135,148 +337,79 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
                 Change
               </button>
             </div>
-          </div>
-        )}
-
-        {kind === "create" && (
-          <Field label="Household name" error={fieldErrors.householdName?.[0]}>
-            <input
-              name="householdName"
-              className={inputClass}
-              placeholder="Via dei Gatti"
-              autoComplete="organization"
-              required
-              disabled={pending}
-            />
-          </Field>
-        )}
-
-        {(kind === "join" || (kind === "login" && !useRememberedLogin)) && (
-          <Field label="House Code" error={fieldErrors.houseCode?.[0]}>
-            <input
-              name="houseCode"
-              className={`${inputClass} tracking-[0.08em] uppercase`}
-              placeholder="FROSKO-2847"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              pattern="FROSKO-[0-9]{4}"
-              maxLength={11}
-              required
-              disabled={pending}
-            />
-          </Field>
-        )}
-
-        {kind !== "pin" && !useRememberedLogin && (
-          <Field
-            label={kind === "create" ? "Owner name" : kind === "join" ? "Your name" : "Member name"}
-            error={fieldErrors.displayName?.[0]}
-          >
-            <input
-              name="displayName"
-              className={inputClass}
-              placeholder="Andrea"
-              autoComplete="nickname"
-              required
-              disabled={pending}
-            />
-          </Field>
-        )}
-
-        {(kind === "create" || kind === "join") && (
-          <Field label="House Join PIN" error={fieldErrors.joinPin?.[0]}>
-            <input
-              name="joinPin"
-              className={`${inputClass} tracking-[0.35em]`}
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              minLength={6}
-              maxLength={6}
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••"
-              required
-              disabled={pending}
-            />
-          </Field>
+            <Field label="Personal PIN" error={fieldErrors.pin?.[0]}>
+              <Input
+                name="pin"
+                className="tracking-[0.35em]"
+                inputMode="numeric"
+                pattern="(?:[0-9]{4}|[0-9]{6})"
+                minLength={4}
+                maxLength={6}
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••"
+                required
+                disabled={pending}
+              />
+            </Field>
+          </AuthGroup>
         )}
 
         {kind === "pin" && (
-          <Field label="Current or temporary PIN" error={fieldErrors.currentPin?.[0]}>
-            <input
-              name="currentPin"
-              className={`${inputClass} tracking-[0.35em]`}
-              inputMode="numeric"
-              pattern="(?:[0-9]{4}|[0-9]{6})"
-              minLength={4}
-              maxLength={6}
-              type="password"
-              autoComplete="current-password"
-              required
-              disabled={pending}
-            />
-          </Field>
+          <AuthGroup title="Your PIN" icon={KeyRound}>
+            <Field label="Current or temporary PIN" error={fieldErrors.currentPin?.[0]}>
+              <Input
+                name="currentPin"
+                className="tracking-[0.35em]"
+                inputMode="numeric"
+                pattern="(?:[0-9]{4}|[0-9]{6})"
+                minLength={4}
+                maxLength={6}
+                type="password"
+                autoComplete="current-password"
+                required
+                disabled={pending}
+              />
+            </Field>
+            <Field label="New personal PIN" error={fieldErrors.newPin?.[0]}>
+              <Input
+                name="newPin"
+                className="tracking-[0.35em]"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                minLength={6}
+                maxLength={6}
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••"
+                required
+                disabled={pending}
+              />
+            </Field>
+            <Field label="Confirm new PIN" error={fieldErrors.confirmation?.[0]}>
+              <Input
+                name="confirmation"
+                className="tracking-[0.35em]"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                minLength={6}
+                maxLength={6}
+                type="password"
+                autoComplete="new-password"
+                required
+                disabled={pending}
+              />
+            </Field>
+          </AuthGroup>
         )}
 
-        <Field
-          label={kind === "pin" ? "New personal PIN" : "Personal PIN"}
-          error={(kind === "pin" ? fieldErrors.newPin : fieldErrors.pin)?.[0]}
-        >
-          <input
-            name={kind === "pin" ? "newPin" : "pin"}
-            className={`${inputClass} tracking-[0.35em]`}
-            inputMode="numeric"
-            pattern={kind === "login" ? "(?:[0-9]{4}|[0-9]{6})" : "[0-9]{6}"}
-            minLength={kind === "login" ? 4 : 6}
-            maxLength={6}
-            type="password"
-            autoComplete={kind === "login" ? "current-password" : "new-password"}
-            placeholder="••••••"
-            required
-            disabled={pending}
-          />
-        </Field>
-
-        {kind === "create" && (
-          <Field label="Household currency" error={fieldErrors.defaultCurrency?.[0]}>
-            <SelectInput
-              name="defaultCurrency"
-              defaultValue="EUR"
-              ariaLabel="Household currency"
-              disabled={pending}
-              options={[
-                { value: "EUR", label: "EUR · Euro" },
-                { value: "GBP", label: "GBP · British pound" },
-                { value: "USD", label: "USD · US dollar" },
-              ]}
-            />
-          </Field>
-        )}
-
-        {kind === "pin" && (
-          <Field label="Confirm new PIN" error={fieldErrors.confirmation?.[0]}>
-            <input
-              name="confirmation"
-              className={`${inputClass} tracking-[0.35em]`}
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              minLength={6}
-              maxLength={6}
-              type="password"
-              autoComplete="new-password"
-              required
-            />
-          </Field>
-        )}
-
-        <Button type="submit" className="mt-1 min-h-[52px] w-full" disabled={pending}>
+        <Button type="submit" className="min-h-10 w-full py-2" disabled={pending}>
           {pending ? "One moment…" : content.action}
         </Button>
       </form>
 
       {kind !== "pin" && (
-        <p className="mt-6 text-center text-sm text-[var(--muted)]">
+        <p className="mt-2 text-center text-xs text-[var(--muted)]">
           {kind === "create" || kind === "join" ? (
             <Link href="/login" className="font-extrabold text-[var(--brand-strong)]">
               Sign in
@@ -298,7 +431,7 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
       {useRememberedLogin && (
         <button
           type="button"
-          className="mx-auto mt-4 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--negative)]"
+          className="mx-auto mt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--negative)]"
           onClick={() => {
             forgetRememberedDevice();
             setRememberedDevice(null);

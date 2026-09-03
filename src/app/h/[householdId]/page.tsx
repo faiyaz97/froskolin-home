@@ -1,13 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  CircleDollarSign,
-  Plus,
-  ScanLine,
-  Settings,
-  Users,
-} from "lucide-react";
+import { CheckCircle2, CircleDollarSign, Plus, Settings, Users } from "lucide-react";
 
 import { HouseholdLedger } from "@/components/expenses/household-ledger";
 import { CatBadge } from "@/components/ui/brand";
@@ -71,26 +63,6 @@ export default async function HouseholdHome({
             </Link>
           </div>
         </div>
-        <div className="relative mt-5 grid grid-cols-3 gap-2 border-t border-white/15 pt-4">
-          <Link
-            href={`/h/${householdId}/add/settlement`}
-            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white/12 px-2 text-xs font-extrabold text-white no-underline hover:bg-white/20"
-          >
-            <CircleDollarSign className="size-4" aria-hidden="true" /> Settle
-          </Link>
-          <Link
-            href={`/h/${householdId}/balances`}
-            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white/12 px-2 text-xs font-extrabold text-white no-underline hover:bg-white/20"
-          >
-            Balances <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-          <Link
-            href={`/h/${householdId}/add/expense`}
-            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white px-2 text-xs font-black text-[var(--brand-strong)] no-underline hover:bg-[#f0fdfa]"
-          >
-            <Plus className="size-4" aria-hidden="true" /> Expense
-          </Link>
-        </div>
       </section>
 
       <section
@@ -133,12 +105,12 @@ export default async function HouseholdHome({
         locale={locale}
       />
 
-      <div className="fixed right-4 bottom-[88px] z-20 flex flex-col items-end gap-2 lg:hidden">
+      <div className="fixed right-4 bottom-[88px] z-20 flex flex-col items-end gap-2 lg:right-8 lg:bottom-28">
         <Link
-          href={`/h/${householdId}/add/bill`}
+          href={`/h/${householdId}/add/settlement`}
           className="flex min-h-11 items-center gap-2 rounded-full bg-[var(--violet)] px-4 text-sm font-extrabold text-white no-underline shadow-[0_10px_22px_rgb(124_58_237/0.26)]"
         >
-          <ScanLine className="size-5" aria-hidden="true" /> Scan bill
+          <CircleDollarSign className="size-5" aria-hidden="true" /> Settle up
         </Link>
         <Link
           href={`/h/${householdId}/add/expense`}

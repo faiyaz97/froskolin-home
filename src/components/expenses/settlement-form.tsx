@@ -6,8 +6,10 @@ import { useState, useTransition, type FormEvent } from "react";
 
 import { saveSettlementAction, updateSettlementAction } from "@/lib/actions";
 import { Button } from "../ui/button";
-import { Field, inputClass, textareaClass } from "../ui/field";
+import { DateInput } from "../ui/date-input";
+import { Field, Input, Textarea } from "../ui/field";
 import { StatusNote } from "../ui/page";
+import { SelectInput } from "../ui/select-input";
 
 export function SettlementForm({
   householdId,
@@ -69,43 +71,32 @@ export function SettlementForm({
       )}
       <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
         <Field label="Paid by">
-          <select
+          <SelectInput
             name="payingMemberId"
-            className={inputClass}
             defaultValue={initial?.payingMemberId ?? members[1]?.id ?? members[0]?.id}
+            ariaLabel="Paid by"
             disabled={pending}
-          >
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
+            options={members.map((member) => ({ value: member.id, label: member.name }))}
+          />
         </Field>
         <ArrowRight
           className="mb-4 hidden size-5 text-[var(--muted)] sm:block"
           aria-hidden="true"
         />
         <Field label="Paid to">
-          <select
+          <SelectInput
             name="receivingMemberId"
-            className={inputClass}
             defaultValue={initial?.receivingMemberId ?? members[0]?.id}
+            ariaLabel="Paid to"
             disabled={pending}
-          >
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
+            options={members.map((member) => ({ value: member.id, label: member.name }))}
+          />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
         <Field label="Amount">
-          <input
+          <Input
             name="amount"
-            className={inputClass}
             inputMode="decimal"
             min="0.01"
             step="0.01"
@@ -116,32 +107,30 @@ export function SettlementForm({
           />
         </Field>
         <Field label="Currency">
-          <select
+          <SelectInput
             name="currency"
-            className={inputClass}
             defaultValue={initial?.currency ?? defaultCurrency}
+            ariaLabel="Currency"
             disabled={pending}
-          >
-            <option>EUR</option>
-            <option>GBP</option>
-            <option>USD</option>
-          </select>
+            options={[
+              { value: "EUR", label: "EUR" },
+              { value: "GBP", label: "GBP" },
+              { value: "USD", label: "USD" },
+            ]}
+          />
         </Field>
       </div>
       <Field label="Payment date">
-        <input
+        <DateInput
           name="settlementDate"
-          type="date"
-          className={inputClass}
+          ariaLabel="Payment date"
           defaultValue={initial?.settlementDate ?? new Date().toISOString().slice(0, 10)}
-          required
           disabled={pending}
         />
       </Field>
       <Field label="Note (optional)">
-        <textarea
+        <Textarea
           name="note"
-          className={textareaClass}
           placeholder="Bank transfer, cash, etc."
           defaultValue={initial?.note}
           disabled={pending}

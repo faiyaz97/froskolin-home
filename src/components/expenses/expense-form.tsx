@@ -8,7 +8,7 @@ import { saveExpenseAction, updateExpenseAction } from "@/lib/actions";
 import { MemberAvatar } from "../household/member-avatar";
 import { Button } from "../ui/button";
 import { DateInput } from "../ui/date-input";
-import { Field, inputClass } from "../ui/field";
+import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
 
@@ -138,8 +138,7 @@ export function ExpenseForm({
               <span className="grid size-[52px] shrink-0 place-items-center rounded-[14px] bg-[var(--brand-soft)] text-[var(--brand)]">
                 <ReceiptText className="size-6" aria-hidden="true" />
               </span>
-              <input
-                className={inputClass}
+              <Input
                 name="title"
                 placeholder="What was it for?"
                 defaultValue={initial?.title}
@@ -150,8 +149,8 @@ export function ExpenseForm({
 
           <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
             <Field label="Amount">
-              <input
-                className={`${inputClass} text-2xl font-black tracking-[-0.03em] tabular-nums`}
+              <Input
+                className="text-2xl font-black tracking-[-0.03em] tabular-nums"
                 name="amount"
                 inputMode="decimal"
                 min="0.01"
@@ -282,9 +281,8 @@ export function ExpenseForm({
               .map((member) => (
                 <Field key={member.id} label={member.name}>
                   <div className="relative">
-                    <input
+                    <Input
                       name={`share-${member.id}`}
-                      className={inputClass}
                       inputMode="decimal"
                       min="0"
                       step="0.01"

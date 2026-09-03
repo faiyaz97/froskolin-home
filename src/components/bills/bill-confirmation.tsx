@@ -9,8 +9,10 @@ import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
 import { Button } from "../ui/button";
-import { Field, inputClass, textareaClass } from "../ui/field";
+import { DateInput } from "../ui/date-input";
+import { Field, Input, Textarea } from "../ui/field";
 import { StatusNote } from "../ui/page";
+import { SelectInput } from "../ui/select-input";
 
 type Member = { id: string; name: string };
 type Absence = { memberId: string; startDate: string; endDate: string };
@@ -227,9 +229,8 @@ export function BillConfirmation({
       <fieldset className="grid gap-5" disabled={pending}>
         <legend className="mb-3 text-lg font-extrabold">Bill facts</legend>
         <Field label="Title">
-          <input
+          <Input
             name="title"
-            className={inputClass}
             defaultValue={
               existing?.title ?? (initial?.supplier ? `${initial.supplier} bill` : "Utility bill")
             }
@@ -238,62 +239,50 @@ export function BillConfirmation({
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Utility type">
-            <select
+            <SelectInput
               name="utilityType"
-              className={inputClass}
               defaultValue={existing?.utilityType ?? initial?.utilityType ?? "other"}
-            >
-              <option value="electricity">Electricity</option>
-              <option value="gas">Gas</option>
-              <option value="water">Water</option>
-              <option value="internet">Internet</option>
-              <option value="other">Other</option>
-            </select>
-          </Field>
-          <Field label="Supplier">
-            <input
-              name="supplier"
-              className={inputClass}
-              defaultValue={existing?.supplier ?? initial?.supplier ?? ""}
+              ariaLabel="Utility type"
+              options={[
+                { value: "electricity", label: "Electricity" },
+                { value: "gas", label: "Gas" },
+                { value: "water", label: "Water" },
+                { value: "internet", label: "Internet" },
+                { value: "other", label: "Other" },
+              ]}
             />
           </Field>
+          <Field label="Supplier">
+            <Input name="supplier" defaultValue={existing?.supplier ?? initial?.supplier ?? ""} />
+          </Field>
           <Field label="Paid by">
-            <select
+            <SelectInput
               name="payerMemberId"
-              className={inputClass}
               defaultValue={existing?.payerMemberId ?? members[0]?.id}
-            >
-              {members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </select>
+              ariaLabel="Paid by"
+              options={members.map((member) => ({ value: member.id, label: member.name }))}
+            />
           </Field>
           <Field label="Issue date">
-            <input
+            <DateInput
               name="issueDate"
-              className={inputClass}
-              type="date"
+              ariaLabel="Issue date"
               defaultValue={existing?.issueDate ?? initial?.issueDate ?? ""}
+              allowClear
             />
           </Field>
           <Field label="Service starts">
-            <input
-              className={inputClass}
-              type="date"
+            <DateInput
+              ariaLabel="Service start date"
               value={serviceStart}
-              onChange={(event) => setServiceStart(event.target.value)}
-              required
+              onValueChange={setServiceStart}
             />
           </Field>
           <Field label="Service ends">
-            <input
-              className={inputClass}
-              type="date"
+            <DateInput
+              ariaLabel="Service end date"
               value={serviceEnd}
-              onChange={(event) => setServiceEnd(event.target.value)}
-              required
+              onValueChange={setServiceEnd}
             />
           </Field>
         </div>
@@ -305,16 +294,17 @@ export function BillConfirmation({
             <MoneyInput value={total} onChange={setTotal} />
           </Field>
           <Field label="Currency">
-            <select
+            <SelectInput
               name="currency"
-              className={inputClass}
               value={currency}
-              onChange={(event) => setCurrency(event.target.value)}
-            >
-              <option>EUR</option>
-              <option>GBP</option>
-              <option>USD</option>
-            </select>
+              onValueChange={setCurrency}
+              ariaLabel="Currency"
+              options={[
+                { value: "EUR", label: "EUR" },
+                { value: "GBP", label: "GBP" },
+                { value: "USD", label: "USD" },
+              ]}
+            />
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -335,9 +325,8 @@ export function BillConfirmation({
           </p>
         )}
         <Field label="Classification note (optional)">
-          <textarea
+          <Textarea
             name="classificationNote"
-            className={textareaClass}
             placeholder="Explain where taxes, credits, or adjustments were classified."
             defaultValue={existing?.classificationNote ?? ""}
           />
@@ -406,8 +395,7 @@ export function BillConfirmation({
 
 function MoneyInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <input
-      className={inputClass}
+    <Input
       inputMode="decimal"
       min="0"
       step="0.01"

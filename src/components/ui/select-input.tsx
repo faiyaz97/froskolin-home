@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "./cn";
+import { controlClass } from "./field";
 
 export type SelectOption = {
   value: string;
@@ -112,7 +113,8 @@ export function SelectInput({
         }}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-[14px] border bg-white px-4 text-left text-base font-extrabold text-[var(--ink)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50",
+          controlClass,
+          "flex items-center justify-between gap-3 text-left font-extrabold",
           open
             ? "border-[var(--brand)] ring-3 ring-[#99f6e4]/45"
             : "border-[var(--line)] hover:border-[#cbd5e1]",

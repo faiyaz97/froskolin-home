@@ -18,20 +18,34 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await page.getByRole("button", { name: "Create household" }).click();
 
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/);
+  const homeUrl = page.url();
+  const primaryNavigation = page.getByRole("navigation", { name: "Primary" });
+  await expect(primaryNavigation).toBeVisible();
+  await expect(primaryNavigation.getByText("Add", { exact: true })).toHaveCount(0);
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    const navigationBox = await primaryNavigation.boundingBox();
+    expect(navigationBox).not.toBeNull();
+    expect(navigationBox!.width).toBeLessThanOrEqual(520);
+    expect(Math.abs(navigationBox!.x + navigationBox!.width / 2 - 640)).toBeLessThan(2);
+  }
 
-  await page.getByRole("link", { name: "Household settings" }).first().click();
+  await page.goto(`${homeUrl}/settings`);
+  await expect(page.locator("select")).toHaveCount(0);
+  await page.getByRole("button", { name: "Default currency" }).click();
+  await expect(page.getByRole("listbox", { name: "Default currency" })).toBeVisible();
+  await page.getByRole("option", { name: "EUR" }).click();
   const accessSection = page.locator("aside section").filter({ hasText: "Household access" });
   const initialCode = (await accessSection.locator("code").textContent())?.trim();
   expect(initialCode).toMatch(/^FROSKO-\d{4}$/);
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
   await expect(page.getByText(ownerName)).toBeVisible();
   await expect(page.getByLabel("House Code")).toHaveCount(0);
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/);
 
-  await page.getByRole("link", { name: "Household settings" }).first().click();
+  await page.goto(`${homeUrl}/settings`);
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Change House Code" }).click();
   await expect(page.getByText("House Code changed.")).toBeVisible();

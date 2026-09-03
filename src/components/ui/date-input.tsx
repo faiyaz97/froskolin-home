@@ -5,6 +5,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "./cn";
+import { controlClass } from "./field";
 
 function fromDateOnly(value: string) {
   return new Date(`${value}T00:00:00Z`);
@@ -19,6 +20,7 @@ function toDateOnly(value: Date) {
 }
 
 function formatDate(value: string) {
+  if (!value) return "Choose date";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -30,20 +32,34 @@ function formatDate(value: string) {
 export function DateInput({
   name,
   defaultValue,
+  value: controlledValue,
+  onValueChange,
+  allowClear = false,
   disabled,
   ariaLabel,
   className,
 }: {
-  name: string;
-  defaultValue: string;
+  name?: string;
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  allowClear?: boolean;
   disabled?: boolean;
   ariaLabel: string;
   className?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useState(defaultValue);
+  const [internalValue, setInternalValue] = useState(defaultValue ?? "");
+  const value = controlledValue ?? internalValue;
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() => fromDateOnly(defaultValue));
+  const [month, setMonth] = useState(() =>
+    value ? fromDateOnly(value) : fromDateOnly(new Date().toISOString().slice(0, 10)),
+  );
+
+  function choose(nextValue: string) {
+    if (controlledValue === undefined) setInternalValue(nextValue);
+    onValueChange?.(nextValue);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +79,7 @@ export function DateInput({
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
-      <input type="hidden" name={name} value={value} />
+      {name && <input type="hidden" name={name} value={value} />}
       <button
         type="button"
         aria-label={ariaLabel}
@@ -72,7 +88,8 @@ export function DateInput({
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "flex min-h-[52px] w-full items-center gap-3 rounded-[14px] border bg-white px-4 text-left text-base font-extrabold text-[var(--ink)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50",
+          controlClass,
+          "flex items-center gap-3 text-left font-extrabold",
           open
             ? "border-[var(--brand)] ring-3 ring-[#99f6e4]/45"
             : "border-[var(--line)] hover:border-[#cbd5e1]",
@@ -97,12 +114,12 @@ export function DateInput({
         >
           <DayPicker
             mode="single"
-            selected={fromDateOnly(value)}
+            selected={value ? fromDateOnly(value) : undefined}
             month={month}
             onMonthChange={setMonth}
             onSelect={(date) => {
               if (!date) return;
-              setValue(toDateOnly(date));
+              choose(toDateOnly(date));
               setMonth(date);
               setOpen(false);
             }}
@@ -135,14 +152,26 @@ export function DateInput({
                 "[&>button]:bg-[var(--brand)] [&>button]:font-black [&>button]:text-white [&>button]:hover:bg-[var(--brand-strong)]",
             }}
             footer={
-              <div className="mt-2 flex items-center justify-between border-t border-[var(--soft-line)] pt-3">
+              <div className="mt-2 flex items-center gap-2 border-t border-[var(--soft-line)] pt-3">
                 <span className="text-xs font-bold text-[var(--muted)]">{formatDate(value)}</span>
+                {allowClear && value && (
+                  <button
+                    type="button"
+                    className="ml-auto rounded-lg px-2 py-1 text-xs font-extrabold text-[var(--muted)] hover:bg-[var(--soft-line)]"
+                    onClick={() => {
+                      choose("");
+                      setOpen(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="rounded-lg px-2 py-1 text-xs font-extrabold text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+                  className={`${allowClear && value ? "" : "ml-auto"} rounded-lg px-2 py-1 text-xs font-extrabold text-[var(--brand)] hover:bg-[var(--brand-soft)]`}
                   onClick={() => {
                     const today = new Date().toISOString().slice(0, 10);
-                    setValue(today);
+                    choose(today);
                     setMonth(fromDateOnly(today));
                     setOpen(false);
                   }}

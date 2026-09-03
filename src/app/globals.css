@@ -93,7 +93,7 @@ a {
 
 @media (min-width: 1024px) {
   .app-safe-bottom {
-    padding-bottom: 0;
+    padding-bottom: 7rem;
   }
 }
 
