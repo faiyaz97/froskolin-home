@@ -11,6 +11,7 @@ import { DateInput } from "../ui/date-input";
 import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
+import { PayerSelect } from "./payer-select";
 
 type MemberOption = { id: string; name: string };
 type EditableSplitConfig =
@@ -37,11 +38,15 @@ type InitialExpense = {
 export function ExpenseForm({
   householdId,
   defaultCurrency,
+  currentMemberId,
+  landlordEnabled,
   members,
   initial,
 }: {
   householdId: string;
   defaultCurrency: string;
+  currentMemberId: string;
+  landlordEnabled: boolean;
   members: MemberOption[];
   initial?: InitialExpense;
 }) {
@@ -114,7 +119,7 @@ export function ExpenseForm({
         }
         expenseId = created.data.expenseId;
       }
-      router.replace(`/h/${householdId}/expenses/${expenseId}`);
+      router.replace(initial ? `/h/${householdId}/expenses/${expenseId}` : `/h/${householdId}`);
       router.refresh();
     });
   }
@@ -178,15 +183,13 @@ export function ExpenseForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Paid by">
-              <SelectInput
+              <PayerSelect
                 name="payer"
-                defaultValue={initial?.payerMemberId ?? members[0]?.id}
-                ariaLabel="Paid by"
+                defaultValue={initial?.payerMemberId}
+                currentMemberId={currentMemberId}
+                landlordEnabled={landlordEnabled}
+                members={members}
                 disabled={pending}
-                options={members.map((member) => ({
-                  value: member.id,
-                  label: member.name,
-                }))}
               />
             </Field>
             <Field label="Date">

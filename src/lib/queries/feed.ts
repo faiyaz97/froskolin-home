@@ -25,11 +25,13 @@ export async function getHouseholdTransactions(householdId: string, limit = 50) 
     supabase
       .from("expenses")
       .select(
-        "id, title, total_cents, currency, payer_member_id, expense_date, created_at, kind, split_method, recurring_rule_id, expense_shares(member_id, share_cents)",
+        "id, title, total_cents, currency, payer_member_id, paid_by_landlord, expense_date, created_at, kind, split_method, recurring_rule_id, expense_shares(member_id, share_cents), utility_bills(utility_type)",
       )
       .eq("household_id", householdId)
       .is("voided_at", null)
-      .order("expense_date", { ascending: false })
+      // Fetch by insertion time so a newly added bill is not excluded merely
+      // because its issue date is old. The UI still displays normal expenses
+      // by expense date and utilities by the date they were added.
       .order("created_at", { ascending: false })
       .limit(rowLimit),
     supabase

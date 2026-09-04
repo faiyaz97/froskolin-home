@@ -46,6 +46,10 @@ export function updateRememberedHouseCode(houseCode: string, memberName: string)
   rememberDevice({ houseCode, memberName });
 }
 
+export function updateRememberedMemberName(houseCode: string, memberName: string): void {
+  rememberDevice({ houseCode, memberName });
+}
+
 export function forgetRememberedDevice(): void {
   if (typeof window === "undefined") return;
   try {

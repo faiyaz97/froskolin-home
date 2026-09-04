@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { cn } from "./cn";
 
-type Tone = "primary" | "secondary" | "quiet" | "accent" | "danger";
+type Tone =
+  | "primary"
+  | "secondary"
+  | "quiet"
+  | "accent"
+  | "danger"
+  | "pastel"
+  | "pastelAccent"
+  | "pastelWarm";
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: Tone };
 
 const base =
@@ -15,6 +23,12 @@ const tones: Record<Tone, string> = {
   accent:
     "bg-[var(--violet)] text-white shadow-[0_8px_18px_rgb(124_58_237/0.18)] hover:bg-[var(--violet-strong)]",
   danger: "border border-[#fecaca] bg-white text-[var(--negative)] hover:bg-[var(--negative-soft)]",
+  pastel:
+    "border border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand-strong)] shadow-[0_8px_18px_rgb(15_118_110/0.1)] hover:bg-[var(--brand-soft)]",
+  pastelAccent:
+    "border border-[var(--pastel-lavender-line)] bg-[var(--pastel-lavender)] text-[var(--violet-strong)] shadow-[0_8px_18px_rgb(124_58_237/0.1)] hover:bg-[var(--violet-soft)]",
+  pastelWarm:
+    "border border-[var(--pastel-peach-line)] bg-[var(--pastel-peach)] text-[var(--peach)] shadow-[0_8px_18px_rgb(234_88_12/0.1)] hover:bg-[var(--peach-soft)]",
 };
 
 export function Button({ className, tone = "primary", type = "button", ...props }: ButtonProps) {

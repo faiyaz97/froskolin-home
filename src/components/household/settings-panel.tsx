@@ -3,12 +3,13 @@
 import {
   Archive,
   KeyRound,
-  LogOut,
   Pause,
   Pencil,
   Play,
   RefreshCcw,
+  Save,
   ShieldCheck,
+  X,
   UserMinus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,22 +17,20 @@ import { useState, useTransition, type FormEvent } from "react";
 
 import {
   archiveRecurringExpenseRuleAction,
-  changeHouseCodeAction,
-  changeHouseJoinPinAction,
   generateDueRecurringExpensesAction,
   removeMemberAction,
   resetMemberPinAction,
   setRecurringExpenseRuleActiveAction,
-  signOutAction,
+  updateHouseholdAccessAction,
   updateHouseholdAction,
 } from "@/lib/actions";
-import { forgetRememberedDevice, updateRememberedHouseCode } from "@/lib/device-memory";
+import { updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
 import { Button, ButtonLink } from "../ui/button";
 import { Field, Input } from "../ui/field";
 import { SectionTitle, StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
-import { MemberAvatar } from "./member-avatar";
+import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
 type Props = {
   householdId: string;
@@ -41,7 +40,9 @@ type Props = {
     locale: string;
     timezone: string;
     houseCode: string;
+    joinPin: string | null;
     joiningEnabled: boolean;
+    landlordEnabled: boolean;
   };
   currentUserId: string;
   isOwner: boolean;
@@ -51,6 +52,7 @@ type Props = {
     name: string;
     role: "owner" | "member";
     removed: boolean;
+    avatarColor: AvatarColor | null;
   }>;
   rules: Array<{
     id: string;
@@ -74,8 +76,32 @@ export function SettingsPanel({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [houseCode, setHouseCode] = useState(home.houseCode);
+  const [joinPin, setJoinPin] = useState(home.joinPin ?? "");
+  const [editingAccess, setEditingAccess] = useState(false);
   const [temporaryPin, setTemporaryPin] = useState("");
   const currentMemberName = members.find((member) => member.userId === currentUserId)?.name ?? "";
+
+  function saveAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await updateHouseholdAccessAction({
+        householdId,
+        houseCode: String(data.get("houseCode") ?? ""),
+        joinPin: String(data.get("joinPin") ?? ""),
+      });
+      if (result.ok) {
+        setHouseCode(result.data.houseCode);
+        setJoinPin(result.data.joinPin);
+        setEditingAccess(false);
+        updateRememberedHouseCode(result.data.houseCode, currentMemberName);
+        setMessage("Household access saved.");
+        router.refresh();
+      } else {
+        setMessage(result.error);
+      }
+    });
+  }
 
   function saveHome(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,6 +114,7 @@ export function SettingsPanel({
         locale: String(data.get("locale") ?? "en-GB"),
         timezone: String(data.get("timezone") ?? "UTC"),
         joiningEnabled: data.get("joiningEnabled") === "on",
+        landlordEnabled: data.get("landlordEnabled") === "on",
       });
       setMessage(result.ok ? "Household settings saved." : result.error);
       if (result.ok) router.refresh();
@@ -95,7 +122,7 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_19rem]">
+    <div className={isOwner ? "grid gap-10 lg:grid-cols-[1fr_19rem]" : undefined}>
       <div className="space-y-10">
         {message && (
           <StatusNote
@@ -156,6 +183,16 @@ export function SettingsPanel({
               />{" "}
               Allow new roommates to join
             </label>
+            <label className="flex items-center gap-3 text-sm font-bold">
+              <input
+                name="landlordEnabled"
+                type="checkbox"
+                defaultChecked={home.landlordEnabled}
+                disabled={!isOwner || pending}
+                className="size-4 accent-[var(--brand)]"
+              />
+              Enable landlord
+            </label>
             {isOwner && (
               <Button type="submit" className="justify-self-end" disabled={pending}>
                 Save details
@@ -173,7 +210,7 @@ export function SettingsPanel({
                 key={member.id}
                 className="flex items-center gap-3 border-b border-[var(--soft-line)] px-4 py-4 last:border-0"
               >
-                <MemberAvatar name={member.name} />
+                <MemberAvatar name={member.name} color={member.avatarColor} />
                 <p className="flex-1 text-sm">
                   <strong>{member.name}</strong>
                   <span className="block text-[var(--muted)] capitalize">
@@ -342,131 +379,82 @@ export function SettingsPanel({
           </div>
         </section>
       </div>
-      <aside>
-        {isOwner && (
+      {isOwner && (
+        <aside>
           <section className="rounded-2xl border border-[var(--line)] bg-white p-5">
-            <p className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-[var(--peach)] uppercase">
-              <ShieldCheck className="size-4" /> Household access
-            </p>
-            <div className="mt-5">
-              <p className="text-sm font-extrabold">House Code</p>
-              <div className="mt-2 rounded-xl bg-[var(--canvas)] p-3 text-center">
-                <code className="font-extrabold tracking-[0.08em]">{houseCode}</code>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-[var(--peach)] uppercase">
+                <ShieldCheck className="size-4" /> Household access
+              </p>
+              {!editingAccess && (
+                <button
+                  type="button"
+                  className="grid size-9 place-items-center rounded-full text-[var(--ink-soft)] transition hover:bg-[var(--soft-line)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+                  aria-label="Edit household access"
+                  onClick={() => setEditingAccess(true)}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                </button>
+              )}
             </div>
-            <Button
-              type="button"
-              tone="secondary"
-              className="mt-3 w-full"
-              disabled={pending}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    "Change the House Code? Roommates will need the new code when signing in on a new device.",
-                  )
-                )
-                  return;
-                startTransition(async () => {
-                  const result = await changeHouseCodeAction({ householdId });
-                  if (result.ok) {
-                    setHouseCode(result.data.houseCode);
-                    updateRememberedHouseCode(result.data.houseCode, currentMemberName);
-                    setMessage("House Code changed.");
-                    router.refresh();
-                  } else setMessage(result.error);
-                });
-              }}
-            >
-              <RefreshCcw className="size-4" /> Change House Code
-            </Button>
 
-            <form
-              className="mt-6 border-t border-[var(--soft-line)] pt-5"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = event.currentTarget;
-                const data = new FormData(form);
-                const joinPin = String(data.get("joinPin") ?? "");
-                const confirmation = String(data.get("joinPinConfirmation") ?? "");
-                if (joinPin !== confirmation) {
-                  setMessage("The Join PINs do not match.");
-                  return;
-                }
-                startTransition(async () => {
-                  const result = await changeHouseJoinPinAction({ householdId, joinPin });
-                  setMessage(result.ok ? "House Join PIN changed." : result.error);
-                  if (result.ok) form.reset();
-                });
-              }}
-            >
-              <p className="text-sm font-extrabold">House Join PIN</p>
-              <div className="mt-3 grid gap-3">
-                <Field label="New 6-digit Join PIN">
+            {editingAccess ? (
+              <form className="mt-5 grid gap-4" onSubmit={saveAccess}>
+                <Field label="House Code">
+                  <Input
+                    name="houseCode"
+                    defaultValue={houseCode}
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    minLength={6}
+                    maxLength={24}
+                    required
+                    disabled={pending}
+                  />
+                </Field>
+                <Field label="House Join PIN">
                   <Input
                     name="joinPin"
+                    defaultValue={joinPin}
                     inputMode="numeric"
-                    autoComplete="new-password"
+                    autoComplete="off"
                     pattern="[0-9]{6}"
                     maxLength={6}
                     required
                     disabled={pending}
                   />
                 </Field>
-                <Field label="Confirm Join PIN">
-                  <Input
-                    name="joinPinConfirmation"
-                    inputMode="numeric"
-                    autoComplete="new-password"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    required
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    tone="quiet"
                     disabled={pending}
-                  />
-                </Field>
-              </div>
-              <Button type="submit" tone="secondary" className="mt-3 w-full" disabled={pending}>
-                <KeyRound className="size-4" /> Change Join PIN
-              </Button>
-            </form>
+                    onClick={() => setEditingAccess(false)}
+                  >
+                    <X className="size-4" /> Cancel
+                  </Button>
+                  <Button type="submit" tone="secondary" disabled={pending}>
+                    <Save className="size-4" /> Save
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <dl className="mt-5 grid gap-4">
+                <div>
+                  <dt className="text-xs font-bold text-[var(--muted)]">House Code</dt>
+                  <dd className="mt-1 font-extrabold tracking-[0.06em]">{houseCode}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold text-[var(--muted)]">House Join PIN</dt>
+                  <dd className="mt-1 font-extrabold tracking-[0.2em]">
+                    {joinPin || "Not available — set a new PIN"}
+                  </dd>
+                </div>
+              </dl>
+            )}
           </section>
-        )}
-        <section className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-5">
-          <h2 className="font-extrabold">Your PIN</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Change it if somebody may know it.
-          </p>
-          <ButtonLink href="/change-pin" tone="secondary" className="mt-3 w-full">
-            <KeyRound className="size-4" /> Change PIN
-          </ButtonLink>
-          <Button
-            type="button"
-            tone="quiet"
-            className="mt-2 w-full"
-            onClick={() =>
-              startTransition(async () => {
-                await signOutAction();
-              })
-            }
-          >
-            <LogOut className="size-4" /> Sign out
-          </Button>
-          <Button
-            type="button"
-            tone="danger"
-            className="mt-2 w-full"
-            disabled={pending}
-            onClick={() => {
-              if (!window.confirm("Forget this household and member on this device?")) return;
-              startTransition(async () => {
-                forgetRememberedDevice();
-                await signOutAction("/");
-              });
-            }}
-          >
-            Forget this device
-          </Button>
-        </section>
-      </aside>
+        </aside>
+      )}
     </div>
   );
 }

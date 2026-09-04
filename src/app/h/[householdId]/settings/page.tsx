@@ -1,6 +1,7 @@
 import { SettingsPanel } from "@/components/household/settings-panel";
 import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
+import { getHouseholdJoinPinAction } from "@/lib/actions";
 
 export default async function SettingsPage({
   params,
@@ -12,12 +13,14 @@ export default async function SettingsPage({
   const [homeResult, membersResult, rulesResult] = await Promise.all([
     supabase
       .from("households")
-      .select("name, default_currency, locale, timezone, house_code, joining_enabled")
+      .select(
+        "name, default_currency, locale, timezone, house_code, joining_enabled, landlord_enabled",
+      )
       .eq("id", householdId)
       .single(),
     supabase
       .from("household_members")
-      .select("id, user_id, display_name, role, removed_at")
+      .select("id, user_id, display_name, role, removed_at, avatar_color")
       .eq("household_id", householdId)
       .order("joined_at"),
     supabase
@@ -29,9 +32,11 @@ export default async function SettingsPage({
   ]);
   if (homeResult.error || membersResult.error || rulesResult.error)
     throw homeResult.error ?? membersResult.error ?? rulesResult.error;
+  const joinPinResult =
+    membership.role === "owner" ? await getHouseholdJoinPinAction(householdId) : null;
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader title="Household settings" />
       <SettingsPanel
         householdId={householdId}
         home={{
@@ -40,7 +45,9 @@ export default async function SettingsPage({
           locale: homeResult.data.locale,
           timezone: homeResult.data.timezone,
           houseCode: homeResult.data.house_code,
+          joinPin: joinPinResult?.ok ? joinPinResult.data.joinPin : null,
           joiningEnabled: homeResult.data.joining_enabled,
+          landlordEnabled: homeResult.data.landlord_enabled,
         }}
         currentUserId={user.id}
         isOwner={membership.role === "owner"}
@@ -50,6 +57,7 @@ export default async function SettingsPage({
           name: member.display_name,
           role: member.role,
           removed: Boolean(member.removed_at),
+          avatarColor: member.avatar_color,
         }))}
         rules={(rulesResult.data ?? []).map((rule) => ({
           id: rule.id,

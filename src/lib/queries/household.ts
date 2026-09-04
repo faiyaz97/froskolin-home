@@ -6,7 +6,9 @@ export async function getHousehold(householdId: string) {
   const { supabase } = await requireHouseholdMembership(householdId);
   const { data, error } = await supabase
     .from("households")
-    .select("id, name, default_currency, locale, timezone, joining_enabled, archived_at")
+    .select(
+      "id, name, default_currency, locale, timezone, joining_enabled, landlord_enabled, archived_at",
+    )
     .eq("id", householdId)
     .maybeSingle();
   if (error) throw error;

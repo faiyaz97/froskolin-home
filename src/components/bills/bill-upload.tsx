@@ -1,14 +1,26 @@
 "use client";
 
 import { FileText, LockKeyhole, UploadCloud } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-import { Button, ButtonLink } from "../ui/button";
+import { extractedBillSchema, type ExtractedBill } from "@/lib/validation";
+import { Button } from "../ui/button";
 import { StatusNote } from "../ui/page";
 
-export function BillUpload({ householdId }: { householdId: string }) {
-  const router = useRouter();
+export type PreparedBillDraft = {
+  documentId: string;
+  pageCount?: number;
+  extraction?: ExtractedBill;
+  entryMode: "ai" | "manual";
+};
+
+export function BillUpload({
+  householdId,
+  onPrepared,
+}: {
+  householdId: string;
+  onPrepared: (draft: PreparedBillDraft) => void;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [consent, setConsent] = useState(false);
   const [pending, setPending] = useState(false);
@@ -23,7 +35,11 @@ export function BillUpload({ householdId }: { householdId: string }) {
       body.set("householdId", householdId);
       body.set("file", file);
       const upload = await fetch("/api/bills/upload", { method: "POST", body });
-      const uploaded = (await upload.json()) as { documentId?: string; error?: string };
+      const uploaded = (await upload.json()) as {
+        documentId?: string;
+        pageCount?: number;
+        error?: string;
+      };
       if (!upload.ok || !uploaded.documentId) throw new Error(uploaded.error ?? "Upload failed.");
       if (consent) {
         const extraction = await fetch(`/api/bills/${uploaded.documentId}/extract`, {
@@ -31,11 +47,37 @@ export function BillUpload({ householdId }: { householdId: string }) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ householdId, consent: true }),
         });
-        const result = (await extraction.json()) as { error?: string };
-        if (!extraction.ok)
-          throw new Error(result.error ?? "Extraction failed. Continue with manual entry.");
+        const result = (await extraction.json()) as { extraction?: unknown; error?: string };
+        if (!extraction.ok) {
+          onPrepared({
+            documentId: uploaded.documentId,
+            pageCount: uploaded.pageCount,
+            entryMode: "manual",
+          });
+          throw new Error(result.error ?? "AI could not read this bill. Fill the form manually.");
+        }
+        const parsedExtraction = extractedBillSchema.safeParse(result.extraction);
+        if (!parsedExtraction.success) {
+          onPrepared({
+            documentId: uploaded.documentId,
+            pageCount: uploaded.pageCount,
+            entryMode: "manual",
+          });
+          throw new Error("AI returned incomplete bill data. Fill the form manually.");
+        }
+        onPrepared({
+          documentId: uploaded.documentId,
+          pageCount: uploaded.pageCount,
+          extraction: parsedExtraction.data,
+          entryMode: "ai",
+        });
+      } else {
+        onPrepared({
+          documentId: uploaded.documentId,
+          pageCount: uploaded.pageCount,
+          entryMode: "manual",
+        });
       }
-      router.push(`/h/${householdId}/bills/${uploaded.documentId}/confirm`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The bill could not be uploaded.");
     } finally {
@@ -43,13 +85,23 @@ export function BillUpload({ householdId }: { householdId: string }) {
     }
   }
   return (
-    <form className="grid gap-6" onSubmit={submit} aria-busy={pending}>
+    <form
+      className="grid gap-4 rounded-[20px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow-sm)] sm:p-5"
+      onSubmit={submit}
+      aria-busy={pending}
+    >
       {error && (
         <StatusNote tone="error" title={error}>
           You can retry or enter the bill manually.
         </StatusNote>
       )}
-      <label className="grid min-h-64 cursor-pointer place-items-center rounded-2xl border-2 border-dashed border-[var(--line)] bg-white px-5 text-center hover:border-[var(--brand)] hover:bg-[#f0fdfa]">
+      <div>
+        <h2 className="text-lg font-extrabold">Fill from a bill</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Optional — the form stays editable below.
+        </p>
+      </div>
+      <label className="grid min-h-28 cursor-pointer place-items-center rounded-2xl border-2 border-dashed border-[var(--line)] bg-[var(--canvas)] px-5 py-4 text-center hover:border-[var(--brand)] hover:bg-[#f0fdfa]">
         <input
           className="screen-reader-only"
           type="file"
@@ -96,22 +148,15 @@ export function BillUpload({ householdId }: { householdId: string }) {
           </small>
         </span>
       </label>
-      <StatusNote title="The app, not AI, splits the money">
-        Gemini only extracts bill facts. It never receives away dates or calculates what anyone
-        owes.
-      </StatusNote>
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-        <ButtonLink href={`/h/${householdId}/bills/manual/confirm`} tone="quiet">
-          Enter details manually
-        </ButtonLink>
-        <Button disabled={!file || pending} type="submit">
+      <div className="flex justify-end">
+        <Button disabled={!file || pending} type="submit" className="w-full sm:w-auto">
           {pending
             ? consent
               ? "Uploading and reading…"
               : "Uploading…"
             : consent
-              ? "Upload and extract"
-              : "Upload for manual entry"}
+              ? "Fill form with AI"
+              : "Attach bill"}
         </Button>
       </div>
     </form>

@@ -1,9 +1,24 @@
 import { z } from "zod";
 
-import { centsSchema, currencySchema, dateOnlySchema } from "./common";
+import { centsSchema, currencySchema, dateOnlySchema, signedCentsSchema } from "./common";
 import { utilityTypeSchema } from "./utility";
 
 const confidenceSchema = z.coerce.number().min(0).max(1);
+const chargeComponentSchema = z
+  .object({
+    label: z.string().trim().min(1).max(120),
+    amountCents: signedCentsSchema,
+    bucket: z.enum(["fixed", "variable", "whole_bill"]),
+    kind: z.enum(["base", "tax", "adjustment"]),
+  })
+  .superRefine((value, context) => {
+    if (value.kind !== "adjustment" && value.amountCents < 0)
+      context.addIssue({
+        code: "custom",
+        path: ["amountCents"],
+        message: "Only adjustments can have a negative amount.",
+      });
+  });
 
 export const extractedBillSchema = z
   .object({
@@ -22,8 +37,9 @@ export const extractedBillSchema = z
       consumptionCents: centsSchema.nullable(),
       fixedCents: centsSchema.nullable(),
       taxesCents: centsSchema.nullable(),
-      adjustmentsCents: centsSchema.nullable(),
+      adjustmentsCents: signedCentsSchema.nullable(),
     }),
+    chargeComponents: z.array(chargeComponentSchema).max(100).nullable().optional(),
     extractionConfidence: z.object({
       servicePeriod: confidenceSchema,
       totalDue: confidenceSchema,

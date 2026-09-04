@@ -46,9 +46,15 @@ export default async function ExpenseDetail({
   const utility = Array.isArray(expense.utility_bills)
     ? expense.utility_bills[0]
     : expense.utility_bills;
+  const utilityEntryMode =
+    (expense.split_config as { entryMode?: unknown } | null)?.entryMode === "ai"
+      ? "AI-filled"
+      : "Manual";
   const names = new Map(members.map((member) => [member.id, member.display_name]));
   const locale = home?.locale ?? "en-GB";
-  const payer = names.get(String(expense.payer_member_id)) ?? "Former roommate";
+  const payer = expense.paid_by_landlord
+    ? "Landlord"
+    : (names.get(String(expense.payer_member_id)) ?? "Former roommate");
   const shares = [...(expense.expense_shares ?? [])].sort(
     (a, b) => a.allocation_order - b.allocation_order,
   );
@@ -73,7 +79,7 @@ export default async function ExpenseDetail({
       <PageHeader
         eyebrow={
           utility
-            ? "Utility bill"
+            ? `Utility bill · ${utilityEntryMode}`
             : expense.kind === "recurring"
               ? "Recurring occurrence"
               : "Expense"

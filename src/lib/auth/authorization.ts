@@ -23,13 +23,22 @@ export async function requireHouseholdMembership(householdId: string) {
   const { supabase, user } = await requireAuthenticatedUser();
   const { data, error } = await supabase
     .from("household_members")
-    .select("id, role, household_id, user_id, removed_at")
+    .select("id, role, household_id, user_id, display_name, avatar_color, removed_at")
     .eq("household_id", householdId)
     .eq("user_id", user.id)
     .is("removed_at", null)
     .maybeSingle();
   if (error || !data) throw new AuthorizationError();
-  return { supabase, user, membership: data as { id: string; role: "owner" | "member" } };
+  return {
+    supabase,
+    user,
+    membership: data as {
+      id: string;
+      role: "owner" | "member";
+      display_name: string;
+      avatar_color: string | null;
+    },
+  };
 }
 
 export async function requireHouseholdOwner(householdId: string) {

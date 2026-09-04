@@ -4,7 +4,7 @@ import { BillConfirmation } from "@/components/bills/bill-confirmation";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { PageHeader, StatusNote } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
-import { normalSplitConfigSchema, utilityTypeSchema } from "@/lib/validation";
+import { billEntryModeSchema, normalSplitConfigSchema, utilityTypeSchema } from "@/lib/validation";
 import { getExpenseDetail, getHousehold, getHouseholdMembers } from "@/lib/queries";
 
 export default async function EditExpensePage({
@@ -13,7 +13,8 @@ export default async function EditExpensePage({
   params: Promise<{ householdId: string; expenseId: string }>;
 }) {
   const { householdId, expenseId } = await params;
-  const [home, memberRows, expense] = await Promise.all([
+  const [{ membership }, home, memberRows, expense] = await Promise.all([
+    requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getExpenseDetail(householdId, expenseId),
@@ -25,6 +26,8 @@ export default async function EditExpensePage({
       ? expense.utility_bills[0]
       : expense.utility_bills;
     const utilityType = utilityTypeSchema.safeParse(utilityValue?.utility_type);
+    const splitConfig = expense.split_config as { entryMode?: unknown } | null;
+    const entryMode = billEntryModeSchema.safeParse(splitConfig?.entryMode);
     if (!utilityValue || !utilityType.success) notFound();
     const shares = [...(expense.expense_shares ?? [])].sort(
       (a, b) => a.allocation_order - b.allocation_order,
@@ -53,6 +56,8 @@ export default async function EditExpensePage({
           documentId={utilityValue.bill_document_id ?? undefined}
           defaultCurrency={home?.default_currency ?? expense.currency}
           locale={home?.locale ?? "en-GB"}
+          currentMemberId={membership.id}
+          landlordEnabled={home?.landlord_enabled ?? false}
           members={members}
           absences={(absenceRows ?? []).map((range) => ({
             memberId: range.member_id,
@@ -71,7 +76,7 @@ export default async function EditExpensePage({
             fixedCents: Number(utilityValue.fixed_cents),
             variableCents: Number(utilityValue.variable_cents),
             currency: expense.currency,
-            payerMemberId: expense.payer_member_id,
+            payerMemberId: expense.paid_by_landlord ? "landlord" : expense.payer_member_id,
             participantIds: shares.map((share) => share.member_id),
             consumptionAmount:
               utilityValue.consumption_amount == null
@@ -79,6 +84,7 @@ export default async function EditExpensePage({
                 : Number(utilityValue.consumption_amount),
             consumptionUnit: utilityValue.consumption_unit,
             classificationNote: utilityValue.classification_note,
+            entryMode: entryMode.success ? entryMode.data : "manual",
           }}
         />
       </div>
@@ -110,13 +116,15 @@ export default async function EditExpensePage({
       <ExpenseForm
         householdId={householdId}
         defaultCurrency={home?.default_currency ?? expense.currency}
+        currentMemberId={membership.id}
+        landlordEnabled={home?.landlord_enabled ?? false}
         members={members}
         initial={{
           expenseId,
           title: expense.title,
           totalCents: Number(expense.total_cents),
           currency: expense.currency,
-          payerMemberId: expense.payer_member_id,
+          payerMemberId: expense.paid_by_landlord ? "landlord" : expense.payer_member_id,
           expenseDate: expense.expense_date,
           splitConfig: splitConfig.data,
         }}

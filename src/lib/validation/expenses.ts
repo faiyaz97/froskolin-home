@@ -10,6 +10,7 @@ import {
 } from "./common";
 
 export const splitMethodSchema = z.enum(["equal", "exact", "percentage", "utility"]);
+export const payerSelectionSchema = z.union([uuidSchema, z.literal("landlord")]);
 export const participantSchema = z.object({
   memberId: uuidSchema,
   order: z.coerce.number().int().nonnegative(),
@@ -55,7 +56,7 @@ export const expenseInputSchema = z
     title: nonEmptyTextSchema,
     totalCents: positiveCentsSchema,
     currency: currencySchema,
-    payerMemberId: uuidSchema,
+    payerMemberId: payerSelectionSchema,
     expenseDate: dateOnlySchema,
     splitConfig: normalSplitConfigSchema,
   })
@@ -116,3 +117,15 @@ export const settlementInputSchema = z
 export const updateSettlementSchema = settlementInputSchema.and(
   z.object({ settlementId: uuidSchema }),
 );
+
+export const landlordPaymentSchema = z.object({
+  householdId: uuidSchema,
+  expenseId: uuidSchema,
+  amountCents: centsSchema.optional(),
+  markAsPaid: z.boolean().default(false),
+});
+
+export const reopenLandlordBillSchema = z.object({
+  householdId: uuidSchema,
+  expenseId: uuidSchema,
+});

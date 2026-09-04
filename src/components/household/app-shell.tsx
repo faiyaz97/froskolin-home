@@ -4,20 +4,18 @@ import { Bell } from "lucide-react";
 
 import { CatMark } from "../ui/brand";
 import { AppNavigation } from "./app-navigation";
-import { MemberAvatar } from "./member-avatar";
 
 export function AppShell({
   householdId,
-  memberName,
   unreadCount,
+  memberName,
+  memberAvatarColor,
   children,
 }: {
   householdId: string;
-  householdName: string;
-  memberName: string;
-  memberRole: "owner" | "member";
-  memberCount: number;
   unreadCount: number;
+  memberName: string;
+  memberAvatarColor: string | null;
   children: React.ReactNode;
 }) {
   const root = `/h/${householdId}`;
@@ -28,7 +26,7 @@ export function AppShell({
         <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-white/92 px-4 py-2.5 backdrop-blur-xl lg:px-8">
           <div className="mx-auto flex max-w-[980px] items-center justify-between">
             <CatMark />
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center">
               <Link
                 href={`${root}/notifications`}
                 className="relative grid size-11 place-items-center rounded-full text-[var(--ink-soft)] hover:bg-[var(--soft-line)]"
@@ -41,13 +39,6 @@ export function AppShell({
                   </span>
                 )}
               </Link>
-              <Link
-                href={`${root}/settings`}
-                className="grid size-11 place-items-center rounded-full hover:bg-[var(--soft-line)]"
-                aria-label="Household settings"
-              >
-                <MemberAvatar name={memberName} className="size-8" />
-              </Link>
             </div>
           </div>
         </header>
@@ -58,7 +49,11 @@ export function AppShell({
       </div>
 
       <Suspense fallback={null}>
-        <AppNavigation householdId={householdId} />
+        <AppNavigation
+          householdId={householdId}
+          memberName={memberName}
+          memberAvatarColor={memberAvatarColor}
+        />
       </Suspense>
     </div>
   );

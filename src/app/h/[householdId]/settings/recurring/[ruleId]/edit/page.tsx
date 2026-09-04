@@ -11,9 +11,13 @@ export default async function EditRecurringRulePage({
   params: Promise<{ householdId: string; ruleId: string }>;
 }) {
   const { householdId, ruleId } = await params;
-  const { supabase } = await requireHouseholdMembership(householdId);
+  const { supabase, membership } = await requireHouseholdMembership(householdId);
   const [homeResult, membersResult, ruleResult] = await Promise.all([
-    supabase.from("households").select("default_currency").eq("id", householdId).single(),
+    supabase
+      .from("households")
+      .select("default_currency, landlord_enabled")
+      .eq("id", householdId)
+      .single(),
     supabase
       .from("household_members")
       .select("id, display_name, removed_at")
@@ -22,7 +26,7 @@ export default async function EditRecurringRulePage({
     supabase
       .from("recurring_expense_rules")
       .select(
-        "id, title, amount_cents, currency, payer_member_id, split_config, anchor_date, end_date, active, archived_at",
+        "id, title, amount_cents, currency, payer_member_id, paid_by_landlord, split_config, anchor_date, end_date, active, archived_at",
       )
       .eq("household_id", householdId)
       .eq("id", ruleId)
@@ -54,13 +58,17 @@ export default async function EditRecurringRulePage({
       <RecurringForm
         householdId={householdId}
         defaultCurrency={homeResult.data.default_currency}
+        currentMemberId={membership.id}
+        landlordEnabled={homeResult.data.landlord_enabled}
         members={members}
         initial={{
           ruleId,
           title: ruleResult.data.title,
           amountCents: Number(ruleResult.data.amount_cents),
           currency: ruleResult.data.currency,
-          payerMemberId: ruleResult.data.payer_member_id,
+          payerMemberId: ruleResult.data.paid_by_landlord
+            ? "landlord"
+            : ruleResult.data.payer_member_id,
           startDate: ruleResult.data.anchor_date,
           endDate: ruleResult.data.end_date ?? undefined,
           active: ruleResult.data.active,

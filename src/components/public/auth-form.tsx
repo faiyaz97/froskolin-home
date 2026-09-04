@@ -217,8 +217,9 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
                   autoCapitalize="characters"
                   autoCorrect="off"
                   spellCheck={false}
-                  pattern="FROSKO-[0-9]{4}"
-                  maxLength={11}
+                  pattern="[A-Za-z0-9][A-Za-z0-9-]{4,22}[A-Za-z0-9]"
+                  minLength={6}
+                  maxLength={24}
                   required
                   disabled={pending}
                 />
@@ -279,8 +280,9 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
                   autoCapitalize="characters"
                   autoCorrect="off"
                   spellCheck={false}
-                  pattern="FROSKO-[0-9]{4}"
-                  maxLength={11}
+                  pattern="[A-Za-z0-9][A-Za-z0-9-]{4,22}[A-Za-z0-9]"
+                  minLength={6}
+                  maxLength={24}
                   required
                   disabled={pending}
                 />

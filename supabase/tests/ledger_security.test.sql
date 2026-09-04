@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(40);
 
 select set_config('app.suppress_audit', 'true', true);
 
@@ -116,6 +116,10 @@ select ok(
   not has_table_privilege('authenticated', 'public.audit_events', 'UPDATE'),
   'audit entries cannot be updated by members'
 );
+select ok(
+  not has_table_privilege('authenticated', 'public.landlord_payments', 'INSERT'),
+  'landlord payments cannot be inserted directly by members'
+);
 select is(
   (select count(*) from information_schema.routine_privileges where grantee = 'authenticated' and routine_name = 'create_expense_with_shares'),
   0::bigint,
@@ -224,6 +228,163 @@ select lives_ok(
   )
   $test$,
   'the service-only expense commit accepts a verified actor and complete shares'
+);
+select lives_ok(
+  $test$
+  update public.households
+  set landlord_enabled = true
+  where id = '00000000-0000-4000-8000-00000000b001';
+
+  create temporary table landlord_test_expense as
+  select public.create_expense_with_landlord_support(
+    p_household_id => '00000000-0000-4000-8000-00000000b001',
+    p_title => 'Landlord gas',
+    p_total_cents => 100,
+    p_currency => 'EUR',
+    p_payer_member_id => null,
+    p_paid_by_landlord => true,
+    p_expense_date => '2030-01-30',
+    p_kind => 'manual',
+    p_split_method => 'equal',
+    p_split_config => '{"method":"equal","participants":[{"memberId":"00000000-0000-4000-8000-00000000c001","order":0},{"memberId":"00000000-0000-4000-8000-00000000c002","order":1}]}'::jsonb,
+    p_shares => '[{"member_id":"00000000-0000-4000-8000-00000000c001","share_cents":50,"allocation_order":0},{"member_id":"00000000-0000-4000-8000-00000000c002","share_cents":50,"allocation_order":1}]'::jsonb,
+    p_actor_user_id => '00000000-0000-4000-8000-00000000a001'
+  ) as expense_id
+  $test$,
+  'the service can create an expense paid by the enabled Landlord'
+);
+select is(
+  (
+    select string_agg(member_id::text || ':' || net_cents::text, ',' order by member_id)
+    from public.household_balances
+    where household_id = '00000000-0000-4000-8000-00000000b001' and currency = 'EUR'
+  ),
+  '00000000-0000-4000-8000-00000000c001:50,00000000-0000-4000-8000-00000000c002:-50',
+  'a Landlord-paid expense does not change roommate balances'
+);
+select lives_ok(
+  $test$
+  select public.record_landlord_payment(
+    '00000000-0000-4000-8000-00000000b001',
+    (select expense_id from landlord_test_expense),
+    20,
+    '2030-02-01',
+    false,
+    '00000000-0000-4000-8000-00000000a001'
+  )
+  $test$,
+  'a member can record a partial Landlord payment through the service'
+);
+select is(
+  (
+    select s.share_cents - coalesce(sum(p.amount_cents), 0)
+    from public.expense_shares s
+    left join public.landlord_payments p
+      on p.expense_id = s.expense_id and p.member_id = s.member_id and p.voided_at is null
+    where s.expense_id = (select expense_id from landlord_test_expense)
+      and s.member_id = '00000000-0000-4000-8000-00000000c001'
+    group by s.share_cents
+  ),
+  30::bigint,
+  'partial Landlord payments leave the correct derived remainder'
+);
+select lives_ok(
+  $test$
+  select public.record_landlord_payment(
+    '00000000-0000-4000-8000-00000000b001',
+    (select expense_id from landlord_test_expense),
+    0,
+    '2030-02-02',
+    true,
+    '00000000-0000-4000-8000-00000000a001'
+  )
+  $test$,
+  'mark as paid records exactly the remaining Landlord amount'
+);
+select is(
+  (
+    select sum(amount_cents)
+    from public.landlord_payments
+    where expense_id = (select expense_id from landlord_test_expense)
+      and member_id = '00000000-0000-4000-8000-00000000c001'
+      and voided_at is null
+  ),
+  50::numeric,
+  'Landlord payment records add up to the original member share'
+);
+select is(
+  (
+    select count(*)
+    from public.audit_events
+    where entity_type = 'landlord_payment'
+      and actor_user_id = '00000000-0000-4000-8000-00000000a001'
+  ),
+  2::bigint,
+  'partial and full Landlord payments each create an audit event'
+);
+select is(
+  (
+    select count(*)
+    from public.notifications n
+    join public.audit_events a on a.id = n.audit_event_id
+    where a.entity_type = 'landlord_payment'
+      and n.recipient_user_id = '00000000-0000-4000-8000-00000000a001'
+  ),
+  0::bigint,
+  'the Landlord payment actor is not notified'
+);
+select is(
+  (
+    select count(*)
+    from public.notifications n
+    join public.audit_events a on a.id = n.audit_event_id
+    where a.entity_type = 'landlord_payment'
+      and n.recipient_user_id = '00000000-0000-4000-8000-00000000a002'
+  ),
+  2::bigint,
+  'another active member is notified about each Landlord payment'
+);
+select lives_ok(
+  $test$
+  select public.reopen_landlord_bill(
+    '00000000-0000-4000-8000-00000000b001',
+    (select expense_id from landlord_test_expense),
+    '00000000-0000-4000-8000-00000000a001'
+  )
+  $test$,
+  'a member can revert a mistaken Landlord paid mark through the service'
+);
+select is(
+  (
+    select count(*)
+    from public.landlord_payments
+    where expense_id = (select expense_id from landlord_test_expense)
+      and member_id = '00000000-0000-4000-8000-00000000c001'
+      and voided_at is null
+  ),
+  0::bigint,
+  'reverting the paid mark voids active payments without deleting them'
+);
+select is(
+  (
+    select count(*)
+    from public.landlord_payments
+    where expense_id = (select expense_id from landlord_test_expense)
+      and member_id = '00000000-0000-4000-8000-00000000c001'
+  ),
+  2::bigint,
+  'reverting keeps the original Landlord payment records as history'
+);
+select is(
+  (
+    select count(*)
+    from public.audit_events
+    where action_type = 'reopened'
+      and entity_type = 'landlord_payment'
+      and entity_id = (select expense_id from landlord_test_expense)
+  ),
+  1::bigint,
+  'reverting the Landlord paid mark creates one audit event'
 );
 select lives_ok(
   $test$

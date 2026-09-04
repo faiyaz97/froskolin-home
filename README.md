@@ -59,6 +59,7 @@ Never expose or prefix the service-role key, PIN pepper, Gemini key, or cron sec
 - All monetary values are integer cents (`bigint` in PostgreSQL).
 - Expense shares are explicit rows and must sum exactly to the expense total.
 - Balances are derived per currency from payments, shares, and settlements; no mutable balance field and no FX conversion exist.
+- An optional landlord is an external payer, never a member account. Landlord-paid expenses are excluded from roommate balances, while each member's outstanding landlord amount is derived from their shares minus separate payment records.
 - Date-only values are converted to UTC epoch-day integers. Service periods and away ranges are inclusive.
 - Utility fixed costs are split equally. Variable costs are weighted by presence days. If everyone is away for the whole period, the variable portion is split equally and the fallback is recorded.
 - Remainder cents use largest-remainder allocation with stable participant-order tie-breaking.

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {
+  Droplets,
+  Flame,
   HandCoins,
   House,
   ReceiptText,
@@ -10,20 +12,25 @@ import {
   Zap,
 } from "lucide-react";
 
-import { formatMoney } from "@/lib/format";
+import { formatMoney, timestampToDateOnly } from "@/lib/format";
 
 type Expense = {
   id: string;
   title: string;
   total_cents: number;
   currency: string;
-  payer_member_id: string;
+  payer_member_id: string | null;
+  paid_by_landlord: boolean;
   expense_date: string;
   created_at: string;
   kind: "manual" | "utility" | "recurring";
   split_method: "equal" | "exact" | "percentage" | "utility";
   recurring_rule_id: string | null;
   expense_shares: { member_id: string; share_cents: number }[];
+  utility_bills:
+    | { utility_type: "electricity" | "gas" | "water" | "internet" | "other" }
+    | { utility_type: "electricity" | "gas" | "water" | "internet" | "other" }[]
+    | null;
 };
 
 type Settlement = {
@@ -77,11 +84,25 @@ function formatDay(value: string, locale: string) {
 }
 
 function ExpenseIcon({ expense }: { expense: Expense }) {
+  const utility = Array.isArray(expense.utility_bills)
+    ? expense.utility_bills[0]
+    : expense.utility_bills;
+  const utilityAppearance = utility
+    ? {
+        electricity: { icon: Zap, color: "bg-[#fef3c7] text-[#d97706]" },
+        gas: { icon: Flame, color: "bg-[var(--peach-soft)] text-[var(--peach)]" },
+        water: { icon: Droplets, color: "bg-[var(--sky-soft)] text-[var(--sky)]" },
+        internet: { icon: Wifi, color: "bg-[var(--violet-soft)] text-[var(--violet)]" },
+        other: { icon: ReceiptText, color: "bg-[var(--brand-soft)] text-[var(--brand)]" },
+      }[utility.utility_type]
+    : null;
   const matched = categories.find((category) => category.words.test(expense.title));
-  const Icon = expense.recurring_rule_id ? Repeat2 : (matched?.icon ?? ReceiptText);
+  const Icon = expense.recurring_rule_id
+    ? Repeat2
+    : (utilityAppearance?.icon ?? matched?.icon ?? ReceiptText);
   const color = expense.recurring_rule_id
     ? "bg-[var(--violet-soft)] text-[var(--violet)]"
-    : (matched?.color ?? "bg-[var(--brand-soft)] text-[var(--brand)]");
+    : (utilityAppearance?.color ?? matched?.color ?? "bg-[var(--brand-soft)] text-[var(--brand)]");
 
   return (
     <span className={`grid size-11 shrink-0 place-items-center rounded-[14px] ${color}`}>
@@ -97,6 +118,7 @@ export function HouseholdLedger({
   expenses,
   settlements,
   locale,
+  timezone,
 }: {
   householdId: string;
   currentMemberId: string;
@@ -104,11 +126,15 @@ export function HouseholdLedger({
   expenses: Expense[];
   settlements: Settlement[];
   locale: string;
+  timezone: string;
 }) {
   const rows = [
     ...expenses.map((expense) => ({
       kind: "expense" as const,
-      date: expense.expense_date,
+      date:
+        expense.kind === "utility"
+          ? timestampToDateOnly(expense.created_at, timezone)
+          : expense.expense_date,
       createdAt: expense.created_at,
       value: expense,
     })),
@@ -132,19 +158,7 @@ export function HouseholdLedger({
   );
 
   return (
-    <section aria-labelledby="expenses-title">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 id="expenses-title" className="text-lg font-black tracking-[-0.025em]">
-          Recent expenses
-        </h2>
-        <Link
-          href={`/h/${householdId}/activity`}
-          className="text-xs font-extrabold text-[var(--brand)] no-underline hover:underline"
-        >
-          View activity
-        </Link>
-      </div>
-
+    <section aria-label="Expenses">
       {groups.length ? (
         <div className="grid gap-6">
           {groups.map((group) => (
@@ -190,15 +204,28 @@ export function HouseholdLedger({
                   const ownShare =
                     expense.expense_shares.find((share) => share.member_id === currentMemberId)
                       ?.share_cents ?? 0;
-                  const paidByCurrentMember = expense.payer_member_id === currentMemberId;
+                  const paidByCurrentMember =
+                    !expense.paid_by_landlord && expense.payer_member_id === currentMemberId;
                   const lent = expense.total_cents - ownShare;
-                  const result = paidByCurrentMember
-                    ? lent > 0
-                      ? { label: "you lent", cents: lent, className: "text-[var(--positive)]" }
-                      : { label: "your share", cents: ownShare, className: "text-[var(--muted)]" }
-                    : ownShare > 0
-                      ? { label: "you owe", cents: ownShare, className: "text-[var(--negative)]" }
-                      : null;
+                  const result = expense.paid_by_landlord
+                    ? ownShare > 0
+                      ? {
+                          label: "to landlord",
+                          cents: ownShare,
+                          className: "text-[var(--peach)]",
+                        }
+                      : null
+                    : paidByCurrentMember
+                      ? lent > 0
+                        ? { label: "you lent", cents: lent, className: "text-[var(--positive)]" }
+                        : { label: "your share", cents: ownShare, className: "text-[var(--muted)]" }
+                      : ownShare > 0
+                        ? {
+                            label: "you owe",
+                            cents: ownShare,
+                            className: "text-[var(--negative)]",
+                          }
+                        : null;
 
                   return (
                     <Link
@@ -216,8 +243,11 @@ export function HouseholdLedger({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-extrabold">{expense.title}</p>
                         <p className="truncate text-xs text-[var(--muted)] sm:text-sm">
-                          {memberNames[expense.payer_member_id] ?? "Former roommate"} paid{" "}
-                          {formatMoney(expense.total_cents, expense.currency, locale)}
+                          {expense.paid_by_landlord
+                            ? "Landlord"
+                            : (memberNames[expense.payer_member_id ?? ""] ??
+                              "Former roommate")}{" "}
+                          paid {formatMoney(expense.total_cents, expense.currency, locale)}
                         </p>
                       </div>
                       {result && (

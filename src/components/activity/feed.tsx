@@ -1,4 +1,4 @@
-import { CalendarDays, HandCoins, ReceiptText, Repeat2 } from "lucide-react";
+import { CalendarDays, HandCoins, House, ReceiptText, Repeat2 } from "lucide-react";
 import Link from "next/link";
 
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -18,6 +18,7 @@ const icons = {
   expense: ReceiptText,
   recurring_rule: Repeat2,
   settlement: HandCoins,
+  landlord_payment: House,
 };
 
 export function ActivityFeed({

@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 
 import { confirmUtilityBillAction, updateUtilityBillAction } from "@/lib/actions";
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
+import { LANDLORD_PAYER_VALUE, PayerSelect } from "../expenses/payer-select";
 import { Button } from "../ui/button";
 import { DateInput } from "../ui/date-input";
 import { Field, Input, Textarea } from "../ui/field";
@@ -33,6 +34,7 @@ type ExistingUtility = {
   consumptionAmount: number | null;
   consumptionUnit: string | null;
   classificationNote: string | null;
+  entryMode?: "ai" | "manual";
 };
 
 export function BillConfirmation({
@@ -41,22 +43,33 @@ export function BillConfirmation({
   defaultCurrency,
   locale,
   initial,
+  initialEntryMode = "manual",
+  entryMode: controlledEntryMode,
+  onEntryModeChange,
   existing,
   pageCount,
   members,
   absences,
+  currentMemberId,
+  landlordEnabled,
 }: {
   householdId: string;
   documentId?: string;
   defaultCurrency: string;
   locale: string;
   initial?: ExtractedBill;
+  initialEntryMode?: "ai" | "manual";
+  entryMode?: "ai" | "manual";
+  onEntryModeChange?: (mode: "ai" | "manual") => void;
   existing?: ExistingUtility;
   pageCount?: number;
   members: Member[];
   absences: Absence[];
+  currentMemberId: string;
+  landlordEnabled: boolean;
 }) {
   const router = useRouter();
+  const initialUtilityType = existing?.utilityType ?? initial?.utilityType ?? "other";
   const [total, setTotal] = useState(
     existing
       ? (existing.totalCents / 100).toFixed(2)
@@ -84,6 +97,17 @@ export function BillConfirmation({
   const [serviceEnd, setServiceEnd] = useState(
     existing?.serviceEnd ?? initial?.servicePeriod.end ?? "",
   );
+  const [utilityType, setUtilityType] = useState(initialUtilityType);
+  const [title, setTitle] = useState(
+    existing?.title ??
+      formatUtilityBillTitle(
+        initialUtilityType,
+        existing?.serviceStart ?? initial?.servicePeriod.start ?? "",
+        existing?.serviceEnd ?? initial?.servicePeriod.end ?? "",
+        locale,
+      ),
+  );
+  const [titleWasEdited, setTitleWasEdited] = useState(Boolean(existing));
   const [currency, setCurrency] = useState(
     existing?.currency ?? initial?.currency ?? defaultCurrency,
   );
@@ -92,6 +116,18 @@ export function BillConfirmation({
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [localEntryMode, setLocalEntryMode] = useState<"ai" | "manual">(
+    existing?.entryMode ?? initialEntryMode,
+  );
+  const entryMode = controlledEntryMode ?? localEntryMode;
+
+  function markManual() {
+    setLocalEntryMode("manual");
+    onEntryModeChange?.("manual");
+  }
+  function updateGeneratedTitle(type: string, start: string, end: string) {
+    if (!titleWasEdited) setTitle(formatUtilityBillTitle(type, start, end, locale));
+  }
   const totalCents = Math.round(Number(total) * 100);
   const fixedCents = Math.round(Number(fixed) * 100);
   const variableCents = Math.round(Number(variable) * 100);
@@ -104,12 +140,15 @@ export function BillConfirmation({
     serviceStart !== "" &&
     serviceEnd >= serviceStart &&
     selected.size > 0;
+  const missingClassification =
+    !existing &&
+    initial != null &&
+    (initial.charges.fixedCents == null || initial.charges.consumptionCents == null);
   const lowConfidence =
     !existing &&
-    (!initial ||
-      Object.values(initial.extractionConfidence).some((value) => value < 0.8) ||
-      initial.charges.fixedCents == null ||
-      initial.charges.consumptionCents == null);
+    initial != null &&
+    !missingClassification &&
+    Object.values(initial.extractionConfidence).some((value) => value < 0.8);
   const preview = useMemo(() => {
     if (!valid) return null;
     try {
@@ -147,13 +186,14 @@ export function BillConfirmation({
     if (!valid) return;
     const data = new FormData(event.currentTarget);
     startTransition(async () => {
-      const utilityType = String(data.get("utilityType") ?? "other");
+      const submittedUtilityType = String(data.get("utilityType") ?? "other");
       const supplier = String(data.get("supplier") ?? "").trim();
       const input = {
         householdId,
         documentId,
-        title: String(data.get("title") ?? "").trim() || `${supplier || utilityType} bill`,
-        utilityType,
+        title:
+          title.trim() || formatUtilityBillTitle(utilityType, serviceStart, serviceEnd, locale),
+        utilityType: submittedUtilityType,
         supplier: supplier || null,
         issueDate: String(data.get("issueDate") ?? "") || null,
         serviceStart,
@@ -169,6 +209,7 @@ export function BillConfirmation({
         consumptionAmount: existing?.consumptionAmount ?? initial?.consumption.amount ?? null,
         consumptionUnit: existing?.consumptionUnit ?? initial?.consumption.unit ?? null,
         classificationNote: String(data.get("classificationNote") ?? "") || null,
+        entryMode,
       };
       let expenseId: string;
       if (existing) {
@@ -186,19 +227,46 @@ export function BillConfirmation({
         }
         expenseId = result.data.expenseId;
       }
-      router.replace(`/h/${householdId}/expenses/${expenseId}`);
+      router.replace(existing ? `/h/${householdId}/expenses/${expenseId}` : `/h/${householdId}`);
       router.refresh();
     });
   }
 
   return (
-    <form className="grid gap-7" onSubmit={submit} aria-busy={pending}>
-      {lowConfidence && (
-        <StatusNote tone="warning" title="Review the highlighted bill facts">
+    <form
+      id="bill-facts"
+      className="grid scroll-mt-24 gap-7"
+      onSubmit={submit}
+      onChangeCapture={markManual}
+      aria-busy={pending}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-black">Bill details</h2>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+            entryMode === "ai"
+              ? "bg-[var(--violet-soft)] text-[var(--violet)]"
+              : "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
+          }`}
+        >
+          {entryMode === "ai" ? "AI-filled" : "Manual"}
+        </span>
+      </div>
+      {missingClassification && (
+        <StatusNote tone="warning" title="Complete the missing bill facts">
           <span className="inline-flex items-center gap-1">
             <AlertTriangle className="size-3.5" />
-            Some fields were missing or below 80% extraction confidence. Nothing is saved until you
-            confirm.
+            AI could not confidently classify every cent. Check the bill and enter the missing
+            values before confirming.
+          </span>
+        </StatusNote>
+      )}
+      {lowConfidence && (
+        <StatusNote tone="warning" title="Double-check the AI-filled details">
+          <span className="inline-flex items-center gap-1">
+            <AlertTriangle className="size-3.5" />
+            The form was filled, but at least one fact was below 80% confidence. Nothing is saved
+            until you confirm.
           </span>
         </StatusNote>
       )}
@@ -231,9 +299,12 @@ export function BillConfirmation({
         <Field label="Title">
           <Input
             name="title"
-            defaultValue={
-              existing?.title ?? (initial?.supplier ? `${initial.supplier} bill` : "Utility bill")
-            }
+            value={title}
+            onChange={(event) => {
+              markManual();
+              setTitleWasEdited(true);
+              setTitle(event.target.value);
+            }}
             required
           />
         </Field>
@@ -241,7 +312,12 @@ export function BillConfirmation({
           <Field label="Utility type">
             <SelectInput
               name="utilityType"
-              defaultValue={existing?.utilityType ?? initial?.utilityType ?? "other"}
+              value={utilityType}
+              onValueChange={(value) => {
+                markManual();
+                setUtilityType(value as ExtractedBill["utilityType"]);
+                updateGeneratedTitle(value, serviceStart, serviceEnd);
+              }}
               ariaLabel="Utility type"
               options={[
                 { value: "electricity", label: "Electricity" },
@@ -256,11 +332,16 @@ export function BillConfirmation({
             <Input name="supplier" defaultValue={existing?.supplier ?? initial?.supplier ?? ""} />
           </Field>
           <Field label="Paid by">
-            <SelectInput
+            <PayerSelect
               name="payerMemberId"
-              defaultValue={existing?.payerMemberId ?? members[0]?.id}
-              ariaLabel="Paid by"
-              options={members.map((member) => ({ value: member.id, label: member.name }))}
+              defaultValue={
+                existing?.payerMemberId ??
+                (landlordEnabled ? LANDLORD_PAYER_VALUE : currentMemberId)
+              }
+              currentMemberId={currentMemberId}
+              landlordEnabled={landlordEnabled}
+              members={members}
+              onValueChange={markManual}
             />
           </Field>
           <Field label="Issue date">
@@ -268,6 +349,7 @@ export function BillConfirmation({
               name="issueDate"
               ariaLabel="Issue date"
               defaultValue={existing?.issueDate ?? initial?.issueDate ?? ""}
+              onValueChange={markManual}
               allowClear
             />
           </Field>
@@ -275,14 +357,22 @@ export function BillConfirmation({
             <DateInput
               ariaLabel="Service start date"
               value={serviceStart}
-              onValueChange={setServiceStart}
+              onValueChange={(value) => {
+                markManual();
+                setServiceStart(value);
+                updateGeneratedTitle(utilityType, value, serviceEnd);
+              }}
             />
           </Field>
           <Field label="Service ends">
             <DateInput
               ariaLabel="Service end date"
               value={serviceEnd}
-              onValueChange={setServiceEnd}
+              onValueChange={(value) => {
+                markManual();
+                setServiceEnd(value);
+                updateGeneratedTitle(utilityType, serviceStart, value);
+              }}
             />
           </Field>
         </div>
@@ -297,7 +387,10 @@ export function BillConfirmation({
             <SelectInput
               name="currency"
               value={currency}
-              onValueChange={setCurrency}
+              onValueChange={(value) => {
+                markManual();
+                setCurrency(value);
+              }}
               ariaLabel="Currency"
               options={[
                 { value: "EUR", label: "EUR" },

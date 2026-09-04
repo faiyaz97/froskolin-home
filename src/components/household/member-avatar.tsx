@@ -1,16 +1,36 @@
 import { cn } from "../ui/cn";
 
-const avatarColors = ["#0f766e", "#7c3aed", "#ea580c", "#0369a1", "#be123c", "#4f46e5"];
+export const avatarColors = {
+  teal: "#0f766e",
+  violet: "#7c3aed",
+  orange: "#ea580c",
+  blue: "#0369a1",
+  rose: "#be123c",
+  indigo: "#4f46e5",
+} as const;
 
-function avatarColor(name: string) {
+export type AvatarColor = keyof typeof avatarColors;
+
+const avatarColorValues = Object.values(avatarColors);
+
+export function resolveAvatarColor(name: string, color?: AvatarColor | null) {
+  if (color) return avatarColors[color];
   let hash = 0;
   for (const character of name) {
     hash = (hash * 31 + character.codePointAt(0)!) >>> 0;
   }
-  return avatarColors[hash % avatarColors.length];
+  return avatarColorValues[hash % avatarColorValues.length];
 }
 
-export function MemberAvatar({ name, className }: { name: string; className?: string }) {
+export function MemberAvatar({
+  name,
+  color,
+  className,
+}: {
+  name: string;
+  color?: AvatarColor | null;
+  className?: string;
+}) {
   const initials = name
     .trim()
     .split(/\s+/)
@@ -25,7 +45,7 @@ export function MemberAvatar({ name, className }: { name: string; className?: st
         "grid size-9 shrink-0 place-items-center rounded-full border-2 border-white text-xs font-black text-white shadow-sm",
         className,
       )}
-      style={{ background: avatarColor(name) }}
+      style={{ background: resolveAvatarColor(name, color) }}
       aria-hidden="true"
     >
       {initials || "?"}

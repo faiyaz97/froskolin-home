@@ -1,4 +1,5 @@
 import { AwayCalendar } from "@/components/calendar/away-calendar";
+import { resolveAvatarColor, type AvatarColor } from "@/components/household/member-avatar";
 import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import Link from "next/link";
@@ -16,7 +17,7 @@ export default async function CalendarPage({
   const { supabase, membership } = await requireHouseholdMembership(householdId);
   const { data: members, error: membersError } = await supabase
     .from("household_members")
-    .select("id, display_name, removed_at")
+    .select("id, display_name, removed_at, avatar_color")
     .eq("household_id", householdId)
     .order("joined_at");
   if (membersError) throw membersError;
@@ -27,9 +28,8 @@ export default async function CalendarPage({
 
   const { data: ranges, error: rangesError } = await supabase
     .from("absence_periods")
-    .select("start_date, end_date")
+    .select("member_id, start_date, end_date")
     .eq("household_id", householdId)
-    .eq("member_id", targetMemberId)
     .is("voided_at", null)
     .order("start_date");
   if (rangesError) throw rangesError;
@@ -45,17 +45,39 @@ export default async function CalendarPage({
         }
       />
       {membership.role === "owner" && (
-        <nav aria-label="Choose household member" className="mb-6 flex gap-2 overflow-x-auto pb-1">
+        <nav
+          aria-label="Choose whose away dates to edit"
+          className="mb-6 flex gap-2 overflow-x-auto pb-1"
+        >
           {(members ?? []).map((member) => (
             <Link
               key={member.id}
               href={`/h/${householdId}/calendar?member=${member.id}`}
               aria-current={member.id === targetMemberId ? "page" : undefined}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] ${
-                member.id === targetMemberId
-                  ? "border-[var(--brand)] bg-[var(--brand)] text-white"
-                  : "border-[var(--line)] bg-white text-[var(--ink)]"
-              }`}
+              className="shrink-0 rounded-full border-2 px-4 py-2 text-sm font-extrabold no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+              style={{
+                borderColor: resolveAvatarColor(
+                  String(member.display_name),
+                  member.avatar_color as AvatarColor | null,
+                ),
+                backgroundColor:
+                  member.id === targetMemberId
+                    ? resolveAvatarColor(
+                        String(member.display_name),
+                        member.avatar_color as AvatarColor | null,
+                      )
+                    : `${resolveAvatarColor(
+                        String(member.display_name),
+                        member.avatar_color as AvatarColor | null,
+                      )}18`,
+                color:
+                  member.id === targetMemberId
+                    ? "white"
+                    : resolveAvatarColor(
+                        String(member.display_name),
+                        member.avatar_color as AvatarColor | null,
+                      ),
+              }}
             >
               {member.display_name}
               {member.removed_at ? " · removed" : ""}
@@ -64,10 +86,18 @@ export default async function CalendarPage({
         </nav>
       )}
       <AwayCalendar
+        key={targetMemberId}
         householdId={householdId}
         memberId={targetMemberId}
         memberName={String(targetMember.display_name)}
-        initialRanges={(ranges ?? []).map((range) => ({
+        members={(members ?? []).map((member) => ({
+          id: member.id,
+          name: String(member.display_name),
+          color: (member.avatar_color as AvatarColor | null) ?? null,
+          removed: Boolean(member.removed_at),
+        }))}
+        initialHouseholdRanges={(ranges ?? []).map((range) => ({
+          memberId: range.member_id,
           start: String(range.start_date),
           end: String(range.end_date),
         }))}

@@ -11,8 +11,22 @@ const houseAccessMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260903173848_human_house_codes_and_join_pins.sql"),
   "utf8",
 ).toLowerCase();
+const financialActions = readFileSync(join(process.cwd(), "src/lib/actions/financial.ts"), "utf8");
+const landlordMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260904185123_add_landlord_payer.sql"),
+  "utf8",
+).toLowerCase();
+const reopenLandlordMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260904224326_reopen_landlord_bill.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
+  it("excludes voided utility expenses from away-date recalculation", () => {
+    expect(financialActions).toContain("expenses!inner(voided_at)");
+    expect(financialActions).toContain('.is("expenses.voided_at", null)');
+  });
+
   it("enables RLS and scopes financial records to active household membership", () => {
     for (const table of [
       "households",
@@ -116,5 +130,49 @@ describe("database security and automation contract", () => {
     );
     expect(houseAccessMigration).toContain("the owner changed the house code.");
     expect(houseAccessMigration).toContain("the owner changed the house join pin.");
+  });
+
+  it("keeps the visible Join PIN encrypted and owner-gated", () => {
+    const encryptedPinMigration = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260904091143_encrypted_household_join_pin.sql"),
+      "utf8",
+    ).toLowerCase();
+    expect(encryptedPinMigration).toContain("private.household_join_pin_secrets");
+    expect(encryptedPinMigration).toContain("private.is_household_owner");
+    expect(encryptedPinMigration).toContain(
+      "revoke all on private.household_join_pin_secrets from public, anon, authenticated",
+    );
+    expect(encryptedPinMigration).not.toContain("plaintext_pin");
+  });
+
+  it("keeps landlord payments separate and out of roommate balances", () => {
+    expect(landlordMigration).toContain("create table public.landlord_payments");
+    expect(landlordMigration).toContain("not e.paid_by_landlord");
+    expect(landlordMigration).toContain("expenses_exactly_one_payer");
+    expect(landlordMigration).toContain("recurring_rules_exactly_one_payer");
+    expect(landlordMigration).toContain(
+      "alter table public.landlord_payments enable row level security",
+    );
+  });
+
+  it("makes landlord payment commits service-only and auditable", () => {
+    expect(landlordMigration).toContain("create function public.record_landlord_payment");
+    expect(landlordMigration).toContain(
+      "payment must be positive and no more than the remaining balance",
+    );
+    expect(landlordMigration).toContain("'landlord_payment'");
+    expect(landlordMigration).toContain(
+      "grant execute on function public.record_landlord_payment(uuid, uuid, bigint, date, boolean, uuid) to service_role",
+    );
+  });
+
+  it("reverts a mistaken Landlord paid mark without deleting payment history", () => {
+    expect(reopenLandlordMigration).toContain("create function public.reopen_landlord_bill");
+    expect(reopenLandlordMigration).toContain("set voided_at = now()");
+    expect(reopenLandlordMigration).toContain("paid status reverted by member");
+    expect(reopenLandlordMigration).toContain("'reopened', 'landlord_payment'");
+    expect(reopenLandlordMigration).toContain(
+      "grant execute on function public.reopen_landlord_bill(uuid, uuid, uuid)",
+    );
   });
 });

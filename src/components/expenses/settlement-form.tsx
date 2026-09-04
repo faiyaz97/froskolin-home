@@ -55,9 +55,7 @@ export function SettlementForm({
         return;
       }
       router.replace(
-        initial
-          ? `/h/${householdId}/settlements/${initial.settlementId}`
-          : `/h/${householdId}/balances`,
+        initial ? `/h/${householdId}/settlements/${initial.settlementId}` : `/h/${householdId}`,
       );
       router.refresh();
     });

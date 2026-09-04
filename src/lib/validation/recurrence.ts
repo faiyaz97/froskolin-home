@@ -7,7 +7,7 @@ import {
   positiveCentsSchema,
   uuidSchema,
 } from "./common";
-import { normalSplitConfigSchema } from "./expenses";
+import { normalSplitConfigSchema, payerSelectionSchema } from "./expenses";
 
 export const recurringExpenseRuleSchema = z
   .object({
@@ -15,7 +15,7 @@ export const recurringExpenseRuleSchema = z
     title: nonEmptyTextSchema,
     amountCents: positiveCentsSchema,
     currency: currencySchema,
-    payerMemberId: uuidSchema,
+    payerMemberId: payerSelectionSchema,
     splitConfig: normalSplitConfigSchema,
     startDate: dateOnlySchema,
     endDate: dateOnlySchema.nullable().optional(),

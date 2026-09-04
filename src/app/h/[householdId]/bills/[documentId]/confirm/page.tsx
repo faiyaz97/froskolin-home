@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { BillConfirmation } from "@/components/bills/bill-confirmation";
 import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
@@ -9,9 +11,14 @@ export default async function ConfirmBillPage({
   params: Promise<{ householdId: string; documentId: string }>;
 }) {
   const { householdId, documentId } = await params;
-  const { supabase } = await requireHouseholdMembership(householdId);
+  if (documentId === "manual") redirect(`/h/${householdId}/add/bill`);
+  const { supabase, membership } = await requireHouseholdMembership(householdId);
   const [homeResult, membersResult, absencesResult, documentResult] = await Promise.all([
-    supabase.from("households").select("default_currency, locale").eq("id", householdId).single(),
+    supabase
+      .from("households")
+      .select("default_currency, locale, landlord_enabled")
+      .eq("id", householdId)
+      .single(),
     supabase
       .from("household_members")
       .select("id, display_name, removed_at")
@@ -23,14 +30,12 @@ export default async function ConfirmBillPage({
       .select("member_id, start_date, end_date")
       .eq("household_id", householdId)
       .is("voided_at", null),
-    documentId === "manual"
-      ? Promise.resolve({ data: null, error: null })
-      : supabase
-          .from("bill_documents")
-          .select("id, status, page_count, extraction, confidence")
-          .eq("id", documentId)
-          .eq("household_id", householdId)
-          .maybeSingle(),
+    supabase
+      .from("bill_documents")
+      .select("id, status, page_count, extraction, confidence")
+      .eq("id", documentId)
+      .eq("household_id", householdId)
+      .maybeSingle(),
   ]);
   if (homeResult.error || membersResult.error || absencesResult.error || documentResult.error) {
     throw homeResult.error ?? membersResult.error ?? absencesResult.error ?? documentResult.error;
@@ -45,10 +50,13 @@ export default async function ConfirmBillPage({
       />
       <BillConfirmation
         householdId={householdId}
-        documentId={documentId === "manual" ? undefined : documentId}
+        documentId={documentId}
         defaultCurrency={homeResult.data.default_currency}
         locale={homeResult.data.locale}
+        currentMemberId={membership.id}
+        landlordEnabled={homeResult.data.landlord_enabled}
         initial={extraction.success ? extraction.data : undefined}
+        initialEntryMode={extraction.success ? "ai" : "manual"}
         pageCount={Number(documentResult.data?.page_count ?? 0) || undefined}
         members={(membersResult.data ?? []).map((member) => ({
           id: member.id,

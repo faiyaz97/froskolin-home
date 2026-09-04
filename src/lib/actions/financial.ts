@@ -18,6 +18,8 @@ import { generateDueRecurringExpenses } from "@/lib/services/recurring";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   expenseInputSchema,
+  landlordPaymentSchema,
+  reopenLandlordBillSchema,
   archiveRecurringExpenseRuleSchema,
   recurringExpenseRuleSchema,
   replaceAbsencesSchema,
@@ -41,8 +43,8 @@ import { actionFailure, type ActionResult, validationFailure } from "./result";
  * cross this boundary.
  */
 const rpc = {
-  createExpense: "create_expense_with_shares",
-  createUtility: "create_utility_bill_with_shares",
+  createExpense: "create_expense_with_landlord_support",
+  createUtility: "create_utility_bill_with_landlord_support",
   replaceAbsences: "replace_absences_and_utility_shares",
   recordSettlement: "record_settlement",
 } as const;
@@ -52,6 +54,7 @@ function refreshHousehold(householdId: string) {
   revalidatePath(`/h/${householdId}/balances`);
   revalidatePath(`/h/${householdId}/activity`);
   revalidatePath(`/h/${householdId}/calendar`);
+  revalidatePath(`/h/${householdId}/landlord`);
 }
 
 function localDateOnly(timezone: string): string {
@@ -107,7 +110,9 @@ export async function saveExpenseAction(
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
       p_currency: parsed.data.currency,
-      p_payer_member_id: parsed.data.payerMemberId,
+      p_payer_member_id:
+        parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
       p_expense_date: parsed.data.expenseDate,
       p_kind: "manual",
       p_split_method: parsed.data.splitConfig.method,
@@ -130,12 +135,14 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { user } = await requireHouseholdMembership(parsed.data.householdId);
-    const { error } = await callRpc(createAdminClient(), "replace_expense_with_shares", {
+    const { error } = await callRpc(createAdminClient(), "replace_expense_with_landlord_support", {
       p_expense_id: parsed.data.expenseId,
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
       p_currency: parsed.data.currency,
-      p_payer_member_id: parsed.data.payerMemberId,
+      p_payer_member_id:
+        parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
       p_expense_date: parsed.data.expenseDate,
       p_split_method: parsed.data.splitConfig.method,
       p_split_config: parsed.data.splitConfig,
@@ -163,9 +170,10 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
     const { data: utilities, error: utilityError } = await supabase
       .from("utility_bills")
       .select(
-        "expense_id, service_start_date, service_end_date, total_cents, fixed_cents, variable_cents",
+        "expense_id, service_start_date, service_end_date, total_cents, fixed_cents, variable_cents, expenses!inner(voided_at)",
       )
-      .eq("household_id", parsed.data.householdId);
+      .eq("household_id", parsed.data.householdId)
+      .is("expenses.voided_at", null);
     if (utilityError) throw utilityError;
     const utilityRows = (utilities ?? []) as Array<{
       expense_id: string;
@@ -291,6 +299,12 @@ export async function confirmUtilityBillAction(
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { data: household, error: householdError } = await supabase
+      .from("households")
+      .select("timezone")
+      .eq("id", parsed.data.householdId)
+      .single();
+    if (householdError || !household) throw householdError ?? new Error("Household not found.");
     const ids = parsed.data.participants.map((participant) => participant.memberId);
     const { data: absenceRows, error: absenceError } = await supabase
       .from("absence_periods")
@@ -326,10 +340,13 @@ export async function confirmUtilityBillAction(
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
       p_currency: parsed.data.currency,
-      p_payer_member_id: parsed.data.payerMemberId,
-      p_expense_date: parsed.data.issueDate ?? parsed.data.serviceEnd,
+      p_payer_member_id:
+        parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
+      p_expense_date: localDateOnly(household.timezone),
       p_split_config: {
         method: "utility",
+        entryMode: parsed.data.entryMode,
         participants: parsed.data.participants,
         fixedCents: parsed.data.fixedCents,
         variableCents: parsed.data.variableCents,
@@ -369,6 +386,14 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { data: existingExpense, error: expenseError } = await supabase
+      .from("expenses")
+      .select("expense_date")
+      .eq("id", parsed.data.expenseId)
+      .eq("household_id", parsed.data.householdId)
+      .maybeSingle();
+    if (expenseError || !existingExpense)
+      throw expenseError ?? new Error("Utility bill not found.");
     const ids = parsed.data.participants.map((participant) => participant.memberId);
     const { data: absenceRows, error: absenceError } = await supabase
       .from("absence_periods")
@@ -399,40 +424,47 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
         absenceRanges: absenceByMember.get(participant.memberId),
       })),
     });
-    const { error } = await callRpc(createAdminClient(), "replace_utility_bill_with_shares", {
-      p_expense_id: parsed.data.expenseId,
-      p_title: parsed.data.title,
-      p_total_cents: parsed.data.totalCents,
-      p_currency: parsed.data.currency,
-      p_payer_member_id: parsed.data.payerMemberId,
-      p_expense_date: parsed.data.issueDate ?? parsed.data.serviceEnd,
-      p_split_config: {
-        method: "utility",
-        participants: parsed.data.participants,
-        fixedCents: parsed.data.fixedCents,
-        variableCents: parsed.data.variableCents,
+    const { error } = await callRpc(
+      createAdminClient(),
+      "replace_utility_bill_with_landlord_support",
+      {
+        p_expense_id: parsed.data.expenseId,
+        p_title: parsed.data.title,
+        p_total_cents: parsed.data.totalCents,
+        p_currency: parsed.data.currency,
+        p_payer_member_id:
+          parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+        p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
+        p_expense_date: existingExpense.expense_date,
+        p_split_config: {
+          method: "utility",
+          entryMode: parsed.data.entryMode,
+          participants: parsed.data.participants,
+          fixedCents: parsed.data.fixedCents,
+          variableCents: parsed.data.variableCents,
+        },
+        p_shares: utility.shares.map((share, allocationOrder) => ({
+          member_id: share.memberId,
+          share_cents: share.amountCents,
+          fixed_share_cents: share.fixedCents,
+          variable_share_cents: share.variableCents,
+          presence_days: share.presenceDays,
+          allocation_order: allocationOrder,
+        })),
+        p_utility_type: parsed.data.utilityType,
+        p_supplier: parsed.data.supplier ?? null,
+        p_issue_date: parsed.data.issueDate ?? null,
+        p_service_start_date: parsed.data.serviceStart,
+        p_service_end_date: parsed.data.serviceEnd,
+        p_fixed_cents: parsed.data.fixedCents,
+        p_variable_cents: parsed.data.variableCents,
+        p_consumption_amount: parsed.data.consumptionAmount ?? null,
+        p_consumption_unit: parsed.data.consumptionUnit ?? null,
+        p_classification_note: parsed.data.classificationNote ?? null,
+        p_variable_split_mode: utility.variableMode,
+        p_actor_user_id: user.id,
       },
-      p_shares: utility.shares.map((share, allocationOrder) => ({
-        member_id: share.memberId,
-        share_cents: share.amountCents,
-        fixed_share_cents: share.fixedCents,
-        variable_share_cents: share.variableCents,
-        presence_days: share.presenceDays,
-        allocation_order: allocationOrder,
-      })),
-      p_utility_type: parsed.data.utilityType,
-      p_supplier: parsed.data.supplier ?? null,
-      p_issue_date: parsed.data.issueDate ?? null,
-      p_service_start_date: parsed.data.serviceStart,
-      p_service_end_date: parsed.data.serviceEnd,
-      p_fixed_cents: parsed.data.fixedCents,
-      p_variable_cents: parsed.data.variableCents,
-      p_consumption_amount: parsed.data.consumptionAmount ?? null,
-      p_consumption_unit: parsed.data.consumptionUnit ?? null,
-      p_classification_note: parsed.data.classificationNote ?? null,
-      p_variable_split_mode: utility.variableMode,
-      p_actor_user_id: user.id,
-    });
+    );
     if (error) throw error;
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };
@@ -463,6 +495,54 @@ export async function saveSettlementAction(
     return { ok: true, data: { settlementId: String(data) } };
   } catch (error) {
     return actionFailure(error) as ActionResult<{ settlementId: string }>;
+  }
+}
+
+export async function recordLandlordPaymentAction(input: unknown): Promise<ActionResult> {
+  const parsed = landlordPaymentSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  if (!parsed.data.markAsPaid && (!parsed.data.amountCents || parsed.data.amountCents <= 0)) {
+    return { ok: false, error: "Enter a payment amount greater than zero." };
+  }
+  try {
+    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { data: household, error: householdError } = await supabase
+      .from("households")
+      .select("timezone")
+      .eq("id", parsed.data.householdId)
+      .single();
+    if (householdError || !household) throw householdError ?? new Error("Household not found.");
+    const { error } = await callRpc(createAdminClient(), "record_landlord_payment", {
+      p_household_id: parsed.data.householdId,
+      p_expense_id: parsed.data.expenseId,
+      p_amount_cents: parsed.data.amountCents ?? null,
+      p_payment_date: localDateOnly(household.timezone),
+      p_mark_as_paid: parsed.data.markAsPaid,
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    refreshHousehold(parsed.data.householdId);
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+export async function reopenLandlordBillAction(input: unknown): Promise<ActionResult> {
+  const parsed = reopenLandlordBillSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { error } = await callRpc(createAdminClient(), "reopen_landlord_bill", {
+      p_household_id: parsed.data.householdId,
+      p_expense_id: parsed.data.expenseId,
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    refreshHousehold(parsed.data.householdId);
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
   }
 }
 
@@ -535,7 +615,9 @@ export async function saveRecurringExpenseRuleAction(
         title: parsed.data.title,
         amount_cents: parsed.data.amountCents,
         currency: parsed.data.currency,
-        payer_member_id: parsed.data.payerMemberId,
+        payer_member_id:
+          parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+        paid_by_landlord: parsed.data.payerMemberId === "landlord",
         split_method: parsed.data.splitConfig.method,
         split_config: parsed.data.splitConfig,
         anchor_date: parsed.data.startDate,
@@ -602,7 +684,9 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
         title: parsed.data.title,
         amount_cents: parsed.data.amountCents,
         currency: parsed.data.currency,
-        payer_member_id: parsed.data.payerMemberId,
+        payer_member_id:
+          parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+        paid_by_landlord: parsed.data.payerMemberId === "landlord",
         split_method: parsed.data.splitConfig.method,
         split_config: parsed.data.splitConfig,
         anchor_date: parsed.data.startDate,

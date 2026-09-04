@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import sharp from "sharp";
 
 import type { BillExtractor, PreparedBillDocument } from "@/lib/bills";
-import { prepareBillUpload, redactSensitiveText } from "@/lib/bills";
+import {
+  BILL_EXTRACTION_PROMPT,
+  normalizeExtractedBillBuckets,
+  prepareBillUpload,
+  redactSensitiveText,
+} from "@/lib/bills";
 import { extractedBillSchema } from "@/lib/validation";
 
 const fixture = {
@@ -63,6 +68,115 @@ describe("bill extraction boundary", () => {
         extractionConfidence: { ...fixture.extractionConfidence, totalDue: 1.1 },
       }),
     ).toThrow();
+  });
+
+  it("rejects materially incomplete raw charge lines instead of dumping the gap into variable", () => {
+    const normalized = normalizeExtractedBillBuckets({
+      ...fixture,
+      charges: {
+        consumptionCents: 4_373,
+        fixedCents: 4_041,
+        taxesCents: 1_583,
+        adjustmentsCents: -2,
+      },
+    });
+    expect(normalized.charges.fixedCents).toBeNull();
+    expect(normalized.charges.consumptionCents).toBeNull();
+    expect(normalized.extractionConfidence.fixedCharges).toBe(0);
+  });
+
+  it("uses exact final buckets when the optional component evidence is incomplete", () => {
+    const normalized = normalizeExtractedBillBuckets({
+      ...fixture,
+      charges: {
+        consumptionCents: 5_070,
+        fixedCents: 4_930,
+        taxesCents: 1_583,
+        adjustmentsCents: -2,
+      },
+      chargeComponents: [
+        { label: "Fixed quota", amountCents: 4_041, bucket: "fixed", kind: "base" },
+        { label: "Usage quota", amountCents: 4_373, bucket: "variable", kind: "base" },
+      ],
+    });
+
+    expect(normalized.charges).toMatchObject({ fixedCents: 4_930, consumptionCents: 5_070 });
+  });
+
+  it("accepts and proportionally allocates a whole-bill tax", () => {
+    const normalized = normalizeExtractedBillBuckets({
+      ...fixture,
+      chargeComponents: [
+        { label: "Fixed charges", amountCents: 4_000, bucket: "fixed", kind: "base" },
+        { label: "Usage charges", amountCents: 5_000, bucket: "variable", kind: "base" },
+        { label: "Bill-wide tax", amountCents: 1_000, bucket: "whole_bill", kind: "tax" },
+      ],
+    });
+
+    expect(normalized.charges).toMatchObject({ fixedCents: 4_444, consumptionCents: 5_556 });
+  });
+
+  it("preserves complete tax-inclusive buckets and reconciles only cent rounding", () => {
+    const classified = normalizeExtractedBillBuckets({
+      ...fixture,
+      charges: {
+        consumptionCents: 5_070,
+        fixedCents: 4_930,
+        taxesCents: 1_583,
+        adjustmentsCents: -2,
+      },
+    });
+    expect(classified.charges).toMatchObject({ fixedCents: 4_930, consumptionCents: 5_070 });
+
+    const rounded = normalizeExtractedBillBuckets({
+      ...fixture,
+      charges: { ...fixture.charges, fixedCents: 4_930, consumptionCents: 5_069 },
+    });
+    expect(rounded.charges).toMatchObject({ fixedCents: 4_930, consumptionCents: 5_070 });
+  });
+
+  it("calculates final buckets deterministically from semantic charge components", () => {
+    const normalized = normalizeExtractedBillBuckets({
+      ...fixture,
+      charges: {
+        consumptionCents: 4_373,
+        fixedCents: 4_041,
+        taxesCents: 1_583,
+        adjustmentsCents: -2,
+      },
+      chargeComponents: [
+        { label: "Fixed quota", amountCents: 4_041, bucket: "fixed", kind: "base" },
+        { label: "Usage quota", amountCents: 4_373, bucket: "variable", kind: "base" },
+        { label: "Fixed VAT", amountCents: 889, bucket: "fixed", kind: "tax" },
+        { label: "Variable VAT", amountCents: 461, bucket: "variable", kind: "tax" },
+        { label: "Excise", amountCents: 233, bucket: "variable", kind: "tax" },
+        { label: "Recalculation", amountCents: 5, bucket: "variable", kind: "adjustment" },
+        { label: "Previous rounding", amountCents: 96, bucket: "whole_bill", kind: "adjustment" },
+        { label: "Current rounding", amountCents: -98, bucket: "whole_bill", kind: "adjustment" },
+      ],
+    });
+
+    expect(normalized.charges).toMatchObject({ fixedCents: 4_929, consumptionCents: 5_071 });
+  });
+
+  it("instructs the model to return exhaustive final buckets", () => {
+    expect(BILL_EXTRACTION_PROMPT).toContain(
+      "charges.fixedCents + charges.consumptionCents MUST equal totalDueCents exactly",
+    );
+    expect(BILL_EXTRACTION_PROMPT).toContain("apportion that tax between the two");
+    expect(BILL_EXTRACTION_PROMPT).toContain("Do not put all VAT/IVA into the variable bucket");
+    expect(BILL_EXTRACTION_PROMPT).toContain(
+      "fixedCents must include fixed charges PLUS all VAT/IVA",
+    );
+    expect(BILL_EXTRACTION_PROMPT).toContain("a taxable base equals an explicit fixed subtotal");
+    expect(BILL_EXTRACTION_PROMPT).toContain("mutually exclusive and collectively exhaustive");
+    expect(BILL_EXTRACTION_PROMPT).toContain("Never include both a subtotal and the child lines");
+    expect(BILL_EXTRACTION_PROMPT).toContain("NEVER merge tax rows");
+    expect(BILL_EXTRACTION_PROMPT).toContain("taxable base × rate");
+    expect(BILL_EXTRACTION_PROMPT).toContain("whole_bill components proportionally");
+    expect(BILL_EXTRACTION_PROMPT).toContain("final buckets independently from chargeComponents");
+    expect(BILL_EXTRACTION_PROMPT).toContain("not by fixed provider names");
+    expect(BILL_EXTRACTION_PROMPT).toContain("visual layout");
   });
 
   it("re-encodes image uploads and strips the original MIME metadata", async () => {

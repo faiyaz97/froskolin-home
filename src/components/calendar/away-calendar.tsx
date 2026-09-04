@@ -1,15 +1,32 @@
 "use client";
 
-import { CalendarPlus, Pencil, Trash2, X } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
-import { DayPicker, type DateRange as PickerRange } from "react-day-picker";
+import { CalendarPlus, Pencil, Trash2, Users, X } from "lucide-react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import {
+  DayButton,
+  DayPicker,
+  type DateRange as PickerRange,
+  type DayButtonProps,
+} from "react-day-picker";
 
+import {
+  MemberAvatar,
+  resolveAvatarColor,
+  type AvatarColor,
+} from "@/components/household/member-avatar";
 import { replaceAbsencesAction } from "@/lib/actions";
 import { inclusiveDays, normalizeAbsenceRanges } from "@/lib/domain/occupancy";
 import { Button } from "../ui/button";
 import { StatusNote } from "../ui/page";
 
 type Range = { start: string; end: string };
+type HouseholdRange = Range & { memberId: string };
+type CalendarMember = {
+  id: string;
+  name: string;
+  color: AvatarColor | null;
+  removed: boolean;
+};
 
 const fmt = (value: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -49,18 +66,26 @@ export function AwayCalendar({
   householdId,
   memberId,
   memberName,
-  initialRanges,
+  members,
+  initialHouseholdRanges,
 }: {
   householdId: string;
   memberId: string;
   memberName: string;
-  initialRanges: Range[];
+  members: CalendarMember[];
+  initialHouseholdRanges: HouseholdRange[];
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [ranges, setRanges] = useState(() => normalizeRanges(initialRanges));
+  const [ranges, setRanges] = useState(() =>
+    normalizeRanges(
+      initialHouseholdRanges
+        .filter((range) => range.memberId === memberId)
+        .map(({ start, end }) => ({ start, end })),
+    ),
+  );
   const [selection, setSelection] = useState<PickerRange>();
   const [editingRange, setEditingRange] = useState<Range>();
-  const [month, setMonth] = useState(() => dateOnlyToDate(initialRanges.at(-1)?.start ?? today));
+  const [month, setMonth] = useState(() => dateOnlyToDate(ranges.at(-1)?.start ?? today));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -68,8 +93,53 @@ export function AwayCalendar({
 
   const total = useMemo(() => ranges.reduce((sum, range) => sum + rangeDays(range), 0), [ranges]);
   const recordedDays = useMemo(() => ranges.map(toPickerRange), [ranges]);
+  const visibleHouseholdRanges = useMemo(
+    () => [
+      ...initialHouseholdRanges.filter((range) => range.memberId !== memberId),
+      ...ranges.map((range) => ({ ...range, memberId })),
+    ],
+    [initialHouseholdRanges, memberId, ranges],
+  );
+  const memberMarkers = useMemo(
+    () =>
+      members.map((member, index) => ({
+        member,
+        modifier: `awayMember${index}`,
+        color: resolveAvatarColor(member.name, member.color),
+        ranges: visibleHouseholdRanges
+          .filter((range) => range.memberId === member.id)
+          .map(toPickerRange),
+      })),
+    [members, visibleHouseholdRanges],
+  );
+  const calendarModifiers = useMemo(
+    () => Object.fromEntries(memberMarkers.map((marker) => [marker.modifier, marker.ranges])),
+    [memberMarkers],
+  );
+  const schedule = useMemo(
+    () =>
+      visibleHouseholdRanges
+        .map((range) => ({
+          ...range,
+          member: members.find((member) => member.id === range.memberId),
+        }))
+        .filter((range): range is HouseholdRange & { member: CalendarMember } =>
+          Boolean(range.member),
+        )
+        .sort(
+          (a, b) =>
+            a.start.localeCompare(b.start) ||
+            a.end.localeCompare(b.end) ||
+            a.member.name.localeCompare(b.member.name),
+        ),
+    [members, visibleHouseholdRanges],
+  );
+  const targetColor = resolveAvatarColor(
+    memberName,
+    members.find((member) => member.id === memberId)?.color,
+  );
   const calendarBounds = useMemo(() => {
-    const years = ranges.flatMap((range) => [
+    const years = visibleHouseholdRanges.flatMap((range) => [
       Number(range.start.slice(0, 4)),
       Number(range.end.slice(0, 4)),
     ]);
@@ -78,7 +148,44 @@ export function AwayCalendar({
       start: new Date(Date.UTC(Math.min(currentYear - 10, ...years), 0, 1)),
       end: new Date(Date.UTC(Math.max(currentYear + 5, ...years), 11, 1)),
     };
-  }, [ranges, today]);
+  }, [visibleHouseholdRanges, today]);
+
+  const CalendarDayButton = useCallback(
+    (props: DayButtonProps) => {
+      const { children, modifiers, ...buttonProps } = props;
+      const awayMembers = memberMarkers.filter((marker) => modifiers[marker.modifier]);
+      const names = awayMembers.map((marker) => marker.member.name).join(", ");
+      const ariaLabel = [buttonProps["aria-label"], names ? `Away: ${names}` : null]
+        .filter(Boolean)
+        .join(". ");
+
+      return (
+        <DayButton {...props} {...buttonProps} aria-label={ariaLabel} title={names || undefined}>
+          <span>{children}</span>
+          {awayMembers.length > 0 && (
+            <span
+              className="absolute inset-x-1 bottom-0.5 flex items-center justify-center gap-0.5"
+              aria-hidden="true"
+            >
+              {awayMembers.slice(0, 3).map((marker) => (
+                <span
+                  key={marker.member.id}
+                  className="size-1.5 rounded-full border border-white shadow-sm"
+                  style={{ backgroundColor: marker.color }}
+                />
+              ))}
+              {awayMembers.length > 3 && (
+                <span className="text-[7px] leading-none font-black">
+                  +{awayMembers.length - 3}
+                </span>
+              )}
+            </span>
+          )}
+        </DayButton>
+      );
+    },
+    [memberMarkers],
+  );
 
   const selectionSummary = selection?.from
     ? selection.to
@@ -154,11 +261,19 @@ export function AwayCalendar({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 id="calendar-heading" className="font-black">
-              Add away period
+              Add away period for
             </h2>
-            <p className="mt-1 max-w-xl text-sm leading-5 text-[var(--muted)]">
-              Tap the first day, then the last day.
-            </p>
+            <span
+              className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-extrabold"
+              style={{ backgroundColor: `${targetColor}18`, color: targetColor }}
+            >
+              <MemberAvatar
+                name={memberName}
+                color={members.find((member) => member.id === memberId)?.color}
+                className="size-7 text-[10px]"
+              />
+              {memberName}
+            </span>
           </div>
           <div
             className="rounded-xl bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[var(--brand-strong)]"
@@ -191,6 +306,7 @@ export function AwayCalendar({
             modifiers={{
               recorded: recordedDays,
               selectionStart: selection?.from ?? [],
+              ...calendarModifiers,
             }}
             modifiersClassNames={{
               recorded:
@@ -229,20 +345,31 @@ export function AwayCalendar({
                 "!rounded-r-xl !bg-[#ccfbf1] [&>button]:!bg-[var(--brand)] [&>button]:!text-white",
               disabled: "cursor-not-allowed opacity-45",
             }}
+            components={{ DayButton: CalendarDayButton }}
             footer={selectionSummary}
           />
         </div>
 
         <div className="mt-4 border-t border-[var(--soft-line)] pt-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--muted)]">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
             <span className="inline-flex items-center gap-2">
               <span className="size-3 rounded-sm bg-[var(--brand)]" aria-hidden="true" />
               Current selection
             </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="size-3 rounded-sm bg-[var(--peach-soft)]" aria-hidden="true" />
-              Recorded away day
-            </span>
+            {memberMarkers.map((marker) => (
+              <span
+                key={marker.member.id}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-bold"
+                style={{ backgroundColor: `${marker.color}18`, color: marker.color }}
+              >
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: marker.color }}
+                  aria-hidden="true"
+                />
+                {marker.member.name}
+              </span>
+            ))}
           </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button
@@ -344,6 +471,44 @@ export function AwayCalendar({
           <p className="mt-2 text-center text-xs text-[var(--muted)]">All changes are saved.</p>
         )}
       </aside>
+
+      <section aria-labelledby="household-schedule-heading" className="lg:col-span-2">
+        <div className="flex items-center gap-2">
+          <Users className="size-5 text-[var(--brand)]" aria-hidden="true" />
+          <h2 id="household-schedule-heading" className="font-black">
+            Who’s away
+          </h2>
+        </div>
+        {schedule.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--muted)]">
+            Everyone is home.
+          </p>
+        ) : (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {schedule.map((range) => {
+              const color = resolveAvatarColor(range.member.name, range.member.color);
+              return (
+                <li
+                  key={`${range.memberId}-${range.start}-${range.end}`}
+                  className="rounded-2xl border border-[var(--line)] bg-white p-3 shadow-[var(--shadow-sm)]"
+                  style={{ borderLeftColor: color, borderLeftWidth: 4 }}
+                >
+                  <span
+                    className="inline-flex rounded-full px-2.5 py-1 text-xs font-extrabold"
+                    style={{ backgroundColor: `${color}18`, color }}
+                  >
+                    {range.member.name}
+                  </span>
+                  <p className="mt-2 text-sm font-bold">
+                    {fmt(range.start)} – {fmt(range.end)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">{rangeDays(range)} days</p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <div className="lg:col-span-2">
         <StatusNote title="At home unless marked away">

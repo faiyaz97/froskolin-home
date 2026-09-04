@@ -51,7 +51,10 @@ export async function POST(request: Request) {
       await supabase.storage.from("froskolin-bills").remove([storagePath]);
       throw recordError ?? new Error("Document record was not created.");
     }
-    return NextResponse.json({ documentId: data.id }, { status: 201 });
+    return NextResponse.json(
+      { documentId: data.id, pageCount: prepared.pageCount ?? undefined },
+      { status: 201 },
+    );
   } catch (error) {
     const message = sanitizeBillError(error);
     const status = message.includes("access") || message.includes("sign in") ? 403 : 400;

@@ -11,10 +11,13 @@ import {
   deriveSupabasePassword,
   digestAccessCode,
   digestJoinPin,
+  decryptJoinPin,
+  encryptJoinPin,
   matchesJoinPin,
   normalizeHouseCode,
   provisionAuthUser,
   requireAuthenticatedUser,
+  requireHouseholdMembership,
   requireHouseholdOwner,
   signInWithInternalAlias,
 } from "@/lib/auth";
@@ -23,13 +26,13 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { createClient } from "@/lib/supabase/server";
 import {
   changePinSchema,
-  changeHouseCodeSchema,
-  changeJoinPinSchema,
   createHouseholdSchema,
   joinHouseholdSchema,
   loginSchema,
   removeMemberSchema,
   updateHouseholdSchema,
+  updateHouseholdAccessSchema,
+  updatePersonalSettingsSchema,
 } from "@/lib/validation";
 
 import { actionFailure, type ActionResult, validationFailure } from "./result";
@@ -105,6 +108,7 @@ export async function createHouseholdAction(
       p_access_code_digest: digestAccessCode(houseCode),
       p_house_code: houseCode,
       p_join_pin_digest: digestJoinPin(parsed.data.joinPin),
+      p_encrypted_join_pin: encryptJoinPin(parsed.data.joinPin),
       p_display_name: parsed.data.displayName,
     });
     if (error || !householdId) throw error ?? new Error("Household was not created.");
@@ -210,42 +214,48 @@ export async function changePinAction(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function changeHouseCodeAction(
+export async function updateHouseholdAccessAction(
   input: unknown,
-): Promise<ActionResult<{ houseCode: string }>> {
-  const parsed = changeHouseCodeSchema.safeParse(input);
+): Promise<ActionResult<{ houseCode: string; joinPin: string }>> {
+  const parsed = updateHouseholdAccessSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase } = await requireHouseholdOwner(parsed.data.householdId);
-    const houseCode = await createUniqueHouseCode();
-    const { error } = await supabase
-      .from("households")
-      .update({
-        house_code: houseCode,
-        access_code_digest: digestAccessCode(houseCode),
-      })
-      .eq("id", parsed.data.householdId);
-    if (error) throw error;
+    const { error } = await callRpc(supabase, "update_household_access", {
+      p_household_id: parsed.data.householdId,
+      p_house_code: parsed.data.houseCode,
+      p_access_code_digest: digestAccessCode(parsed.data.houseCode),
+      p_join_pin_digest: digestJoinPin(parsed.data.joinPin),
+      p_encrypted_join_pin: encryptJoinPin(parsed.data.joinPin),
+    });
+    if (error) {
+      if (error.message?.toLowerCase().includes("unique")) {
+        return { ok: false, error: "That House Code is already in use." };
+      }
+      throw new Error(error.message ?? "Household access could not be updated.");
+    }
     revalidatePath(`/h/${parsed.data.householdId}`, "layout");
-    return { ok: true, data: { houseCode } };
+    return {
+      ok: true,
+      data: { houseCode: parsed.data.houseCode, joinPin: parsed.data.joinPin },
+    };
   } catch (error) {
-    return actionFailure(error) as ActionResult<{ houseCode: string }>;
+    return actionFailure(error) as ActionResult<{ houseCode: string; joinPin: string }>;
   }
 }
 
-export async function changeHouseJoinPinAction(input: unknown): Promise<ActionResult> {
-  const parsed = changeJoinPinSchema.safeParse(input);
-  if (!parsed.success) return validationFailure(parsed.error);
+export async function getHouseholdJoinPinAction(
+  householdId: string,
+): Promise<ActionResult<{ joinPin: string | null }>> {
   try {
-    const { supabase } = await requireHouseholdOwner(parsed.data.householdId);
-    const { error } = await supabase
-      .from("households")
-      .update({ join_pin_digest: digestJoinPin(parsed.data.joinPin) })
-      .eq("id", parsed.data.householdId);
-    if (error) throw error;
-    return { ok: true, data: undefined };
+    const { supabase } = await requireHouseholdOwner(householdId);
+    const { data, error } = await callRpc<string>(supabase, "get_household_join_pin_secret", {
+      p_household_id: householdId,
+    });
+    if (error) throw new Error(error.message ?? "Join PIN is unavailable.");
+    return { ok: true, data: { joinPin: data ? decryptJoinPin(data) : null } };
   } catch (error) {
-    return actionFailure(error);
+    return actionFailure(error) as ActionResult<{ joinPin: string | null }>;
   }
 }
 
@@ -262,8 +272,33 @@ export async function updateHouseholdAction(input: unknown): Promise<ActionResul
         locale: parsed.data.locale,
         timezone: parsed.data.timezone,
         joining_enabled: parsed.data.joiningEnabled,
+        landlord_enabled: parsed.data.landlordEnabled,
       })
       .eq("id", parsed.data.householdId);
+    if (error) throw error;
+    revalidatePath(`/h/${parsed.data.householdId}`, "layout");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+export async function updatePersonalSettingsAction(input: unknown): Promise<ActionResult> {
+  const parsed = updatePersonalSettingsSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase, membership } = await requireHouseholdMembership(parsed.data.householdId);
+    const { error } = await supabase
+      .from("household_members")
+      .update({
+        display_name: parsed.data.displayName,
+        avatar_color: parsed.data.avatarColor,
+      })
+      .eq("id", membership.id)
+      .eq("household_id", parsed.data.householdId);
+    if (error?.code === "23505") {
+      return { ok: false, error: "That name is already used in this household." };
+    }
     if (error) throw error;
     revalidatePath(`/h/${parsed.data.householdId}`, "layout");
     return { ok: true, data: undefined };

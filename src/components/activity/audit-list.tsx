@@ -1,4 +1,4 @@
-import { CalendarDays, HandCoins, ReceiptText, Repeat2 } from "lucide-react";
+import { CalendarDays, HandCoins, House, ReceiptText, Repeat2 } from "lucide-react";
 import Link from "next/link";
 
 import type { FeedEvent } from "./feed";
@@ -10,6 +10,7 @@ const icons = {
   expense: { icon: ReceiptText, color: "bg-[var(--brand-soft)] text-[var(--brand)]" },
   recurring_rule: { icon: Repeat2, color: "bg-[var(--violet-soft)] text-[var(--violet)]" },
   settlement: { icon: HandCoins, color: "bg-[var(--positive-soft)] text-[var(--positive)]" },
+  landlord_payment: { icon: House, color: "bg-[var(--peach-soft)] text-[var(--peach)]" },
 };
 
 export function AuditList({

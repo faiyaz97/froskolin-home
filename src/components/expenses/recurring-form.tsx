@@ -9,15 +9,20 @@ import { DateInput } from "../ui/date-input";
 import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
+import { PayerSelect } from "./payer-select";
 
 export function RecurringForm({
   householdId,
   defaultCurrency,
+  currentMemberId,
+  landlordEnabled,
   members,
   initial,
 }: {
   householdId: string;
   defaultCurrency: string;
+  currentMemberId: string;
+  landlordEnabled: boolean;
   members: Array<{ id: string; name: string }>;
   initial?: {
     ruleId: string;
@@ -100,7 +105,7 @@ export function RecurringForm({
         setError(result.error);
         return;
       }
-      router.replace(`/h/${householdId}/settings`);
+      router.replace(initial ? `/h/${householdId}/settings` : `/h/${householdId}`);
       router.refresh();
     });
   }
@@ -149,12 +154,13 @@ export function RecurringForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Paid by">
-          <SelectInput
+          <PayerSelect
             name="payerMemberId"
-            defaultValue={initial?.payerMemberId ?? members[0]?.id}
-            ariaLabel="Paid by"
+            defaultValue={initial?.payerMemberId}
+            currentMemberId={currentMemberId}
+            landlordEnabled={landlordEnabled}
+            members={members}
             disabled={pending}
-            options={members.map((member) => ({ value: member.id, label: member.name }))}
           />
         </Field>
         <Field label="Frequency">

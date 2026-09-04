@@ -38,7 +38,11 @@ export const houseCodeSchema = z
   .string()
   .trim()
   .transform((value) => value.toUpperCase())
-  .pipe(z.string().regex(/^FROSKO-\d{4}$/, "Use a House Code like FROSKO-2847."));
+  .pipe(
+    z
+      .string()
+      .regex(/^[A-Z0-9](?:[A-Z0-9-]{4,22})[A-Z0-9]$/, "Use 6–24 letters, numbers, or hyphens."),
+  );
 export const joinPinSchema = z
   .string()
   .regex(/^\d{6}$/, "House Join PIN must be exactly six digits.");
@@ -71,9 +75,9 @@ export const changePinSchema = z.object({
   newPin: pinSchema,
 });
 
-export const changeHouseCodeSchema = z.object({ householdId: z.string().uuid() });
-export const changeJoinPinSchema = z.object({
-  householdId: z.string().uuid(),
+export const updateHouseholdAccessSchema = z.object({
+  householdId: uuidSchema,
+  houseCode: houseCodeSchema,
   joinPin: joinPinSchema,
 });
 
@@ -84,6 +88,13 @@ export const updateHouseholdSchema = z.object({
   locale: localeSchema,
   timezone: timezoneSchema,
   joiningEnabled: z.boolean(),
+  landlordEnabled: z.boolean(),
 });
 
 export const removeMemberSchema = z.object({ householdId: uuidSchema, memberId: uuidSchema });
+
+export const updatePersonalSettingsSchema = z.object({
+  householdId: uuidSchema,
+  displayName: displayNameSchema,
+  avatarColor: z.enum(["teal", "violet", "orange", "blue", "rose", "indigo"]),
+});

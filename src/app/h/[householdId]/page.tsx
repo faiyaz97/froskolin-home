@@ -1,15 +1,26 @@
 import Link from "next/link";
-import { CheckCircle2, CircleDollarSign, Plus, Settings, Users } from "lucide-react";
+import {
+  ChevronRight,
+  CircleDollarSign,
+  House,
+  Plus,
+  ScanLine,
+  Settings,
+  Users,
+} from "lucide-react";
 
 import { HouseholdLedger } from "@/components/expenses/household-ledger";
-import { CatBadge } from "@/components/ui/brand";
+import { ButtonLink } from "@/components/ui/button";
+import { Surface } from "@/components/ui/surface";
 import { requireHouseholdMembership } from "@/lib/auth";
+import { totalLandlordOutstanding } from "@/lib/domain";
 import { formatMoney } from "@/lib/format";
 import {
   getBalances,
   getHousehold,
   getHouseholdMembers,
   getHouseholdTransactions,
+  getLandlordBillBalances,
 } from "@/lib/queries";
 
 export default async function HouseholdHome({
@@ -18,17 +29,25 @@ export default async function HouseholdHome({
   params: Promise<{ householdId: string }>;
 }) {
   const { householdId } = await params;
-  const [{ membership }, home, members, balances, transactions] = await Promise.all([
+  const [{ membership }, home, members, balances, transactions, landlordBills] = await Promise.all([
     requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getBalances(householdId),
     getHouseholdTransactions(householdId),
+    getLandlordBillBalances(householdId),
   ]);
   const locale = home?.locale ?? "en-GB";
   const activeMembers = members.filter((member) => !member.removed_at);
   const ownBalances = balances.filter(
     (balance) => balance.member_id === membership.id && Number(balance.net_cents) !== 0,
+  );
+  const landlordTotals = totalLandlordOutstanding(
+    landlordBills.map((bill) => ({
+      currency: bill.currency,
+      originalShareCents: bill.originalShareCents,
+      paymentCents: bill.payments.map((payment) => payment.amountCents),
+    })),
   );
   const memberNames = Object.fromEntries(
     members.map((member) => [String(member.id), String(member.display_name)]),
@@ -36,88 +55,120 @@ export default async function HouseholdHome({
 
   return (
     <>
-      <section className="relative mb-5 overflow-hidden rounded-[24px] bg-gradient-to-br from-[#0f766e] via-[#0e7490] to-[#6d28d9] px-5 pt-5 pb-4 text-white shadow-[0_18px_40px_rgb(15_118_110/0.2)] sm:px-7 sm:pt-7 sm:pb-5">
-        <div className="pointer-events-none absolute -top-20 -right-12 size-52 rotate-12 rounded-[44px] bg-white/8" />
-        <div className="pointer-events-none absolute -right-8 -bottom-16 size-40 rounded-full bg-[#fb923c]/20" />
-        <div className="relative flex items-start justify-between gap-4">
+      <Surface tone="lavender" className="relative mb-4 overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
+        <div className="pointer-events-none absolute -top-14 -right-10 size-36 rounded-full bg-white/45" />
+        <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-black tracking-[0.13em] text-white/70 uppercase">
-              Our home
-            </p>
-            <h1 className="mt-1 pr-10 text-[clamp(1.8rem,8vw,2.65rem)] leading-tight font-black tracking-[-0.05em] sm:pr-0">
+            <h1 className="truncate text-[clamp(1.75rem,7vw,2.5rem)] leading-tight font-black tracking-[-0.045em]">
               {home?.name ?? "Home"}
             </h1>
-            <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-white/75">
+            <p className="mt-1.5 flex items-center gap-1.5 text-sm font-bold text-[var(--muted)]">
               <Users className="size-4" aria-hidden="true" />
-              {activeMembers.length} roommate{activeMembers.length === 1 ? "" : "s"}
+              {activeMembers.length} {activeMembers.length === 1 ? "person" : "people"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <CatBadge className="hidden border border-white/20 bg-white/15 shadow-none sm:grid" />
-            <Link
-              href={`/h/${householdId}/settings`}
-              className="grid size-10 place-items-center rounded-full bg-white/12 text-white hover:bg-white/20"
-              aria-label="Household settings"
+          <Link
+            href={`/h/${householdId}/settings`}
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--pastel-lavender-line)] bg-white/75 text-[var(--violet-strong)] shadow-[var(--shadow-sm)] transition-colors hover:bg-white"
+            aria-label="Group settings"
+          >
+            <Settings className="size-5" aria-hidden="true" />
+          </Link>
+        </div>
+      </Surface>
+
+      <Surface tone="mint" className="mb-7 flex overflow-hidden" aria-label="My balances">
+        <Link
+          href={`/h/${householdId}/balances`}
+          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-4 text-[var(--ink)] no-underline transition-colors hover:bg-white/45 sm:px-5"
+        >
+          <Users className="size-5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-bold text-[var(--muted)]">Group</span>
+            {ownBalances.length ? (
+              <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-base font-black tabular-nums">
+                {ownBalances.map((balance) => {
+                  const netCents = Number(balance.net_cents);
+                  return (
+                    <span
+                      key={balance.currency}
+                      className={netCents > 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}
+                    >
+                      {netCents > 0 ? "You get " : "You owe "}
+                      {formatMoney(Math.abs(netCents), balance.currency, locale)}
+                    </span>
+                  );
+                })}
+              </span>
+            ) : (
+              <span className="block text-base font-black text-[var(--positive)]">Settled</span>
+            )}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-[var(--muted)]" aria-hidden="true" />
+        </Link>
+        {home?.landlord_enabled && (
+          <Link
+            href={`/h/${householdId}/landlord`}
+            className="flex min-w-0 flex-1 items-center gap-2 border-l border-[var(--pastel-mint-line)] px-3 py-4 text-[var(--ink)] no-underline transition-colors hover:bg-white/45 sm:px-5"
+          >
+            <House className="size-5 shrink-0 text-[var(--peach)]" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-bold text-[var(--muted)]">Landlord</span>
+              {landlordTotals.length ? (
+                <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-base font-black text-[var(--negative)] tabular-nums">
+                  {landlordTotals.map((row) => (
+                    <span key={row.currency}>
+                      You owe {formatMoney(row.amountCents, row.currency, locale)}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="block text-base font-black text-[var(--positive)]">Settled</span>
+              )}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-[var(--muted)]" aria-hidden="true" />
+          </Link>
+        )}
+      </Surface>
+
+      <div className="pb-48 sm:pb-52 lg:pb-48">
+        <HouseholdLedger
+          householdId={householdId}
+          currentMemberId={membership.id}
+          memberNames={memberNames}
+          expenses={transactions.expenses}
+          settlements={transactions.settlements}
+          locale={locale}
+          timezone={home?.timezone ?? "UTC"}
+        />
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-[88px] z-20 lg:bottom-28">
+        <div className="mx-auto flex w-full max-w-[980px] justify-end px-4 sm:px-6 lg:px-8">
+          <div className="pointer-events-auto flex flex-col items-end gap-2">
+            <ButtonLink
+              href={`/h/${householdId}/add/settlement`}
+              tone="pastelAccent"
+              className="rounded-full"
             >
-              <Settings className="size-5" aria-hidden="true" />
-            </Link>
+              <CircleDollarSign className="size-5" aria-hidden="true" /> Settle up
+            </ButtonLink>
+            <ButtonLink
+              href={`/h/${householdId}/add/bill`}
+              tone="pastelWarm"
+              className="rounded-full"
+            >
+              <ScanLine className="size-5" aria-hidden="true" /> Upload bill
+            </ButtonLink>
+            <ButtonLink
+              href={`/h/${householdId}/add/expense`}
+              tone="pastel"
+              className="min-h-12 rounded-full px-5"
+            >
+              <Plus className="size-5" aria-hidden="true" /> Add expense
+            </ButtonLink>
           </div>
         </div>
-      </section>
-
-      <section
-        className="mb-7 rounded-2xl border border-[var(--line)] bg-white p-4 shadow-[var(--shadow-sm)]"
-        aria-labelledby="balances-title"
-      >
-        <h2
-          id="balances-title"
-          className="text-xs font-black tracking-[0.08em] text-[var(--muted)] uppercase"
-        >
-          Your balance
-        </h2>
-        {ownBalances.length ? (
-          <div className="mt-2 grid gap-1.5">
-            {ownBalances.map((balance) => {
-              const cents = Number(balance.net_cents);
-              return (
-                <p key={balance.currency} className="text-xl font-black tracking-[-0.03em]">
-                  {cents > 0 ? "You are owed " : "You owe "}
-                  <span className={cents > 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}>
-                    {formatMoney(Math.abs(cents), balance.currency, locale)}
-                  </span>
-                </p>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="mt-2 flex items-center gap-2 text-lg font-black text-[var(--positive)]">
-            <CheckCircle2 className="size-5" aria-hidden="true" /> All settled up
-          </p>
-        )}
-      </section>
-
-      <HouseholdLedger
-        householdId={householdId}
-        currentMemberId={membership.id}
-        memberNames={memberNames}
-        expenses={transactions.expenses}
-        settlements={transactions.settlements}
-        locale={locale}
-      />
-
-      <div className="fixed right-4 bottom-[88px] z-20 flex flex-col items-end gap-2 lg:right-8 lg:bottom-28">
-        <Link
-          href={`/h/${householdId}/add/settlement`}
-          className="flex min-h-11 items-center gap-2 rounded-full bg-[var(--violet)] px-4 text-sm font-extrabold text-white no-underline shadow-[0_10px_22px_rgb(124_58_237/0.26)]"
-        >
-          <CircleDollarSign className="size-5" aria-hidden="true" /> Settle up
-        </Link>
-        <Link
-          href={`/h/${householdId}/add/expense`}
-          className="flex min-h-12 items-center gap-2 rounded-full bg-[var(--brand)] px-5 text-sm font-extrabold text-white no-underline shadow-[var(--shadow-float)]"
-        >
-          <Plus className="size-5" aria-hidden="true" /> Add expense
-        </Link>
       </div>
     </>
   );

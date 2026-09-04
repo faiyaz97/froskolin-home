@@ -7,8 +7,10 @@ import {
   positiveCentsSchema,
   uuidSchema,
 } from "./common";
+import { payerSelectionSchema } from "./expenses";
 
 export const utilityTypeSchema = z.enum(["electricity", "gas", "water", "internet", "other"]);
+export const billEntryModeSchema = z.enum(["ai", "manual"]);
 export const utilityParticipantSchema = z.object({
   memberId: uuidSchema,
   order: z.coerce.number().int().nonnegative(),
@@ -28,11 +30,12 @@ export const utilityConfirmationSchema = z
     fixedCents: centsSchema,
     variableCents: centsSchema,
     currency: currencySchema,
-    payerMemberId: uuidSchema,
+    payerMemberId: payerSelectionSchema,
     participants: z.array(utilityParticipantSchema).min(1),
     consumptionAmount: z.number().finite().nonnegative().nullable().optional(),
     consumptionUnit: z.string().trim().max(40).nullable().optional(),
     classificationNote: z.string().trim().max(500).nullable().optional(),
+    entryMode: billEntryModeSchema,
   })
   .superRefine((value, context) => {
     if (value.serviceStart > value.serviceEnd)
