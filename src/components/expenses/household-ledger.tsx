@@ -105,7 +105,7 @@ function ExpenseIcon({ expense }: { expense: Expense }) {
     : (utilityAppearance?.color ?? matched?.color ?? "bg-[var(--brand-soft)] text-[var(--brand)]");
 
   return (
-    <span className={`grid size-11 shrink-0 place-items-center rounded-[14px] ${color}`}>
+    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${color}`}>
       <Icon className="size-5" strokeWidth={2.2} aria-hidden="true" />
     </span>
   );
@@ -160,10 +160,10 @@ export function HouseholdLedger({
   return (
     <section aria-label="Expenses">
       {groups.length ? (
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           {groups.map((group) => (
             <section key={group.key} aria-label={group.label}>
-              <h3 className="mb-2 px-1 text-xs font-black tracking-[0.08em] text-[var(--muted)] uppercase">
+              <h3 className="mb-1.5 px-1 text-[11px] font-black tracking-[0.08em] text-[var(--muted)] uppercase">
                 {group.label}
               </h3>
               <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[var(--shadow-sm)]">
@@ -175,7 +175,7 @@ export function HouseholdLedger({
                       <Link
                         key={`settlement-${settlement.id}`}
                         href={`/h/${householdId}/settlements/${settlement.id}`}
-                        className="flex min-h-[76px] items-center gap-3 border-b border-[var(--soft-line)] px-3 py-3 text-[var(--ink)] no-underline last:border-0 hover:bg-[var(--canvas)] sm:px-4"
+                        className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] px-3 py-2.5 text-[var(--ink)] no-underline last:border-0 hover:bg-[var(--canvas)] sm:px-4"
                       >
                         <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                           {date.month}
@@ -183,7 +183,7 @@ export function HouseholdLedger({
                             {date.day}
                           </span>
                         </time>
-                        <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-[var(--positive-soft)] text-[var(--positive)]">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--positive-soft)] text-[var(--positive)]">
                           <HandCoins className="size-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ export function HouseholdLedger({
                     <Link
                       key={`expense-${expense.id}`}
                       href={`/h/${householdId}/expenses/${expense.id}`}
-                      className="flex min-h-[76px] items-center gap-3 border-b border-[var(--soft-line)] px-3 py-3 text-[var(--ink)] no-underline last:border-0 hover:bg-[var(--canvas)] sm:px-4"
+                      className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] px-3 py-2.5 text-[var(--ink)] no-underline last:border-0 hover:bg-[var(--canvas)] sm:px-4"
                     >
                       <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                         {date.month}
@@ -266,12 +266,14 @@ export function HouseholdLedger({
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-10 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
-            <ReceiptText className="size-6" aria-hidden="true" />
+        <div className="flex items-center gap-4 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-5 sm:px-5">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+            <ReceiptText className="size-5" aria-hidden="true" />
           </span>
-          <p className="mt-3 font-black">No expenses yet</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">Add the first shared cost.</p>
+          <div>
+            <p className="font-black">No expenses yet</p>
+            <p className="mt-0.5 text-sm text-[var(--muted)]">Add the first shared cost.</p>
+          </div>
         </div>
       )}
     </section>
