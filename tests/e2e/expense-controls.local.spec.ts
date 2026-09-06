@@ -24,6 +24,26 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   await expect(page).toHaveURL(`${home}/add/expense`);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  const expenseForm = page.locator("form[data-mobile-submit]");
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+  } else {
+    await expenseForm.getByRole("button", { name: "Add expense", exact: true }).click();
+  }
+  await expect(expenseForm.getByLabel("Description", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(expenseForm.getByLabel("Amount", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(expenseForm.getByText("Add a description.", { exact: true })).toBeVisible();
+  await expect(
+    expenseForm.getByText("Enter an amount greater than zero.", { exact: true }),
+  ).toBeVisible();
+  await expenseForm.getByLabel("Description", { exact: true }).fill("Expense UI test");
+  await expenseForm.getByLabel("Amount", { exact: true }).fill("100.00");
 
   for (const width of [320, 360, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 740 });
@@ -54,6 +74,7 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     await splitDialog.getByRole("button", { name: "Equally", exact: true }).click();
     await splitDialog.getByRole("button", { name: "Done", exact: true }).click();
   }
+  await page.screenshot({ path: testInfo.outputPath("expense-desktop.png") });
 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.getByRole("button", { name: /Split with/ }).click();
@@ -67,6 +88,9 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   const splitDialog = page.getByRole("dialog", { name: "Split expense", exact: true });
   await page.screenshot({ path: testInfo.outputPath("split-equal-320.png") });
   await splitDialog.getByRole("button", { name: "Amounts", exact: true }).click();
+  await expect(splitDialog.getByText("All accounted for", { exact: true })).toHaveCount(0);
+  await splitDialog.getByLabel(`${owner} amount`, { exact: true }).fill("0");
+  await expect(splitDialog.getByText("Shares must total €100.00.", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("split-amounts-320.png") });
   await splitDialog.getByRole("button", { name: "Back", exact: true }).click();
   await page.getByLabel("Description", { exact: true }).focus();

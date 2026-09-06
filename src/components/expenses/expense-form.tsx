@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
-import { ReceiptText } from "lucide-react";
+import { Check, Plus, ReceiptText, X } from "lucide-react";
 
 import {
   saveExpenseAction,
@@ -10,6 +10,7 @@ import {
   updateExpenseAction,
 } from "@/lib/actions";
 import { Button } from "../ui/button";
+import { cn } from "../ui/cn";
 import { StatusNote } from "../ui/page";
 import {
   ExpenseAttachmentAction,
@@ -78,6 +79,7 @@ export function ExpenseForm({
       ),
   );
   const [payer, setPayer] = useState(initial?.payerMemberId ?? currentMemberId);
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [amount, setAmount] = useState(initial ? (initial.totalCents / 100).toFixed(2) : "");
   const [amounts, setAmounts] = useState<SplitValues>(() =>
     initial?.splitConfig.method === "exact"
@@ -101,6 +103,7 @@ export function ExpenseForm({
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [recurring, setRecurring] = useState(!initial && defaultRecurring);
   const [frequency, setFrequency] = useState<RecurrenceFrequency>("monthly");
   const [expenseDate, setExpenseDate] = useState(
@@ -111,6 +114,22 @@ export function ExpenseForm({
   const [attachmentFile, setAttachmentFile] = useState<File>();
   const [attachmentRemoved, setAttachmentRemoved] = useState(false);
   const [createdExpenseId, setCreatedExpenseId] = useState<string>();
+  const participants = members.filter((member) => selected.has(member.id));
+  const totalCents = Math.round(Number(amount) * 100);
+  const titleMissing = !title.trim();
+  const amountValid = amount !== "" && Number.isSafeInteger(totalCents) && totalCents > 0;
+  const sharesValid = splitIsValid(
+    split,
+    participants,
+    split === "exact" ? amounts : percentages,
+    Math.max(0, totalCents),
+  );
+  const participantsMissing = selected.size === 0;
+  const splitFeedback = attemptedSubmit && !sharesValid && !participantsMissing;
+  const splitTarget = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+  }).format(Math.max(0, totalCents) / 100);
 
   async function syncAttachment(expenseId: string) {
     if (attachmentFile) {
@@ -140,14 +159,10 @@ export function ExpenseForm({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setAttemptedSubmit(true);
     setError("");
     const data = new FormData(event.currentTarget);
-    const participants = members.filter((member) => selected.has(member.id));
-    const totalCents = Math.round(Number(data.get("amount")) * 100);
-    if (!splitIsValid(split, participants, split === "exact" ? amounts : percentages, totalCents)) {
-      setError("Open the split settings and make sure the selected shares match the total.");
-      return;
-    }
+    if (titleMissing || !amountValid || participantsMissing || !sharesValid) return;
     const splitConfig =
       split === "equal"
         ? {
@@ -234,9 +249,10 @@ export function ExpenseForm({
   return (
     <form
       data-mobile-submit
-      className="grid w-full min-w-0 gap-3"
+      className="flex w-full min-w-0 flex-1 flex-col gap-3"
       onSubmit={submit}
       aria-busy={pending}
+      noValidate
     >
       {error && (
         <StatusNote tone="error" title={error}>
@@ -244,66 +260,100 @@ export function ExpenseForm({
         </StatusNote>
       )}
 
-      <section className="w-full min-w-0 px-1 py-2 sm:px-4 sm:py-4">
-        <div className="grid min-w-0 gap-1">
-          <label className="screen-reader-only" htmlFor="expense-title">
-            Description
-          </label>
-          <div className="flex w-full min-w-0 items-center gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
-              <ReceiptText className="size-5" aria-hidden="true" />
-            </span>
-            <input
-              id="expense-title"
-              name="title"
-              placeholder="What was it for?"
-              defaultValue={initial?.title}
-              required
-              autoFocus={!initial}
-              className="expense-primary-input h-12 w-0 min-w-0 flex-1 bg-transparent text-xl font-black tracking-[-0.025em] text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[#94a3b8]"
-            />
+      <section className="flex w-full min-w-0 flex-1 flex-col px-1 py-2 sm:px-4 sm:py-4">
+        <div className="my-auto w-full min-w-0 py-4 md:py-6">
+          <div className="grid min-w-0 gap-1">
+            <label className="screen-reader-only" htmlFor="expense-title">
+              Description
+            </label>
+            <div
+              className={cn(
+                "flex w-full min-w-0 items-center gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]",
+                attemptedSubmit && titleMissing && "border-[var(--negative)]",
+              )}
+            >
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+                <ReceiptText className="size-5" aria-hidden="true" />
+              </span>
+              <input
+                id="expense-title"
+                name="title"
+                placeholder="What was it for?"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                autoFocus={!initial}
+                aria-invalid={(attemptedSubmit && titleMissing) || undefined}
+                className="expense-primary-input h-12 w-0 min-w-0 flex-1 bg-transparent text-xl font-black tracking-[-0.025em] text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[#94a3b8]"
+              />
+            </div>
+            {attemptedSubmit && titleMissing && (
+              <p role="alert" className="mt-1 text-xs font-bold text-[var(--negative)]">
+                Add a description.
+              </p>
+            )}
+
+            <div
+              className={cn(
+                "flex w-full min-w-0 items-end gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]",
+                attemptedSubmit && !amountValid && "border-[var(--negative)]",
+              )}
+            >
+              <label className="screen-reader-only" htmlFor="expense-amount">
+                Amount
+              </label>
+              <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+              <input
+                id="expense-amount"
+                name="amount"
+                inputMode="decimal"
+                min="0.01"
+                step="0.01"
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                required
+                aria-invalid={(attemptedSubmit && !amountValid) || undefined}
+                className="expense-primary-input h-14 w-0 min-w-0 flex-1 bg-transparent text-[2.2rem] leading-none font-black tracking-[-0.045em] text-[var(--ink)] tabular-nums outline-none placeholder:text-[#94a3b8]"
+              />
+            </div>
+            {attemptedSubmit && !amountValid && (
+              <p role="alert" className="mt-1 text-xs font-bold text-[var(--negative)]">
+                Enter an amount greater than zero.
+              </p>
+            )}
           </div>
 
-          <div className="flex w-full min-w-0 items-end gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]">
-            <label className="screen-reader-only" htmlFor="expense-amount">
-              Amount
-            </label>
-            <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
-            <input
-              id="expense-amount"
-              name="amount"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              type="number"
-              placeholder="0.00"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              required
-              className="expense-primary-input h-14 w-0 min-w-0 flex-1 bg-transparent text-[2.2rem] leading-none font-black tracking-[-0.045em] text-[var(--ink)] tabular-nums outline-none placeholder:text-[#94a3b8]"
-            />
-          </div>
+          <ExpenseSharingControls
+            members={members}
+            currentMemberId={currentMemberId}
+            landlordEnabled={landlordEnabled}
+            payer={payer}
+            onPayerChange={setPayer}
+            selected={selected}
+            onSelectedChange={setSelected}
+            method={split}
+            amounts={amounts}
+            percentages={percentages}
+            onSplitChange={(method, nextAmounts, nextPercentages) => {
+              setSplit(method);
+              setAmounts(nextAmounts);
+              setPercentages(nextPercentages);
+            }}
+            totalCents={Math.max(0, Math.round(Number(amount || 0) * 100))}
+            currency={currency}
+            disabled={pending}
+            participantsError={
+              attemptedSubmit && participantsMissing ? "Choose at least one person." : undefined
+            }
+            splitError={
+              splitFeedback
+                ? `Shares must total ${split === "exact" ? splitTarget : "100%"}.`
+                : undefined
+            }
+          />
         </div>
-        <ExpenseSharingControls
-          members={members}
-          currentMemberId={currentMemberId}
-          landlordEnabled={landlordEnabled}
-          payer={payer}
-          onPayerChange={setPayer}
-          selected={selected}
-          onSelectedChange={setSelected}
-          method={split}
-          amounts={amounts}
-          percentages={percentages}
-          onSplitChange={(method, nextAmounts, nextPercentages) => {
-            setSplit(method);
-            setAmounts(nextAmounts);
-            setPercentages(nextPercentages);
-          }}
-          totalCents={Math.max(0, Math.round(Number(amount || 0) * 100))}
-          currency={currency}
-          disabled={pending}
-        />
 
         <div className="h-24 md:hidden" aria-hidden="true" />
         <ExpenseTools>
@@ -343,11 +393,27 @@ export function ExpenseForm({
         </ExpenseTools>
       </section>
 
-      <div className="hidden gap-3 md:flex md:justify-end">
-        <Button type="button" tone="secondary" onClick={() => router.back()} disabled={pending}>
-          Cancel
+      <div className="hidden items-center justify-end gap-2.5 md:mb-28 md:flex">
+        <Button
+          type="button"
+          tone="quiet"
+          className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
+          onClick={() => router.back()}
+          disabled={pending}
+        >
+          <X className="size-4" aria-hidden="true" /> Cancel
         </Button>
-        <Button type="submit" className="min-w-36" disabled={pending || selected.size === 0}>
+        <Button
+          type="submit"
+          tone="pastel"
+          className="min-w-40 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+          disabled={pending}
+        >
+          {initial ? (
+            <Check className="size-4" aria-hidden="true" />
+          ) : (
+            <Plus className="size-[18px]" aria-hidden="true" />
+          )}
           {pending
             ? "Saving…"
             : initial

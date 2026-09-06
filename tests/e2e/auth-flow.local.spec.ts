@@ -5,7 +5,7 @@ test.setTimeout(120_000);
 test("create, remembered login, access rotation, failed login, and join", async ({
   browser,
   page,
-}) => {
+}, testInfo) => {
   const suffix = Date.now().toString().slice(-7);
   const ownerName = `Owner ${suffix}`;
   const memberName = `Roommate ${suffix}`;
@@ -114,7 +114,55 @@ test("create, remembered login, access rotation, failed login, and join", async 
   });
   await page.goto(`${homeUrl}/add/bill`);
   const billForm = page.locator("#bill-facts");
-  await expect(billForm.getByText("Manual", { exact: true })).toBeVisible();
+  await expect(page.getByText("Manual entry", { exact: true })).toBeVisible();
+  await expect(billForm.getByLabel(/Supplier/)).toHaveCount(0);
+  await expect(billForm.getByLabel("Issue date", { exact: true })).toHaveCount(0);
+  await expect(billForm.getByLabel("Notes (optional)", { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("utility-bill-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath("utility-bill-mobile.png") });
+  const fixedFeesBox = await billForm.getByLabel("Fixed fees", { exact: true }).boundingBox();
+  const usageCostsBox = await billForm.getByLabel("Usage costs", { exact: true }).boundingBox();
+  expect(fixedFeesBox!.y).toBeCloseTo(usageCostsBox!.y, 0);
+  expect(fixedFeesBox!.width).toBeCloseTo(usageCostsBox!.width, 0);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const createBillButton = billForm.getByRole("button", {
+    name: "Add bill",
+    exact: true,
+  });
+  await expect(createBillButton).toBeEnabled();
+  await createBillButton.click();
+  await expect(
+    page.getByText("Complete the highlighted bill details", { exact: true }),
+  ).toHaveCount(0);
+  await expect(billForm.getByLabel("Total due")).toHaveAttribute("aria-invalid", "true");
+  await expect(billForm.getByLabel("Fixed fees", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(billForm.getByLabel("Usage costs", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(billForm.getByRole("button", { name: "Service period" })).toHaveAttribute(
+    "data-invalid",
+    "true",
+  );
+  await expect(
+    billForm.getByText("Choose the service start and end dates.", { exact: true }),
+  ).toBeVisible();
+  for (const name of ["Utility type", "Service period", "Paid by", "Split with"]) {
+    await billForm.getByRole("button", { name, exact: true }).click();
+    const selectionDialog = page.getByRole("dialog", { name, exact: true });
+    await expect(selectionDialog).toBeVisible();
+    await expect(selectionDialog.getByRole("button", { name: "Done", exact: true })).toBeVisible();
+    await selectionDialog.getByRole("button", { name: "Back", exact: true }).click();
+  }
+  await billForm.getByRole("button", { name: "Utility type", exact: true }).click();
+  const typeDialog = page.getByRole("dialog", { name: "Utility type", exact: true });
+  await typeDialog.getByRole("radio", { name: "Electricity", exact: true }).click();
+  await typeDialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(billForm.locator('[data-utility-type="electricity"]')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: "electricity.pdf",
     mimeType: "application/pdf",
@@ -123,15 +171,16 @@ test("create, remembered login, access rotation, failed login, and join", async 
   expect(persistentUploadRequests).toBe(0);
   await expect(page.getByText(/tap to change/i)).toBeVisible();
   await page.getByRole("button", { name: "Autofill with AI" }).click();
-  await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
+  await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   expect(persistentUploadRequests).toBe(0);
+  await expect(billForm.getByRole("button", { name: "Service period" })).toContainText("Aug 26");
   await expect(billForm.getByLabel("Title")).toHaveValue("Electricity Aug 26 - Aug 26");
   await billForm.getByLabel("Title").fill("Edited electricity bill");
-  await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
+  await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   await billForm.getByLabel("Total due").fill("101.00");
-  await expect(billForm.getByText("Manual", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Autofill with AI", exact: true })).toBeVisible();
   await billForm.getByLabel("Total due").fill("100.00");
-  await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
+  await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   await page.unrouteAll({ behavior: "ignoreErrors" });
 
   await page.goto(`${homeUrl}/account`);

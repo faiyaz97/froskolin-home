@@ -26,7 +26,7 @@ export default async function NewBillPage({
     .map((member) => ({ id: member.id, name: member.display_name }));
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-2xl min-w-0 flex-col md:min-h-[calc(100dvh-7rem)]">
       <PageHeader title="Add utility bill" compact />
       <ExpenseTypeNav householdId={householdId} active="bill" />
       <BillWorkspace

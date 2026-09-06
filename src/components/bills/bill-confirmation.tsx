@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertTriangle, FileText } from "lucide-react";
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { AlertTriangle, Check, FileText, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { confirmUtilityBillAction, updateUtilityBillAction } from "@/lib/actions";
@@ -9,13 +9,14 @@ import { determineBillEntryMode, type BillFinancialBaseline } from "@/lib/bills/
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
-import { LANDLORD_PAYER_VALUE, PayerSelect } from "../expenses/payer-select";
-import { ParticipantPicker } from "../expenses/participant-picker";
+import { CurrencyAction } from "../expenses/expense-sharing-controls";
+import { MemberAvatar } from "../household/member-avatar";
 import { Button } from "../ui/button";
-import { DateInput } from "../ui/date-input";
-import { Field, formSectionClass, Input, Textarea } from "../ui/field";
+import { cn } from "../ui/cn";
+import { Field, Textarea } from "../ui/field";
+import { MoneyInput } from "../ui/money-input";
 import { StatusNote } from "../ui/page";
-import { SelectInput } from "../ui/select-input";
+import { BillMetaControls, UtilityTypeIcon } from "./bill-meta-controls";
 
 type Member = { id: string; name: string };
 type Absence = { memberId: string; startDate: string; endDate: string };
@@ -52,6 +53,7 @@ export function BillConfirmation({
   absences,
   currentMemberId,
   landlordEnabled,
+  onEntryModeChange,
 }: {
   householdId: string;
   documentId?: string;
@@ -65,6 +67,7 @@ export function BillConfirmation({
   absences: Absence[];
   currentMemberId: string;
   landlordEnabled: boolean;
+  onEntryModeChange?: (mode: "manual" | "ai") => void;
 }) {
   const router = useRouter();
   const initialUtilityType = existing?.utilityType ?? initial?.utilityType ?? "other";
@@ -109,11 +112,15 @@ export function BillConfirmation({
   const [currency, setCurrency] = useState(
     existing?.currency ?? initial?.currency ?? defaultCurrency,
   );
+  const [payer, setPayer] = useState(
+    existing?.payerMemberId ?? (landlordEnabled ? "landlord" : currentMemberId),
+  );
   const [selected, setSelected] = useState(
     () => new Set(existing?.participantIds ?? members.map((member) => member.id)),
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   function updateGeneratedTitle(type: string, start: string, end: string) {
     if (!titleWasEdited) setTitle(formatUtilityBillTitle(type, start, end, locale));
   }
@@ -131,18 +138,38 @@ export function BillConfirmation({
         }
       : undefined;
   const entryMode = determineBillEntryMode({ total, fixed, variable }, aiBaseline);
+  useEffect(() => {
+    onEntryModeChange?.(entryMode);
+  }, [entryMode, onEntryModeChange]);
   const totalCents = Math.round(Number(total) * 100);
   const fixedCents = Math.round(Number(fixed) * 100);
   const variableCents = Math.round(Number(variable) * 100);
+  const titleMissing = !title.trim();
+  const totalValid = total !== "" && Number.isSafeInteger(totalCents) && totalCents > 0;
+  const fixedValid = fixed !== "" && Number.isSafeInteger(fixedCents) && fixedCents >= 0;
+  const variableValid =
+    variable !== "" && Number.isSafeInteger(variableCents) && variableCents >= 0;
+  const breakdownMismatch =
+    totalValid && fixedValid && variableValid && fixedCents + variableCents !== totalCents;
+  const servicePeriodMissing = !serviceStart || !serviceEnd;
+  const servicePeriodInvalid = Boolean(serviceStart && serviceEnd && serviceEnd < serviceStart);
+  const participantsMissing = selected.size === 0;
   const valid =
-    Number.isSafeInteger(totalCents) &&
-    totalCents > 0 &&
-    fixedCents >= 0 &&
-    variableCents >= 0 &&
-    fixedCents + variableCents === totalCents &&
-    serviceStart !== "" &&
-    serviceEnd >= serviceStart &&
-    selected.size > 0;
+    !titleMissing &&
+    totalValid &&
+    fixedValid &&
+    variableValid &&
+    !breakdownMismatch &&
+    !servicePeriodMissing &&
+    !servicePeriodInvalid &&
+    !participantsMissing;
+  const servicePeriodError = attemptedSubmit
+    ? servicePeriodMissing
+      ? "Choose the service start and end dates."
+      : servicePeriodInvalid
+        ? "The service end must be on or after the start."
+        : undefined
+    : undefined;
   const missingClassification =
     !existing &&
     initial != null &&
@@ -186,12 +213,12 @@ export function BillConfirmation({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setAttemptedSubmit(true);
+    setError("");
     if (!valid) return;
     const data = new FormData(event.currentTarget);
     startTransition(async () => {
       setError("");
-      const submittedUtilityType = String(data.get("utilityType") ?? "other");
-      const supplier = String(data.get("supplier") ?? "").trim();
       let confirmedDocumentId = documentId;
       if (!existing && !confirmedDocumentId && uploadDocumentOnConfirm) {
         try {
@@ -206,16 +233,16 @@ export function BillConfirmation({
         documentId: confirmedDocumentId,
         title:
           title.trim() || formatUtilityBillTitle(utilityType, serviceStart, serviceEnd, locale),
-        utilityType: submittedUtilityType,
-        supplier: supplier || null,
-        issueDate: String(data.get("issueDate") ?? "") || null,
+        utilityType,
+        supplier: null,
+        issueDate: null,
         serviceStart,
         serviceEnd,
         totalCents,
         fixedCents,
         variableCents,
         currency,
-        payerMemberId: String(data.get("payerMemberId") ?? ""),
+        payerMemberId: payer,
         participants: members
           .filter((member) => selected.has(member.id))
           .map((member, order) => ({ memberId: member.id, order })),
@@ -249,9 +276,10 @@ export function BillConfirmation({
     <form
       id="bill-facts"
       data-mobile-submit
-      className="grid scroll-mt-24 gap-3"
+      className="grid scroll-mt-24 gap-3 pb-24 md:pb-0"
       onSubmit={submit}
       aria-busy={pending}
+      noValidate
     >
       {missingClassification && (
         <StatusNote tone="warning" title="Complete the missing bill facts">
@@ -277,8 +305,8 @@ export function BillConfirmation({
         </StatusNote>
       )}
       {documentId && (
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white p-4">
-          <FileText className="size-6 text-[var(--brand)]" />
+        <div className="flex items-center gap-3 rounded-xl bg-[var(--pastel-mint)] p-4">
+          <FileText className="size-6 text-[var(--brand)]" aria-hidden="true" />
           <p className="min-w-0 flex-1 text-sm">
             <strong className="block truncate">Private uploaded bill</strong>
             <span className="text-[var(--muted)]">
@@ -295,196 +323,198 @@ export function BillConfirmation({
           </a>
         </div>
       )}
-      <fieldset className={`${formSectionClass} grid gap-3`} disabled={pending}>
+      <fieldset className="grid gap-4 px-1 py-2 sm:px-4 sm:py-4" disabled={pending}>
         <legend className="screen-reader-only">Bill facts</legend>
-        <Field label="Title">
-          <Input
+        <div
+          className={cn(
+            "flex w-full min-w-0 items-center gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]",
+            attemptedSubmit && titleMissing && "border-[var(--negative)]",
+          )}
+        >
+          <UtilityTypeIcon value={utilityType} className="size-11" />
+          <label className="screen-reader-only" htmlFor="bill-title">
+            Title
+          </label>
+          <input
+            id="bill-title"
             name="title"
             value={title}
             onChange={(event) => {
               setTitleWasEdited(true);
               setTitle(event.target.value);
             }}
+            placeholder="What bill is this?"
             required
+            aria-invalid={(attemptedSubmit && titleMissing) || undefined}
+            className="expense-primary-input h-12 w-0 min-w-0 flex-1 bg-transparent text-xl font-black tracking-[-0.025em] text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[#94a3b8]"
           />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Utility type">
-            <SelectInput
-              name="utilityType"
-              value={utilityType}
-              onValueChange={(value) => {
-                setUtilityType(value as ExtractedBill["utilityType"]);
-                updateGeneratedTitle(value, serviceStart, serviceEnd);
-              }}
-              ariaLabel="Utility type"
-              options={[
-                { value: "electricity", label: "Electricity" },
-                { value: "gas", label: "Gas" },
-                { value: "water", label: "Water" },
-                { value: "internet", label: "Internet" },
-                { value: "other", label: "Other" },
-              ]}
-            />
-          </Field>
-          <Field label="Supplier">
-            <Input name="supplier" defaultValue={existing?.supplier ?? initial?.supplier ?? ""} />
-          </Field>
-          <Field label="Paid by">
-            <PayerSelect
-              name="payerMemberId"
-              defaultValue={
-                existing?.payerMemberId ??
-                (landlordEnabled ? LANDLORD_PAYER_VALUE : currentMemberId)
-              }
-              currentMemberId={currentMemberId}
-              landlordEnabled={landlordEnabled}
-              members={members}
-            />
-          </Field>
-          <Field label="Issue date">
-            <DateInput
-              name="issueDate"
-              ariaLabel="Issue date"
-              defaultValue={existing?.issueDate ?? initial?.issueDate ?? ""}
-              allowClear
-            />
-          </Field>
-          <Field label="Service starts">
-            <DateInput
-              ariaLabel="Service start date"
-              value={serviceStart}
-              onValueChange={(value) => {
-                setServiceStart(value);
-                updateGeneratedTitle(utilityType, value, serviceEnd);
-              }}
-            />
-          </Field>
-          <Field label="Service ends">
-            <DateInput
-              ariaLabel="Service end date"
-              value={serviceEnd}
-              onValueChange={(value) => {
-                setServiceEnd(value);
-                updateGeneratedTitle(utilityType, serviceStart, value);
-              }}
-            />
-          </Field>
         </div>
-      </fieldset>
-      <fieldset className={`${formSectionClass} grid gap-3`} disabled={pending}>
-        <legend className="screen-reader-only">Amounts</legend>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-black">Amounts</h2>
-          <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
-              entryMode === "ai"
-                ? "bg-[var(--violet-soft)] text-[var(--violet)]"
-                : "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
-            }`}
+        {attemptedSubmit && titleMissing && (
+          <p role="alert" className="-mt-3 text-xs font-bold text-[var(--negative)]">
+            Add a bill title.
+          </p>
+        )}
+        <div
+          className={cn(
+            "flex w-full min-w-0 items-end gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]",
+            attemptedSubmit && !totalValid && "border-[var(--negative)]",
+          )}
+        >
+          <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+          <label className="screen-reader-only" htmlFor="bill-total">
+            Total due
+          </label>
+          <input
+            id="bill-total"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            type="number"
+            value={total}
+            onChange={(event) => setTotal(event.target.value)}
+            placeholder="0.00"
+            required
+            aria-invalid={(attemptedSubmit && !totalValid) || undefined}
+            className="expense-primary-input h-14 w-0 min-w-0 flex-1 bg-transparent text-[2.2rem] leading-none font-black tracking-[-0.045em] text-[var(--ink)] tabular-nums outline-none placeholder:text-[#94a3b8]"
+          />
+        </div>
+        {attemptedSubmit && !totalValid && (
+          <p role="alert" className="-mt-3 text-xs font-bold text-[var(--negative)]">
+            Enter a total greater than zero.
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <Field
+            label="Fixed fees"
+            error={attemptedSubmit && !fixedValid ? "Enter fixed fees." : undefined}
           >
-            {entryMode === "ai" ? "AI-filled" : "Manual"}
-          </span>
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-          <Field label="Total due">
-            <MoneyInput value={total} onChange={setTotal} />
+            <MoneyInput
+              value={fixed}
+              onChange={setFixed}
+              currency={currency}
+              ariaLabel="Fixed fees"
+              disabled={pending}
+              invalid={(attemptedSubmit && !fixedValid) || breakdownMismatch}
+            />
           </Field>
-          <Field label="Currency">
-            <SelectInput
-              name="currency"
-              value={currency}
-              onValueChange={setCurrency}
-              ariaLabel="Currency"
-              options={[
-                { value: "EUR", label: "EUR" },
-                { value: "GBP", label: "GBP" },
-                { value: "USD", label: "USD" },
-              ]}
+          <Field
+            label="Usage costs"
+            error={attemptedSubmit && !variableValid ? "Enter usage costs." : undefined}
+          >
+            <MoneyInput
+              value={variable}
+              onChange={setVariable}
+              currency={currency}
+              ariaLabel="Usage costs"
+              disabled={pending}
+              invalid={(attemptedSubmit && !variableValid) || breakdownMismatch}
             />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Fixed portion" hint="Shared equally, even when someone was away.">
-            <MoneyInput value={fixed} onChange={setFixed} />
-          </Field>
-          <Field label="Variable portion" hint="Shared by each person’s days at home.">
-            <MoneyInput value={variable} onChange={setVariable} />
-          </Field>
-        </div>
-        {!valid && total && (
+        {breakdownMismatch && (
           <p
             role="alert"
             className="rounded-xl bg-[var(--negative-soft)] p-3 text-sm font-bold text-[var(--negative)]"
           >
-            Fixed + variable must equal the total, dates must be valid, and at least one roommate
-            must participate.
+            Fixed fees + usage costs must equal the total.
           </p>
         )}
-        <Field label="Classification note (optional)">
-          <Textarea
-            name="classificationNote"
-            className="min-h-16"
-            placeholder="Explain where taxes, credits, or adjustments were classified."
-            defaultValue={existing?.classificationNote ?? ""}
-          />
-        </Field>
+        <BillMetaControls
+          utilityType={utilityType}
+          onUtilityTypeChange={(value) => {
+            setUtilityType(value);
+            updateGeneratedTitle(value, serviceStart, serviceEnd);
+          }}
+          payer={payer}
+          onPayerChange={setPayer}
+          serviceStart={serviceStart}
+          serviceEnd={serviceEnd}
+          onServicePeriodChange={(start, end) => {
+            setServiceStart(start);
+            setServiceEnd(end);
+            updateGeneratedTitle(utilityType, start, end);
+          }}
+          selected={selected}
+          onSelectedChange={setSelected}
+          members={members}
+          currentMemberId={currentMemberId}
+          landlordEnabled={landlordEnabled}
+          locale={locale}
+          disabled={pending}
+          servicePeriodError={servicePeriodError}
+        />
       </fieldset>
-      <ParticipantPicker
-        members={members}
-        selected={selected}
-        onSelectedChange={setSelected}
-        disabled={pending}
-      />
       {preview && (
-        <section>
-          <h2 className="text-lg font-extrabold">Deterministic preview</h2>
+        <section className="px-1 sm:px-4">
           {preview.variableMode === "equal_zero_presence_fallback" && (
             <StatusNote tone="warning" title="Nobody was recorded present">
               The variable portion is split equally for this bill.
             </StatusNote>
           )}
-          <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)]">
-            {preview.shares.map((share) => (
-              <div
-                key={share.memberId}
-                className="flex items-center gap-3 border-b border-[var(--soft-line)] px-4 py-3 last:border-0"
-              >
-                <span className="flex-1">
-                  <strong>{members.find((member) => member.id === share.memberId)?.name}</strong>
-                  <small className="block text-[var(--muted)]">
-                    Fixed {formatMoney(share.fixedCents, currency, locale)} · usage{" "}
-                    {formatMoney(share.variableCents, currency, locale)}
-                  </small>
-                </span>
-                <span className="text-sm text-[var(--muted)]">{share.presenceDays} days</span>
-                <strong>{formatMoney(share.amountCents, currency, locale)}</strong>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-2xl bg-[var(--paper)] shadow-[var(--shadow-sm)]">
+            {preview.shares.map((share) => {
+              const member = members.find((candidate) => candidate.id === share.memberId);
+              return (
+                <div
+                  key={share.memberId}
+                  className="flex items-center gap-2 border-b border-[var(--soft-line)] px-3 py-3 last:border-0 sm:gap-3 sm:px-4"
+                >
+                  <MemberAvatar
+                    name={member?.name ?? "Member"}
+                    className="size-9 border-0 shadow-none"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate">{member?.name}</strong>
+                    <small className="block text-[var(--muted)]">
+                      Fees {formatMoney(share.fixedCents, currency, locale)} · usage{" "}
+                      {formatMoney(share.variableCents, currency, locale)}
+                    </small>
+                  </span>
+                  <span className="shrink-0 text-sm text-[var(--muted)]">
+                    {share.presenceDays} days
+                  </span>
+                  <span className="h-8 w-px shrink-0 bg-[var(--line)]" aria-hidden="true" />
+                  <strong className="shrink-0 tabular-nums">
+                    {formatMoney(share.amountCents, currency, locale)}
+                  </strong>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
-      <Button
-        type="submit"
-        disabled={!valid || pending}
-        className="hidden justify-self-end md:inline-flex"
-      >
-        {pending ? "Saving bill…" : existing ? "Save bill changes" : "Confirm and create bill"}
-      </Button>
+      <Field label="Notes (optional)" className="px-1 py-2 sm:px-4">
+        <Textarea
+          name="classificationNote"
+          className="min-h-20 border-0 bg-white/80"
+          placeholder="Add anything useful about this bill."
+          defaultValue={existing?.classificationNote ?? ""}
+        />
+      </Field>
+      <div className="hidden items-center justify-end gap-2.5 md:mb-28 md:flex">
+        <Button
+          type="button"
+          tone="quiet"
+          className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
+          onClick={() => router.back()}
+          disabled={pending}
+        >
+          <X className="size-4" aria-hidden="true" /> Cancel
+        </Button>
+        <Button
+          type="submit"
+          tone="pastel"
+          disabled={pending}
+          className="min-w-48 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+        >
+          {existing ? (
+            <Check className="size-4" aria-hidden="true" />
+          ) : (
+            <Plus className="size-[18px]" aria-hidden="true" />
+          )}
+          {pending ? "Saving bill…" : existing ? "Save bill changes" : "Add bill"}
+        </Button>
+      </div>
     </form>
-  );
-}
-
-function MoneyInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <Input
-      inputMode="decimal"
-      min="0"
-      step="0.01"
-      type="number"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      required
-    />
   );
 }

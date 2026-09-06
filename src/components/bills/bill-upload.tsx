@@ -13,16 +13,18 @@ export function BillUpload({
   onPrepared,
   onAutofill,
   autofillPending,
+  mode = "manual",
 }: {
   onPrepared: (draft: PreparedBillDraft) => void;
   onAutofill?: () => void;
   autofillPending?: boolean;
+  mode?: "manual" | "ai";
 }) {
   const [file, setFile] = useState<File | null>(null);
 
   return (
-    <section className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-2xl border border-[var(--line)] bg-white p-2 shadow-[var(--shadow-sm)]">
-      <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--control-line)] bg-[var(--canvas)] px-2.5 transition-colors focus-within:ring-2 focus-within:ring-[var(--control-ring)] hover:border-[var(--brand)] hover:bg-[var(--pastel-mint)]">
+    <section className="mx-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:mx-4">
+      <label className="flex min-h-12 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl bg-white/85 px-2.5 shadow-[var(--shadow-sm)] transition-colors focus-within:ring-2 focus-within:ring-[var(--control-ring)] hover:bg-white">
         <input
           className="screen-reader-only"
           type="file"
@@ -34,7 +36,7 @@ export function BillUpload({
             if (selectedFile) onPrepared({ file: selectedFile });
           }}
         />
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--pastel-mint)] text-[var(--brand)]">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--pastel-lavender)] text-[var(--violet)]">
           {file ? (
             <FileText className="size-4" aria-hidden="true" />
           ) : (
@@ -57,17 +59,25 @@ export function BillUpload({
           </span>
         )}
       </label>
-      {file && onAutofill && (
+      {mode === "ai" ? (
+        <span className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--violet-soft)] px-3 text-xs font-extrabold text-[var(--violet)]">
+          <Sparkles className="size-4" aria-hidden="true" /> AI-filled
+        </span>
+      ) : file && onAutofill ? (
         <Button
           type="button"
           tone="pastelAccent"
           onClick={onAutofill}
           disabled={autofillPending}
-          className="min-h-11 shrink-0 px-3 text-xs"
+          className="min-h-12 shrink-0 rounded-xl border-0 px-3 text-xs shadow-none"
         >
           <Sparkles className="size-4" aria-hidden="true" />
           {autofillPending ? "Filling…" : "Autofill with AI"}
         </Button>
+      ) : (
+        <span className="rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold whitespace-nowrap text-[var(--brand-strong)]">
+          Manual entry
+        </span>
       )}
     </section>
   );

@@ -5,6 +5,7 @@ import { Check, ChevronDown, Users } from "lucide-react";
 import { MemberAvatar } from "../household/member-avatar";
 import { Dialog } from "../ui/dialog";
 import { Input } from "../ui/field";
+import { MoneyInput } from "../ui/money-input";
 import { cn } from "../ui/cn";
 
 type Member = { id: string; name: string };
@@ -25,7 +26,7 @@ export function participantSummary(members: Member[], selected: Set<string>) {
   return `${names.slice(0, -1).join(", ")}, & ${names.at(-1)}`;
 }
 
-function ChoiceRow({
+export function ChoiceRow({
   selected,
   children,
   onClick,
@@ -128,25 +129,32 @@ export function CurrencyAction({
   );
 }
 
-function InlineValue({
+export function InlineValue({
   label,
   children,
   onClick,
   disabled,
+  invalid,
 }: {
   label: string;
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  invalid?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       aria-haspopup="dialog"
+      data-invalid={invalid || undefined}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex min-h-11 max-w-full min-w-0 items-center gap-1 rounded-lg px-1.5 align-middle font-bold text-[var(--brand-strong)] underline decoration-[var(--pastel-mint-line)] decoration-2 underline-offset-4 hover:bg-[var(--pastel-mint)] disabled:opacity-50"
+      className={cn(
+        "inline-flex min-h-11 max-w-full min-w-0 items-center gap-1 rounded-lg px-1.5 align-middle font-bold text-[var(--brand-strong)] underline decoration-[var(--pastel-mint-line)] decoration-2 underline-offset-4 hover:bg-[var(--pastel-mint)] disabled:opacity-50",
+        invalid &&
+          "bg-[var(--negative-soft)] text-[var(--negative)] decoration-[var(--negative)] hover:bg-[var(--negative-soft)]",
+      )}
     >
       <span className="min-w-0 truncate">{children}</span>
       <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
@@ -169,6 +177,8 @@ export function ExpenseSharingControls({
   totalCents,
   currency,
   disabled,
+  participantsError,
+  splitError,
 }: {
   members: Member[];
   currentMemberId: string;
@@ -184,6 +194,8 @@ export function ExpenseSharingControls({
   totalCents: number;
   currency: string;
   disabled?: boolean;
+  participantsError?: string;
+  splitError?: string;
 }) {
   const [dialog, setDialog] = useState<"payer" | "participants" | "split" | null>(null);
   const [draftPayer, setDraftPayer] = useState(payer);
@@ -213,7 +225,12 @@ export function ExpenseSharingControls({
         </span>{" "}
         <span className="inline-block max-w-full">
           split{" "}
-          <InlineValue label="Split method" disabled={disabled} onClick={() => setDialog("split")}>
+          <InlineValue
+            label="Split method"
+            disabled={disabled}
+            invalid={Boolean(splitError)}
+            onClick={() => setDialog("split")}
+          >
             {methods[method]}
           </InlineValue>
         </span>{" "}
@@ -222,6 +239,7 @@ export function ExpenseSharingControls({
           <InlineValue
             label="Split with"
             disabled={disabled}
+            invalid={Boolean(participantsError)}
             onClick={() => {
               setDraftSelected(new Set(selected));
               setDialog("participants");
@@ -231,6 +249,11 @@ export function ExpenseSharingControls({
           </InlineValue>
         </span>
       </div>
+      {(participantsError || splitError) && (
+        <p role="alert" className="-mt-3 text-center text-xs font-bold text-[var(--negative)]">
+          {participantsError ?? splitError}
+        </p>
+      )}
       {dialog === "payer" && (
         <Dialog
           title="Paid by"
@@ -409,15 +432,25 @@ function SplitDialog({
           </button>
         ))}
       </div>
-      <p className="mb-2 flex min-h-12 items-center justify-between rounded-xl bg-[var(--canvas)] px-3 text-xs text-[var(--muted)]">
-        <span className="flex items-center gap-2">
-          <Users className="size-4 text-[var(--violet)]" aria-hidden="true" />
-          {members.length} {members.length === 1 ? "person" : "people"}
-        </span>
-        <strong className="text-sm text-[var(--ink)]">
-          {draftMethod === "equal" ? `${equalShare} each` : total}
-        </strong>
-      </p>
+      <div className="mb-2 rounded-xl bg-[var(--canvas)] px-3 py-2.5 text-xs text-[var(--muted)]">
+        <p className="flex min-h-7 items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Users className="size-4 text-[var(--violet)]" aria-hidden="true" />
+            {members.length} {members.length === 1 ? "person" : "people"}
+          </span>
+          <strong className="text-sm text-[var(--ink)]">
+            {draftMethod === "equal" ? `${equalShare} each` : total}
+          </strong>
+        </p>
+        {draftMethod !== "equal" && !valid && (
+          <p
+            role="status"
+            className="mt-1 border-t border-[var(--soft-line)] pt-2 text-right font-bold text-[var(--negative)]"
+          >
+            Shares must total {draftMethod === "exact" ? total : "100%"}.
+          </p>
+        )}
+      </div>
       <div className="divide-y divide-[var(--soft-line)]">
         {members.map((member, index) => (
           <div key={member.id} className="flex min-h-[4.25rem] min-w-0 items-center gap-3 px-2">
@@ -431,16 +464,23 @@ function SplitDialog({
                     100,
                 )}
               </span>
+            ) : draftMethod === "exact" ? (
+              <MoneyInput
+                ariaLabel={`${member.name} amount`}
+                value={values[member.id] ?? ""}
+                onChange={(value) => setDraftAmounts({ ...values, [member.id]: value })}
+                currency={currency}
+                className="w-28 shrink-0"
+              />
             ) : (
               <span className="relative w-28 shrink-0">
                 <Input
-                  aria-label={`${member.name} ${draftMethod === "exact" ? "amount" : "percentage"}`}
+                  aria-label={`${member.name} percentage`}
                   inputMode="decimal"
                   value={values[member.id] ?? ""}
                   onChange={(event) => {
                     const update = { ...values, [member.id]: event.target.value };
-                    if (draftMethod === "exact") setDraftAmounts(update);
-                    else setDraftPercentages(update);
+                    setDraftPercentages(update);
                   }}
                   className="h-11 rounded-xl pr-9 text-right tabular-nums"
                 />
@@ -448,28 +488,13 @@ function SplitDialog({
                   aria-hidden="true"
                   className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-[var(--muted)]"
                 >
-                  {draftMethod === "percentage"
-                    ? "%"
-                    : (currencies.find((item) => item.code === currency)?.symbol ?? currency)}
+                  %
                 </span>
               </span>
             )}
           </div>
         ))}
       </div>
-      {draftMethod !== "equal" && (
-        <p
-          role="status"
-          className={cn(
-            "mt-3 border-t border-[var(--soft-line)] px-2 pt-3 text-xs",
-            valid ? "text-[var(--brand)]" : "text-[var(--negative)]",
-          )}
-        >
-          {valid
-            ? "All accounted for"
-            : `Shares must total ${draftMethod === "exact" ? total : "100%"}.`}
-        </p>
-      )}
     </Dialog>
   );
 }

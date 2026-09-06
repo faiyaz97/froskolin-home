@@ -33,6 +33,7 @@ export function BillWorkspace({
   const [extractionRevision, setExtractionRevision] = useState(0);
   const [autofillPending, setAutofillPending] = useState(false);
   const [autofillError, setAutofillError] = useState("");
+  const [entryMode, setEntryMode] = useState<"manual" | "ai">("manual");
   const uploadedDocument = useRef<{ documentId: string; pageCount?: number } | undefined>(
     undefined,
   );
@@ -42,6 +43,7 @@ export function BillWorkspace({
     setPageCount(undefined);
     setExtraction(undefined);
     setAutofillError("");
+    setEntryMode("manual");
     uploadedDocument.current = undefined;
     setExtractionRevision((revision) => revision + 1);
   }
@@ -105,6 +107,7 @@ export function BillWorkspace({
         onPrepared={prepareDraft}
         onAutofill={selectedFile ? autofill : undefined}
         autofillPending={autofillPending}
+        mode={entryMode}
       />
       {autofillError && (
         <StatusNote tone="error" title={autofillError}>
@@ -123,6 +126,7 @@ export function BillWorkspace({
         absences={absences}
         currentMemberId={currentMemberId}
         landlordEnabled={landlordEnabled}
+        onEntryModeChange={setEntryMode}
       />
     </div>
   );
