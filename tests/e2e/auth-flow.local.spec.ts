@@ -52,7 +52,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.getByRole("button", { name: "Paid by" })).toContainText("You");
   await expect(page.getByRole("button", { name: "Split method" })).toContainText("Equally");
   await expect(page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Attachment" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add attachment", exact: true })).toBeVisible();
   await expect(page.getByText("Everyone", { exact: true })).toBeVisible();
   await expect(page.getByText("Repeat monthly", { exact: true })).toHaveCount(0);
   const viewport = await page.evaluate(() => ({
@@ -60,10 +60,14 @@ test("create, remembered login, access rotation, failed login, and join", async 
     scrollWidth: document.documentElement.scrollWidth,
   }));
   expect(viewport.scrollWidth).toBe(viewport.clientWidth);
-  await page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ }).click();
-  await page.getByRole("button", { name: "Monthly" }).click();
-  await page.getByRole("button", { name: "Close dialog" }).click();
-  await expect(page.getByRole("button", { name: /Monthly from/ })).toContainText("Monthly");
+  const dateDialog = page.getByRole("dialog", { name: "Date", exact: true });
+  await expect(async () => {
+    await page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ }).click();
+    await expect(dateDialog).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+  await dateDialog.getByRole("button", { name: "Monthly" }).click();
+  await dateDialog.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("button", { name: /Monthly from/ })).toBeVisible();
 
   let persistentUploadRequests = 0;
   await page.route("**/api/bills/upload", async (route) => {

@@ -130,5 +130,100 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     await page.getByRole("button", { name: "Generate due", exact: true }).click();
     await expect(page.getByText(/1 due recurring expense generated/)).toBeVisible();
   }
+
+  await page.getByLabel("Enable landlord").check();
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page.getByText("Household settings saved.")).toBeVisible();
+  await page.goto(home);
+  await page.setViewportSize({ width: 320, height: 360 });
+  const summary = page.locator(".home-summary-motion");
+  const stickyFrame = page.locator(".home-summary-sticky-frame");
+  const bottomMascot = page.locator('img[src*="froskolin-sleeping"]');
+  const expandedSummary = await summary.boundingBox();
+  const expandedFrame = await stickyFrame.boundingBox();
+  await page.screenshot({ path: testInfo.outputPath("home-summary-expanded-320.png") });
+
+  await page.mouse.move(160, 180);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect
+    .poll(async () =>
+      Number(
+        await summary.evaluate((element) =>
+          element.style.getPropertyValue("--home-detail-opacity"),
+        ),
+      ),
+    )
+    .toBeLessThan(0.8);
+  const midTransitionOpacity = Number(
+    await summary.evaluate((element) => element.style.getPropertyValue("--home-detail-opacity")),
+  );
+  expect(midTransitionOpacity).toBeGreaterThan(0.2);
+  await page.screenshot({ path: testInfo.outputPath("home-summary-transition-320.png") });
+
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
+  await expect(summary).toHaveAttribute("data-collapsed", "true");
+  const collapsedSummary = await summary.boundingBox();
+  const collapsedFrame = await stickyFrame.boundingBox();
+  expect(collapsedSummary!.height).toBeLessThan(expandedSummary!.height);
+  expect(collapsedSummary!.y).toBeCloseTo(0, 0);
+  expect(collapsedFrame!.height).toBeCloseTo(expandedFrame!.height, 0);
+  const balanceDivider = await summary.locator(".home-summary-divider").boundingBox();
+  expect(balanceDivider!.width).toBeCloseTo(1, 0);
+  expect(balanceDivider!.height).toBeCloseTo(28, 0);
+  await expect(bottomMascot).toHaveCSS("opacity", "1");
+  const mascotBox = await bottomMascot.boundingBox();
+  const mobileNavigationBox = await page.getByRole("navigation", { name: "Primary" }).boundingBox();
+  expect(Math.abs(mascotBox!.y + mascotBox!.height - mobileNavigationBox!.y)).toBeLessThanOrEqual(
+    8,
+  );
+  await page.screenshot({ path: testInfo.outputPath("home-summary-collapsed-320.png") });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => window.scrollTo(0, 1));
+  await expect(summary).toHaveAttribute("data-collapsed", "false");
+  await expect
+    .poll(async () =>
+      Number(
+        await summary.evaluate((element) =>
+          element.style.getPropertyValue("--home-detail-opacity"),
+        ),
+      ),
+    )
+    .toBeGreaterThan(0.99);
+  await page.evaluate(() => window.scrollTo(0, 48));
+  await expect
+    .poll(async () =>
+      Number(
+        await summary.evaluate((element) =>
+          element.style.getPropertyValue("--home-detail-opacity"),
+        ),
+      ),
+    )
+    .toBeLessThan(0.8);
+  const reducedMotionMidOpacity = Number(
+    await summary.evaluate((element) => element.style.getPropertyValue("--home-detail-opacity")),
+  );
+  expect(reducedMotionMidOpacity).toBeGreaterThan(0.2);
+  expect(reducedMotionMidOpacity).toBeLessThan(0.8);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.setViewportSize({ width: 1024, height: 500 });
+  await expect(summary).toHaveAttribute("data-collapsed", "false");
+  const desktopExpandedSummary = await summary.boundingBox();
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
+  await expect(summary).toHaveAttribute("data-collapsed", "false");
+  const desktopSummary = await summary.boundingBox();
+  expect(desktopSummary!.height).toBeCloseTo(desktopExpandedSummary!.height, 0);
+  await expect(bottomMascot).toHaveCSS("opacity", "1");
+  const desktopMascotBox = await bottomMascot.boundingBox();
+  const desktopNavigationBox = await page
+    .getByRole("navigation", { name: "Primary" })
+    .boundingBox();
+  expect(
+    Math.abs(desktopMascotBox!.y + desktopMascotBox!.height - desktopNavigationBox!.y),
+  ).toBeLessThanOrEqual(10);
+  await page.screenshot({ path: testInfo.outputPath("home-summary-desktop.png") });
   expect(pageErrors).toEqual([]);
 });
