@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.setTimeout(60_000);
+test.setTimeout(120_000);
 
 test("create, remembered login, access rotation, failed login, and join", async ({
   browser,
@@ -17,15 +17,17 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create household" }).click();
 
-  await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
   const homeUrl = page.url();
-  await expect(
-    page.locator("header").getByRole("link", { name: "Household settings" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Household settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Notifications/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Upload bill" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Add expense" })).toBeVisible();
   const primaryNavigation = page.getByRole("navigation", { name: "Primary" });
   await expect(primaryNavigation).toBeVisible();
+  const appBrand = page.getByRole("link", { name: "Froskolin Home" });
+  if ((page.viewportSize()?.width ?? 0) < 768) await expect(appBrand).toBeHidden();
+  else await expect(appBrand).toBeVisible();
   await expect(primaryNavigation.getByText("Add", { exact: true })).toHaveCount(0);
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
     const navigationBox = await primaryNavigation.boundingBox();
@@ -36,22 +38,46 @@ test("create, remembered login, access rotation, failed login, and join", async 
 
   await page.getByRole("link", { name: "Add expense" }).click();
   const expenseTypeNavigation = page.getByRole("navigation", { name: "Expense type" });
-  await expect(expenseTypeNavigation.getByRole("link", { name: "One-time" })).toHaveAttribute(
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await expect(primaryNavigation).toBeHidden();
+    await expect(page.getByRole("button", { name: "Go back" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+  }
+  await expect(expenseTypeNavigation.getByRole("link", { name: "Expense" })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await expect(expenseTypeNavigation.getByRole("link", { name: "Recurring" })).toBeVisible();
+  await expect(expenseTypeNavigation.getByRole("link", { name: "Recurring" })).toHaveCount(0);
   await expect(expenseTypeNavigation.getByRole("link", { name: "Utility bill" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Paid by" })).toContainText("You");
+  await expect(page.getByRole("button", { name: "Split method" })).toContainText("Equally");
+  await expect(page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Attachment" })).toBeVisible();
+  await expect(page.getByText("Everyone", { exact: true })).toBeVisible();
+  await expect(page.getByText("Repeat monthly", { exact: true })).toHaveCount(0);
+  const viewport = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(viewport.scrollWidth).toBe(viewport.clientWidth);
+  await page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ }).click();
+  await page.getByRole("button", { name: "Monthly" }).click();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("button", { name: /Monthly from/ })).toContainText("Monthly");
 
-  const documentId = "11111111-1111-4111-8111-111111111111";
+  let persistentUploadRequests = 0;
   await page.route("**/api/bills/upload", async (route) => {
+    persistentUploadRequests += 1;
     await route.fulfill({
       status: 201,
       contentType: "application/json",
-      body: JSON.stringify({ documentId, pageCount: 1 }),
+      body: JSON.stringify({
+        documentId: "11111111-1111-4111-8111-111111111111",
+        pageCount: 1,
+      }),
     });
   });
-  await page.route(`**/api/bills/${documentId}/extract`, async (route) => {
+  await page.route("**/api/bills/extract", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -82,7 +108,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
       }),
     });
   });
-  await expenseTypeNavigation.getByRole("link", { name: "Utility bill" }).click();
+  await page.goto(`${homeUrl}/add/bill`);
   const billForm = page.locator("#bill-facts");
   await expect(billForm.getByText("Manual", { exact: true })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
@@ -90,17 +116,23 @@ test("create, remembered login, access rotation, failed login, and join", async 
     mimeType: "application/pdf",
     buffer: Buffer.from("mock bill"),
   });
-  await page.getByText("Use Gemini to read this bill", { exact: true }).click();
-  await page.getByRole("button", { name: "Fill form with AI" }).click();
+  expect(persistentUploadRequests).toBe(0);
+  await expect(page.getByText(/tap to change/i)).toBeVisible();
+  await page.getByRole("button", { name: "Autofill with AI" }).click();
   await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
-  await expect(billForm.getByLabel("Title")).toHaveValue("Froskolin Energy bill");
+  expect(persistentUploadRequests).toBe(0);
+  await expect(billForm.getByLabel("Title")).toHaveValue("Electricity Aug 26 - Aug 26");
   await billForm.getByLabel("Title").fill("Edited electricity bill");
+  await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
+  await billForm.getByLabel("Total due").fill("101.00");
   await expect(billForm.getByText("Manual", { exact: true })).toBeVisible();
+  await billForm.getByLabel("Total due").fill("100.00");
+  await expect(billForm.getByText("AI-filled", { exact: true })).toBeVisible();
   await page.unrouteAll({ behavior: "ignoreErrors" });
 
-  await primaryNavigation.getByRole("link", { name: "Account" }).click();
+  await page.goto(`${homeUrl}/account`);
   await expect(page).toHaveURL(`${homeUrl}/account`);
-  await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: ownerName })).toBeVisible();
   await page.getByRole("button", { name: "Violet avatar" }).click();
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Personal settings saved.")).toBeVisible();

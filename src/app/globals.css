@@ -32,6 +32,10 @@
   --pastel-peach-line: #f7d4c0;
   --pastel-sky: #eaf5ff;
   --pastel-sky-line: #c9e3f7;
+  --control-line: #d5e0e7;
+  --control-line-hover: #b8c8d2;
+  --control-ring: rgb(15 118 110 / 0.14);
+  --control-disabled: #f4f7f9;
   --radius-surface: 1.25rem;
   --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow: 0 14px 40px rgb(15 23 42 / 0.09);
@@ -62,11 +66,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 button,
@@ -84,6 +90,18 @@ a {
   outline-offset: 3px;
 }
 
+.expense-primary-input:focus-visible,
+.froskolin-popover:focus-visible,
+.froskolin-control:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
+.froskolin-choice:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 .screen-reader-only {
   position: absolute;
   width: 1px;
@@ -98,6 +116,12 @@ a {
 
 .app-safe-bottom {
   padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom)));
+}
+
+@media (max-width: 767px) {
+  .mobile-subpage .page-header {
+    display: none;
+  }
 }
 
 @media (min-width: 1024px) {

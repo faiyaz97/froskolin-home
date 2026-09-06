@@ -13,12 +13,13 @@ export default async function EditExpensePage({
   params: Promise<{ householdId: string; expenseId: string }>;
 }) {
   const { householdId, expenseId } = await params;
-  const [{ membership }, home, memberRows, expense] = await Promise.all([
+  const [auth, home, memberRows, expense] = await Promise.all([
     requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getExpenseDetail(householdId, expenseId),
   ]);
+  const { membership, supabase } = auth;
   if (!expense || expense.voided_at) notFound();
 
   if (expense.kind === "utility") {
@@ -36,7 +37,6 @@ export default async function EditExpensePage({
     const members = memberRows
       .filter((member) => !member.removed_at || participantIds.has(member.id))
       .map((member) => ({ id: member.id, name: member.display_name }));
-    const { supabase } = await requireHouseholdMembership(householdId);
     const { data: absenceRows, error } = await supabase
       .from("absence_periods")
       .select("member_id, start_date, end_date")
@@ -100,6 +100,14 @@ export default async function EditExpensePage({
   const members = memberRows
     .filter((member) => !member.removed_at || participantIds.has(member.id))
     .map((member) => ({ id: member.id, name: member.display_name }));
+  const { data: attachment, error: attachmentError } = await supabase
+    .from("expense_attachments")
+    .select("original_file_name")
+    .eq("household_id", householdId)
+    .eq("expense_id", expenseId)
+    .is("removed_at", null)
+    .maybeSingle();
+  if (attachmentError) throw attachmentError;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -110,7 +118,7 @@ export default async function EditExpensePage({
       />
       {expense.kind === "recurring" && (
         <StatusNote title="This occurrence only">
-          Editing this expense does not change its monthly recurring rule.
+          Editing this expense does not change its recurring rule.
         </StatusNote>
       )}
       <ExpenseForm
@@ -119,6 +127,14 @@ export default async function EditExpensePage({
         currentMemberId={membership.id}
         landlordEnabled={home?.landlord_enabled ?? false}
         members={members}
+        initialAttachment={
+          attachment
+            ? {
+                fileName: attachment.original_file_name,
+                viewUrl: `/api/expenses/${expenseId}/attachment?householdId=${householdId}`,
+              }
+            : undefined
+        }
         initial={{
           expenseId,
           title: expense.title,

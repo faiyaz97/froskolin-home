@@ -10,6 +10,7 @@ export function PayerSelect({
   defaultValue,
   disabled,
   onValueChange,
+  variant = "control",
 }: {
   name: string;
   members: Array<{ id: string; name: string }>;
@@ -18,6 +19,7 @@ export function PayerSelect({
   defaultValue?: string | null;
   disabled?: boolean;
   onValueChange?: (value: string) => void;
+  variant?: "control" | "inline";
 }) {
   const selected =
     defaultValue &&
@@ -31,8 +33,13 @@ export function PayerSelect({
       ariaLabel="Paid by"
       disabled={disabled}
       onValueChange={onValueChange}
+      variant={variant}
       options={[
-        ...members.map((member) => ({ value: member.id, label: member.name })),
+        ...members.map((member) => ({
+          value: member.id,
+          label: member.name,
+          selectedLabel: variant === "inline" && member.id === currentMemberId ? "You" : undefined,
+        })),
         ...(landlordEnabled || defaultValue === LANDLORD_PAYER_VALUE
           ? [{ value: LANDLORD_PAYER_VALUE, label: "Landlord" }]
           : []),

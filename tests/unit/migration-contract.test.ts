@@ -20,6 +20,10 @@ const reopenLandlordMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260904224326_reopen_landlord_bill.sql"),
   "utf8",
 ).toLowerCase();
+const expenseAttachmentMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260905184500_add_expense_attachments.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
   it("excludes voided utility expenses from away-date recalculation", () => {
@@ -174,5 +178,22 @@ describe("database security and automation contract", () => {
     expect(reopenLandlordMigration).toContain(
       "grant execute on function public.reopen_landlord_bill(uuid, uuid, uuid)",
     );
+  });
+
+  it("keeps expense attachments private and scoped to their household", () => {
+    expect(expenseAttachmentMigration).toContain("create table public.expense_attachments");
+    expect(expenseAttachmentMigration).toContain(
+      "foreign key (expense_id, household_id) references public.expenses(id, household_id)",
+    );
+    expect(expenseAttachmentMigration).toContain(
+      "create unique index expense_attachments_one_active_idx",
+    );
+    expect(expenseAttachmentMigration).toContain(
+      "alter table public.expense_attachments enable row level security",
+    );
+    expect(expenseAttachmentMigration).toContain(
+      "private.is_active_household_member(household_id)",
+    );
+    expect(expenseAttachmentMigration).not.toContain("grant delete");
   });
 });

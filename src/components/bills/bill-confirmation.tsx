@@ -5,13 +5,15 @@ import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { confirmUtilityBillAction, updateUtilityBillAction } from "@/lib/actions";
+import { determineBillEntryMode, type BillFinancialBaseline } from "@/lib/bills/entry-mode";
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
 import { LANDLORD_PAYER_VALUE, PayerSelect } from "../expenses/payer-select";
+import { ParticipantPicker } from "../expenses/participant-picker";
 import { Button } from "../ui/button";
 import { DateInput } from "../ui/date-input";
-import { Field, Input, Textarea } from "../ui/field";
+import { Field, formSectionClass, Input, Textarea } from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
 
@@ -43,11 +45,9 @@ export function BillConfirmation({
   defaultCurrency,
   locale,
   initial,
-  initialEntryMode = "manual",
-  entryMode: controlledEntryMode,
-  onEntryModeChange,
   existing,
   pageCount,
+  uploadDocumentOnConfirm,
   members,
   absences,
   currentMemberId,
@@ -58,11 +58,9 @@ export function BillConfirmation({
   defaultCurrency: string;
   locale: string;
   initial?: ExtractedBill;
-  initialEntryMode?: "ai" | "manual";
-  entryMode?: "ai" | "manual";
-  onEntryModeChange?: (mode: "ai" | "manual") => void;
   existing?: ExistingUtility;
   pageCount?: number;
+  uploadDocumentOnConfirm?: () => Promise<{ documentId: string; pageCount?: number }>;
   members: Member[];
   absences: Absence[];
   currentMemberId: string;
@@ -116,18 +114,23 @@ export function BillConfirmation({
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const [localEntryMode, setLocalEntryMode] = useState<"ai" | "manual">(
-    existing?.entryMode ?? initialEntryMode,
-  );
-  const entryMode = controlledEntryMode ?? localEntryMode;
-
-  function markManual() {
-    setLocalEntryMode("manual");
-    onEntryModeChange?.("manual");
-  }
   function updateGeneratedTitle(type: string, start: string, end: string) {
     if (!titleWasEdited) setTitle(formatUtilityBillTitle(type, start, end, locale));
   }
+  const aiBaseline: BillFinancialBaseline | undefined = initial
+    ? {
+        totalCents: initial.totalDueCents,
+        fixedCents: initial.charges.fixedCents,
+        variableCents: initial.charges.consumptionCents,
+      }
+    : existing?.entryMode === "ai"
+      ? {
+          totalCents: existing.totalCents,
+          fixedCents: existing.fixedCents,
+          variableCents: existing.variableCents,
+        }
+      : undefined;
+  const entryMode = determineBillEntryMode({ total, fixed, variable }, aiBaseline);
   const totalCents = Math.round(Number(total) * 100);
   const fixedCents = Math.round(Number(fixed) * 100);
   const variableCents = Math.round(Number(variable) * 100);
@@ -186,11 +189,21 @@ export function BillConfirmation({
     if (!valid) return;
     const data = new FormData(event.currentTarget);
     startTransition(async () => {
+      setError("");
       const submittedUtilityType = String(data.get("utilityType") ?? "other");
       const supplier = String(data.get("supplier") ?? "").trim();
+      let confirmedDocumentId = documentId;
+      if (!existing && !confirmedDocumentId && uploadDocumentOnConfirm) {
+        try {
+          confirmedDocumentId = (await uploadDocumentOnConfirm()).documentId;
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "The bill file could not be saved.");
+          return;
+        }
+      }
       const input = {
         householdId,
-        documentId,
+        documentId: confirmedDocumentId,
         title:
           title.trim() || formatUtilityBillTitle(utilityType, serviceStart, serviceEnd, locale),
         utilityType: submittedUtilityType,
@@ -235,23 +248,11 @@ export function BillConfirmation({
   return (
     <form
       id="bill-facts"
-      className="grid scroll-mt-24 gap-7"
+      data-mobile-submit
+      className="grid scroll-mt-24 gap-3"
       onSubmit={submit}
-      onChangeCapture={markManual}
       aria-busy={pending}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-black">Bill details</h2>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-            entryMode === "ai"
-              ? "bg-[var(--violet-soft)] text-[var(--violet)]"
-              : "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
-          }`}
-        >
-          {entryMode === "ai" ? "AI-filled" : "Manual"}
-        </span>
-      </div>
       {missingClassification && (
         <StatusNote tone="warning" title="Complete the missing bill facts">
           <span className="inline-flex items-center gap-1">
@@ -294,27 +295,25 @@ export function BillConfirmation({
           </a>
         </div>
       )}
-      <fieldset className="grid gap-5" disabled={pending}>
-        <legend className="mb-3 text-lg font-extrabold">Bill facts</legend>
+      <fieldset className={`${formSectionClass} grid gap-3`} disabled={pending}>
+        <legend className="screen-reader-only">Bill facts</legend>
         <Field label="Title">
           <Input
             name="title"
             value={title}
             onChange={(event) => {
-              markManual();
               setTitleWasEdited(true);
               setTitle(event.target.value);
             }}
             required
           />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <Field label="Utility type">
             <SelectInput
               name="utilityType"
               value={utilityType}
               onValueChange={(value) => {
-                markManual();
                 setUtilityType(value as ExtractedBill["utilityType"]);
                 updateGeneratedTitle(value, serviceStart, serviceEnd);
               }}
@@ -341,7 +340,6 @@ export function BillConfirmation({
               currentMemberId={currentMemberId}
               landlordEnabled={landlordEnabled}
               members={members}
-              onValueChange={markManual}
             />
           </Field>
           <Field label="Issue date">
@@ -349,7 +347,6 @@ export function BillConfirmation({
               name="issueDate"
               ariaLabel="Issue date"
               defaultValue={existing?.issueDate ?? initial?.issueDate ?? ""}
-              onValueChange={markManual}
               allowClear
             />
           </Field>
@@ -358,7 +355,6 @@ export function BillConfirmation({
               ariaLabel="Service start date"
               value={serviceStart}
               onValueChange={(value) => {
-                markManual();
                 setServiceStart(value);
                 updateGeneratedTitle(utilityType, value, serviceEnd);
               }}
@@ -369,7 +365,6 @@ export function BillConfirmation({
               ariaLabel="Service end date"
               value={serviceEnd}
               onValueChange={(value) => {
-                markManual();
                 setServiceEnd(value);
                 updateGeneratedTitle(utilityType, serviceStart, value);
               }}
@@ -377,9 +372,21 @@ export function BillConfirmation({
           </Field>
         </div>
       </fieldset>
-      <fieldset className="grid gap-5" disabled={pending}>
-        <legend className="mb-3 text-lg font-extrabold">Classify every cent</legend>
-        <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
+      <fieldset className={`${formSectionClass} grid gap-3`} disabled={pending}>
+        <legend className="screen-reader-only">Amounts</legend>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-black">Amounts</h2>
+          <span
+            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+              entryMode === "ai"
+                ? "bg-[var(--violet-soft)] text-[var(--violet)]"
+                : "bg-[var(--brand-soft)] text-[var(--brand-strong)]"
+            }`}
+          >
+            {entryMode === "ai" ? "AI-filled" : "Manual"}
+          </span>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
           <Field label="Total due">
             <MoneyInput value={total} onChange={setTotal} />
           </Field>
@@ -387,10 +394,7 @@ export function BillConfirmation({
             <SelectInput
               name="currency"
               value={currency}
-              onValueChange={(value) => {
-                markManual();
-                setCurrency(value);
-              }}
+              onValueChange={setCurrency}
               ariaLabel="Currency"
               options={[
                 { value: "EUR", label: "EUR" },
@@ -400,7 +404,7 @@ export function BillConfirmation({
             />
           </Field>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <Field label="Fixed portion" hint="Shared equally, even when someone was away.">
             <MoneyInput value={fixed} onChange={setFixed} />
           </Field>
@@ -420,37 +424,18 @@ export function BillConfirmation({
         <Field label="Classification note (optional)">
           <Textarea
             name="classificationNote"
+            className="min-h-16"
             placeholder="Explain where taxes, credits, or adjustments were classified."
             defaultValue={existing?.classificationNote ?? ""}
           />
         </Field>
       </fieldset>
-      <fieldset disabled={pending}>
-        <legend className="text-lg font-extrabold">Participating roommates</legend>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {members.map((member) => (
-            <label
-              key={member.id}
-              className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold"
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(member.id)}
-                onChange={(event) =>
-                  setSelected((current) => {
-                    const next = new Set(current);
-                    if (event.target.checked) next.add(member.id);
-                    else next.delete(member.id);
-                    return next;
-                  })
-                }
-                className="size-4 accent-[var(--brand)]"
-              />
-              {member.name}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <ParticipantPicker
+        members={members}
+        selected={selected}
+        onSelectedChange={setSelected}
+        disabled={pending}
+      />
       {preview && (
         <section>
           <h2 className="text-lg font-extrabold">Deterministic preview</h2>
@@ -479,7 +464,11 @@ export function BillConfirmation({
           </div>
         </section>
       )}
-      <Button type="submit" disabled={!valid || pending} className="justify-self-end">
+      <Button
+        type="submit"
+        disabled={!valid || pending}
+        className="hidden justify-self-end md:inline-flex"
+      >
         {pending ? "Saving bill…" : existing ? "Save bill changes" : "Confirm and create bill"}
       </Button>
     </form>

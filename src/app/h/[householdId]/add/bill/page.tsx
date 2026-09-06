@@ -27,7 +27,7 @@ export default async function NewBillPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Add an expense" />
+      <PageHeader title="Add utility bill" compact />
       <ExpenseTypeNav householdId={householdId} active="bill" />
       <BillWorkspace
         householdId={householdId}

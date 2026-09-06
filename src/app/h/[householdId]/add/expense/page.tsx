@@ -6,18 +6,20 @@ import { getHousehold, getHouseholdMembers } from "@/lib/queries";
 
 export default async function NewExpensePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ householdId: string }>;
+  searchParams: Promise<{ recurring?: string }>;
 }) {
-  const { householdId } = await params;
+  const [{ householdId }, query] = await Promise.all([params, searchParams]);
   const [{ membership }, home, members] = await Promise.all([
     requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
   ]);
   return (
-    <div className="mx-auto max-w-2xl">
-      <PageHeader title="Add an expense" />
+    <div className="mx-auto w-full max-w-2xl min-w-0">
+      <PageHeader title="Add expense" compact />
       <ExpenseTypeNav householdId={householdId} active="expense" />
       <ExpenseForm
         householdId={householdId}
@@ -27,6 +29,7 @@ export default async function NewExpensePage({
         members={members
           .filter((member) => !member.removed_at)
           .map((member) => ({ id: member.id, name: member.display_name }))}
+        defaultRecurring={query.recurring === "1"}
       />
     </div>
   );

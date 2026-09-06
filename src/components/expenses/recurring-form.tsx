@@ -6,7 +6,13 @@ import { useState, useTransition, type FormEvent } from "react";
 import { saveRecurringExpenseRuleAction, updateRecurringExpenseRuleAction } from "@/lib/actions";
 import { Button } from "../ui/button";
 import { DateInput } from "../ui/date-input";
-import { Field, Input } from "../ui/field";
+import {
+  choiceCardClass,
+  choiceCardSelectedClass,
+  choiceInputClass,
+  Field,
+  Input,
+} from "../ui/field";
 import { StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
 import { PayerSelect } from "./payer-select";
@@ -31,6 +37,7 @@ export function RecurringForm({
     currency: string;
     payerMemberId: string;
     startDate: string;
+    frequency: string;
     endDate?: string;
     active: boolean;
     splitConfig:
@@ -95,6 +102,7 @@ export function RecurringForm({
         payerMemberId: String(data.get("payerMemberId") ?? ""),
         splitConfig,
         startDate: String(data.get("startDate") ?? ""),
+        frequency: String(data.get("frequency") ?? "monthly"),
         endDate: String(data.get("endDate") ?? "") || undefined,
         active: initial?.active ?? true,
       };
@@ -110,7 +118,7 @@ export function RecurringForm({
     });
   }
   return (
-    <form className="grid gap-6" onSubmit={submit} aria-busy={pending}>
+    <form data-mobile-submit className="grid gap-6" onSubmit={submit} aria-busy={pending}>
       {error && (
         <StatusNote tone="error" title={error}>
           Check the amount, dates, and selected roommates.
@@ -166,10 +174,14 @@ export function RecurringForm({
         <Field label="Frequency">
           <SelectInput
             name="frequency"
-            defaultValue="monthly"
+            defaultValue={initial?.frequency ?? "monthly"}
             ariaLabel="Frequency"
-            disabled
-            options={[{ value: "monthly", label: "Monthly" }]}
+            disabled={pending}
+            options={[
+              { value: "weekly", label: "Weekly" },
+              { value: "monthly", label: "Monthly" },
+              { value: "yearly", label: "Yearly" },
+            ]}
           />
         </Field>
       </div>
@@ -179,7 +191,7 @@ export function RecurringForm({
           {members.map((member) => (
             <label
               key={member.id}
-              className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-3 text-sm font-bold"
+              className={`${choiceCardClass} ${selected.has(member.id) ? choiceCardSelectedClass : ""}`}
             >
               <input
                 type="checkbox"
@@ -192,7 +204,7 @@ export function RecurringForm({
                     return next;
                   })
                 }
-                className="size-4 accent-[var(--brand)]"
+                className={choiceInputClass}
               />
               {member.name}
             </label>
@@ -211,13 +223,13 @@ export function RecurringForm({
           ).map(([value, label]) => (
             <label
               key={value}
-              className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${split === value ? "border-[var(--brand)] bg-[var(--brand-soft)]" : "border-[var(--line)] bg-white"}`}
+              className={`${choiceCardClass} ${split === value ? choiceCardSelectedClass : ""}`}
             >
               <input
                 type="radio"
                 checked={split === value}
                 onChange={() => setSplit(value)}
-                className="accent-[var(--brand)]"
+                className={choiceInputClass}
               />
               {label}
             </label>
@@ -252,7 +264,7 @@ export function RecurringForm({
                       }
                       required
                     />
-                    <span className="absolute top-3.5 right-3.5 text-[var(--muted)]">
+                    <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-[var(--muted)]">
                       {split === "percentage" ? "%" : (initial?.currency ?? defaultCurrency)}
                     </span>
                   </div>
@@ -280,13 +292,9 @@ export function RecurringForm({
           />
         </Field>
       </div>
-      <StatusNote title="Monthly dates stay anchored">
-        A rule starting on the 31st uses month-end in shorter months, then returns to the 31st when
-        possible.
-      </StatusNote>
-      <div className="flex justify-end">
+      <div className="hidden justify-end md:flex">
         <Button type="submit" disabled={pending || selected.size === 0}>
-          {pending ? "Saving…" : initial ? "Save future occurrences" : "Create monthly rule"}
+          {pending ? "Saving…" : initial ? "Save future occurrences" : "Create recurring rule"}
         </Button>
       </div>
     </form>

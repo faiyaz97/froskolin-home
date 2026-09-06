@@ -23,10 +23,12 @@ export function AppNavigation({
   householdId,
   memberName,
   memberAvatarColor,
+  showOnMobile,
 }: {
   householdId: string;
   memberName: string;
   memberAvatarColor: string | null;
+  showOnMobile: boolean;
 }) {
   const pathname = usePathname();
   const root = `/h/${householdId}`;
@@ -34,7 +36,10 @@ export function AppNavigation({
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[var(--line)] bg-white/95 px-1 pt-1.5 pb-[max(.35rem,env(safe-area-inset-bottom))] shadow-[0_-8px_28px_rgb(15_23_42/0.08)] backdrop-blur-xl lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-[min(520px,calc(100vw-2rem))] lg:-translate-x-1/2 lg:rounded-[var(--radius-surface)] lg:border lg:px-2 lg:pb-1.5"
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-40 grid-cols-4 border-t border-[var(--line)] bg-white/95 px-1 pt-1.5 pb-[max(.35rem,env(safe-area-inset-bottom))] shadow-[0_-8px_28px_rgb(15_23_42/0.08)] backdrop-blur-xl md:grid lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-[min(520px,calc(100vw-2rem))] lg:-translate-x-1/2 lg:rounded-[var(--radius-surface)] lg:border lg:px-2 lg:pb-1.5",
+        showOnMobile ? "grid" : "hidden",
+      )}
     >
       {items.map(({ label, path, icon: Icon }) => {
         const href = `${root}${path}`;

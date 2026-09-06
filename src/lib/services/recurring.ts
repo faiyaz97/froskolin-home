@@ -10,7 +10,8 @@ import {
 } from "@/lib/domain";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
-import { normalSplitConfigSchema } from "@/lib/validation";
+import { normalSplitConfigSchema, recurrenceFrequencySchema } from "@/lib/validation";
+import type { RecurrenceFrequency } from "@/lib/domain/recurrence";
 
 export type RecurringGenerationResult = { generated: number; failed: number };
 
@@ -20,7 +21,9 @@ export async function generateDueRecurringExpenses(
   const admin = createAdminClient();
   let rulesQuery = admin
     .from("recurring_expense_rules")
-    .select("id, household_id, amount_cents, split_config, anchor_date, end_date, next_due_date")
+    .select(
+      "id, household_id, amount_cents, split_config, anchor_date, end_date, next_due_date, frequency",
+    )
     .eq("active", true)
     .is("archived_at", null);
   if (householdId) rulesQuery = rulesQuery.eq("household_id", householdId);
@@ -43,7 +46,9 @@ export async function generateDueRecurringExpenses(
     try {
       const timezone = timezones.get(String(rule.household_id)) ?? "UTC";
       const today = localDateOnly(timezone);
+      const frequency = recurrenceFrequencySchema.parse(rule.frequency);
       const occurrences = enumerateDueOccurrences({
+        frequency,
         startDate: String(rule.anchor_date),
         throughDate: today,
         endDate: rule.end_date ? String(rule.end_date) : undefined,
@@ -68,7 +73,7 @@ export async function generateDueRecurringExpenses(
             p_rule_id: rule.id,
             p_occurrence_date: occurrenceDate,
             p_shares: shares,
-            p_next_due_date: nextOccurrence(String(rule.anchor_date), occurrenceDate),
+            p_next_due_date: nextOccurrence(String(rule.anchor_date), occurrenceDate, frequency),
           },
         );
         if (error) throw error;
@@ -93,9 +98,13 @@ function localDateOnly(timezone: string): string {
   return `${value.year}-${value.month}-${value.day}`;
 }
 
-function nextOccurrence(anchorDate: string, afterDate: string): string {
-  const throughDate = epochDayToDateOnly(dateOnlyToEpochDay(afterDate) + 62);
-  const next = enumerateDueOccurrences({ startDate: anchorDate, throughDate }).find(
+function nextOccurrence(
+  anchorDate: string,
+  afterDate: string,
+  frequency: RecurrenceFrequency,
+): string {
+  const throughDate = epochDayToDateOnly(dateOnlyToEpochDay(afterDate) + 366);
+  const next = enumerateDueOccurrences({ startDate: anchorDate, throughDate, frequency }).find(
     (date) => date > afterDate,
   );
   if (!next) throw new Error("Could not calculate the next recurring date.");

@@ -27,7 +27,7 @@ import {
 import { updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
 import { Button, ButtonLink } from "../ui/button";
-import { Field, Input } from "../ui/field";
+import { choiceInputClass, Field, Input } from "../ui/field";
 import { SectionTitle, StatusNote } from "../ui/page";
 import { SelectInput } from "../ui/select-input";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
@@ -60,6 +60,7 @@ type Props = {
     amountCents: number;
     currency: string;
     nextDueDate: string;
+    frequency: string;
     active: boolean;
   }>;
 };
@@ -179,7 +180,7 @@ export function SettingsPanel({
                 type="checkbox"
                 defaultChecked={home.joiningEnabled}
                 disabled={!isOwner || pending}
-                className="size-4 accent-[var(--brand)]"
+                className={choiceInputClass}
               />{" "}
               Allow new roommates to join
             </label>
@@ -189,7 +190,7 @@ export function SettingsPanel({
                 type="checkbox"
                 defaultChecked={home.landlordEnabled}
                 disabled={!isOwner || pending}
-                className="size-4 accent-[var(--brand)]"
+                className={choiceInputClass}
               />
               Enable landlord
             </label>
@@ -322,6 +323,7 @@ export function SettingsPanel({
                     {rule.title} · {formatMoney(rule.amountCents, rule.currency, home.locale)}
                   </strong>
                   <span className="block text-[var(--muted)]">
+                    <span className="capitalize">{rule.frequency}</span> ·{" "}
                     {rule.active ? `Next ${rule.nextDueDate}` : "Paused"}
                   </span>
                 </p>

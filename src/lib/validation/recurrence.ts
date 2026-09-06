@@ -9,6 +9,8 @@ import {
 } from "./common";
 import { normalSplitConfigSchema, payerSelectionSchema } from "./expenses";
 
+export const recurrenceFrequencySchema = z.enum(["weekly", "monthly", "yearly"]);
+
 export const recurringExpenseRuleSchema = z
   .object({
     householdId: uuidSchema,
@@ -18,6 +20,7 @@ export const recurringExpenseRuleSchema = z
     payerMemberId: payerSelectionSchema,
     splitConfig: normalSplitConfigSchema,
     startDate: dateOnlySchema,
+    frequency: recurrenceFrequencySchema.default("monthly"),
     endDate: dateOnlySchema.nullable().optional(),
     active: z.boolean().default(true),
   })

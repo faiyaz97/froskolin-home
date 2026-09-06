@@ -2,16 +2,28 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
-import { Check, ReceiptText, Users } from "lucide-react";
+import { ReceiptText } from "lucide-react";
 
-import { saveExpenseAction, updateExpenseAction } from "@/lib/actions";
-import { MemberAvatar } from "../household/member-avatar";
+import {
+  saveExpenseAction,
+  saveRecurringExpenseRuleAction,
+  updateExpenseAction,
+} from "@/lib/actions";
 import { Button } from "../ui/button";
-import { DateInput } from "../ui/date-input";
-import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
-import { SelectInput } from "../ui/select-input";
-import { PayerSelect } from "./payer-select";
+import {
+  ExpenseAttachmentAction,
+  type ExistingExpenseAttachment,
+} from "./expense-attachment-action";
+import { ExpenseDateAction } from "./expense-date-action";
+import {
+  CurrencyAction,
+  ExpenseSharingControls,
+  splitIsValid,
+  type SplitValues,
+} from "./expense-sharing-controls";
+import { ExpenseTools } from "./expense-tools";
+import type { RecurrenceFrequency } from "@/lib/domain/recurrence";
 
 type MemberOption = { id: string; name: string };
 type EditableSplitConfig =
@@ -42,6 +54,8 @@ export function ExpenseForm({
   landlordEnabled,
   members,
   initial,
+  initialAttachment,
+  defaultRecurring = false,
 }: {
   householdId: string;
   defaultCurrency: string;
@@ -49,6 +63,8 @@ export function ExpenseForm({
   landlordEnabled: boolean;
   members: MemberOption[];
   initial?: InitialExpense;
+  initialAttachment?: ExistingExpenseAttachment;
+  defaultRecurring?: boolean;
 }) {
   const router = useRouter();
   const [split, setSplit] = useState<"equal" | "exact" | "percentage">(
@@ -61,8 +77,66 @@ export function ExpenseForm({
           members.map((member) => member.id),
       ),
   );
+  const [payer, setPayer] = useState(initial?.payerMemberId ?? currentMemberId);
+  const [amount, setAmount] = useState(initial ? (initial.totalCents / 100).toFixed(2) : "");
+  const [amounts, setAmounts] = useState<SplitValues>(() =>
+    initial?.splitConfig.method === "exact"
+      ? Object.fromEntries(
+          initial.splitConfig.participants.map((p) => [
+            p.memberId,
+            (p.amountCents / 100).toFixed(2),
+          ]),
+        )
+      : {},
+  );
+  const [percentages, setPercentages] = useState<SplitValues>(() =>
+    initial?.splitConfig.method === "percentage"
+      ? Object.fromEntries(
+          initial.splitConfig.participants.map((p) => [
+            p.memberId,
+            (p.basisPoints / 100).toFixed(2),
+          ]),
+        )
+      : {},
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [recurring, setRecurring] = useState(!initial && defaultRecurring);
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>("monthly");
+  const [expenseDate, setExpenseDate] = useState(
+    initial?.expenseDate ?? new Date().toISOString().slice(0, 10),
+  );
+  const [recurringEndDate, setRecurringEndDate] = useState("");
+  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
+  const [attachmentFile, setAttachmentFile] = useState<File>();
+  const [attachmentRemoved, setAttachmentRemoved] = useState(false);
+  const [createdExpenseId, setCreatedExpenseId] = useState<string>();
+
+  async function syncAttachment(expenseId: string) {
+    if (attachmentFile) {
+      const body = new FormData();
+      body.set("householdId", householdId);
+      body.set("file", attachmentFile);
+      const response = await fetch(`/api/expenses/${expenseId}/attachment`, {
+        method: "POST",
+        body,
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "The attachment could not be saved.");
+      return;
+    }
+    if (attachmentRemoved && initialAttachment) {
+      const response = await fetch(`/api/expenses/${expenseId}/attachment`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ householdId }),
+      });
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        throw new Error(result.error ?? "The attachment could not be removed.");
+      }
+    }
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +144,10 @@ export function ExpenseForm({
     const data = new FormData(event.currentTarget);
     const participants = members.filter((member) => selected.has(member.id));
     const totalCents = Math.round(Number(data.get("amount")) * 100);
+    if (!splitIsValid(split, participants, split === "exact" ? amounts : percentages, totalCents)) {
+      setError("Open the split settings and make sure the selected shares match the total.");
+      return;
+    }
     const splitConfig =
       split === "equal"
         ? {
@@ -82,7 +160,7 @@ export function ExpenseForm({
               participants: participants.map((member, order) => ({
                 memberId: member.id,
                 order,
-                amountCents: Math.round(Number(data.get(`share-${member.id}`)) * 100),
+                amountCents: Math.round(Number(amounts[member.id]) * 100),
               })),
             }
           : {
@@ -90,7 +168,7 @@ export function ExpenseForm({
               participants: participants.map((member, order) => ({
                 memberId: member.id,
                 order,
-                basisPoints: Math.round(Number(data.get(`share-${member.id}`)) * 100),
+                basisPoints: Math.round(Number(percentages[member.id]) * 100),
               })),
             };
     startTransition(async () => {
@@ -98,19 +176,39 @@ export function ExpenseForm({
         householdId,
         title: String(data.get("title") ?? ""),
         totalCents,
-        currency: String(data.get("currency") ?? defaultCurrency),
-        payerMemberId: String(data.get("payer") ?? ""),
-        expenseDate: String(data.get("date") ?? ""),
+        currency,
+        payerMemberId: payer,
+        expenseDate,
         splitConfig,
       };
-      let expenseId: string;
-      if (initial) {
-        const updated = await updateExpenseAction({ ...input, expenseId: initial.expenseId });
+      if (!initial && recurring) {
+        const createdRule = await saveRecurringExpenseRuleAction({
+          householdId,
+          title: input.title,
+          amountCents: input.totalCents,
+          currency: input.currency,
+          payerMemberId: input.payerMemberId,
+          splitConfig,
+          startDate: input.expenseDate,
+          frequency,
+          endDate: recurringEndDate || undefined,
+          active: true,
+        });
+        if (!createdRule.ok) {
+          setError(createdRule.error);
+          return;
+        }
+        router.replace(`/h/${householdId}`);
+        router.refresh();
+        return;
+      }
+      let expenseId = initial?.expenseId ?? createdExpenseId;
+      if (expenseId) {
+        const updated = await updateExpenseAction({ ...input, expenseId });
         if (!updated.ok) {
           setError(updated.error);
           return;
         }
-        expenseId = initial.expenseId;
       } else {
         const created = await saveExpenseAction(input);
         if (!created.ok) {
@@ -119,210 +217,144 @@ export function ExpenseForm({
         }
         expenseId = created.data.expenseId;
       }
+      try {
+        await syncAttachment(expenseId);
+      } catch (cause) {
+        setCreatedExpenseId(expenseId);
+        setError(
+          `${initial || createdExpenseId ? "Expense changes were saved" : "Expense was created"}, but ${cause instanceof Error ? cause.message.toLowerCase() : "the attachment could not be saved"}`,
+        );
+        return;
+      }
       router.replace(initial ? `/h/${householdId}/expenses/${expenseId}` : `/h/${householdId}`);
       router.refresh();
     });
   }
 
   return (
-    <form className="grid gap-5" onSubmit={submit} aria-busy={pending}>
+    <form
+      data-mobile-submit
+      className="grid w-full min-w-0 gap-3"
+      onSubmit={submit}
+      aria-busy={pending}
+    >
       {error && (
         <StatusNote tone="error" title={error}>
           Check the amounts and selected roommates.
         </StatusNote>
       )}
 
-      <fieldset
-        className="rounded-[20px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow-sm)] sm:p-5"
-        disabled={pending}
-      >
-        <legend className="screen-reader-only">Expense details</legend>
-        <div className="grid gap-5">
-          <Field label="Description">
-            <div className="flex items-center gap-3">
-              <span className="grid size-[52px] shrink-0 place-items-center rounded-[14px] bg-[var(--brand-soft)] text-[var(--brand)]">
-                <ReceiptText className="size-6" aria-hidden="true" />
-              </span>
-              <Input
-                name="title"
-                placeholder="What was it for?"
-                defaultValue={initial?.title}
-                required
-              />
-            </div>
-          </Field>
-
-          <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-            <Field label="Amount">
-              <Input
-                className="text-2xl font-black tracking-[-0.03em] tabular-nums"
-                name="amount"
-                inputMode="decimal"
-                min="0.01"
-                step="0.01"
-                type="number"
-                placeholder="0.00"
-                defaultValue={initial ? (initial.totalCents / 100).toFixed(2) : undefined}
-                required
-              />
-            </Field>
-            <Field label="Currency">
-              <SelectInput
-                name="currency"
-                defaultValue={initial?.currency ?? defaultCurrency}
-                ariaLabel="Currency"
-                disabled={pending}
-                options={[
-                  { value: "EUR", label: "EUR" },
-                  { value: "GBP", label: "GBP" },
-                  { value: "USD", label: "USD" },
-                ]}
-              />
-            </Field>
+      <section className="w-full min-w-0 px-1 py-2 sm:px-4 sm:py-4">
+        <div className="grid min-w-0 gap-1">
+          <label className="screen-reader-only" htmlFor="expense-title">
+            Description
+          </label>
+          <div className="flex w-full min-w-0 items-center gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+              <ReceiptText className="size-5" aria-hidden="true" />
+            </span>
+            <input
+              id="expense-title"
+              name="title"
+              placeholder="What was it for?"
+              defaultValue={initial?.title}
+              required
+              autoFocus={!initial}
+              className="expense-primary-input h-12 w-0 min-w-0 flex-1 bg-transparent text-xl font-black tracking-[-0.025em] text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[#94a3b8]"
+            />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Paid by">
-              <PayerSelect
-                name="payer"
-                defaultValue={initial?.payerMemberId}
-                currentMemberId={currentMemberId}
-                landlordEnabled={landlordEnabled}
-                members={members}
-                disabled={pending}
-              />
-            </Field>
-            <Field label="Date">
-              <DateInput
-                name="date"
-                ariaLabel="Expense date"
-                defaultValue={initial?.expenseDate ?? new Date().toISOString().slice(0, 10)}
-                disabled={pending}
-              />
-            </Field>
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset
-        className="rounded-[20px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow-sm)] sm:p-5"
-        disabled={pending}
-      >
-        <legend className="mb-4 flex items-center gap-2 text-base font-black">
-          <Users className="size-5 text-[var(--violet)]" aria-hidden="true" /> Split with
-        </legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {members.map((member) => {
-            const checked = selected.has(member.id);
-            return (
-              <label
-                key={member.id}
-                className={`flex min-h-[54px] cursor-pointer items-center gap-3 rounded-[14px] border px-3 transition-colors ${checked ? "border-[#a7f3d0] bg-[#f0fdfa]" : "border-[var(--line)] bg-white"}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  className="screen-reader-only"
-                  onChange={(event) =>
-                    setSelected((current) => {
-                      const next = new Set(current);
-                      if (event.target.checked) next.add(member.id);
-                      else next.delete(member.id);
-                      return next;
-                    })
-                  }
-                />
-                <MemberAvatar name={member.name} />
-                <span className="min-w-0 flex-1 truncate text-sm font-extrabold">
-                  {member.name}
-                </span>
-                <span
-                  className={`grid size-6 place-items-center rounded-lg border ${checked ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-[#cbd5e1] text-transparent"}`}
-                >
-                  <Check className="size-4" strokeWidth={3} aria-hidden="true" />
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      <fieldset
-        className="rounded-[20px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow-sm)] sm:p-5"
-        disabled={pending}
-      >
-        <legend className="text-base font-black">Split method</legend>
-        <div className="mt-3 grid grid-cols-3 rounded-[14px] bg-[var(--soft-line)] p-1">
-          {(
-            [
-              ["equal", "Equally"],
-              ["exact", "Amounts"],
-              ["percentage", "Percentages"],
-            ] as const
-          ).map(([value, label]) => (
-            <label
-              key={value}
-              className={`flex min-h-11 cursor-pointer items-center justify-center rounded-[11px] px-2 text-center text-xs font-extrabold transition-colors sm:text-sm ${split === value ? "bg-white text-[var(--brand-strong)] shadow-sm" : "text-[var(--muted)]"}`}
-            >
-              <input
-                type="radio"
-                name="split"
-                value={value}
-                checked={split === value}
-                onChange={() => setSplit(value)}
-                className="screen-reader-only"
-              />
-              {label}
+          <div className="flex w-full min-w-0 items-end gap-3 border-b-2 border-[var(--pastel-mint-line)] py-2 focus-within:border-[var(--brand)]">
+            <label className="screen-reader-only" htmlFor="expense-amount">
+              Amount
             </label>
-          ))}
-        </div>
-
-        {split !== "equal" && (
-          <div className="mt-4 grid gap-3">
-            {members
-              .filter((member) => selected.has(member.id))
-              .map((member) => (
-                <Field key={member.id} label={member.name}>
-                  <div className="relative">
-                    <Input
-                      name={`share-${member.id}`}
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      defaultValue={
-                        initial?.splitConfig.method === "exact"
-                          ? (
-                              (initial.splitConfig.participants.find(
-                                (participant) => participant.memberId === member.id,
-                              )?.amountCents ?? 0) / 100
-                            ).toFixed(2)
-                          : initial?.splitConfig.method === "percentage"
-                            ? (
-                                (initial.splitConfig.participants.find(
-                                  (participant) => participant.memberId === member.id,
-                                )?.basisPoints ?? 0) / 100
-                              ).toFixed(2)
-                            : undefined
-                      }
-                      required
-                    />
-                    <span className="absolute top-4 right-4 text-sm font-bold text-[var(--muted)]">
-                      {split === "percentage" ? "%" : defaultCurrency}
-                    </span>
-                  </div>
-                </Field>
-              ))}
+            <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+            <input
+              id="expense-amount"
+              name="amount"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              type="number"
+              placeholder="0.00"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              required
+              className="expense-primary-input h-14 w-0 min-w-0 flex-1 bg-transparent text-[2.2rem] leading-none font-black tracking-[-0.045em] text-[var(--ink)] tabular-nums outline-none placeholder:text-[#94a3b8]"
+            />
           </div>
-        )}
-      </fieldset>
+        </div>
+        <ExpenseSharingControls
+          members={members}
+          currentMemberId={currentMemberId}
+          landlordEnabled={landlordEnabled}
+          payer={payer}
+          onPayerChange={setPayer}
+          selected={selected}
+          onSelectedChange={setSelected}
+          method={split}
+          amounts={amounts}
+          percentages={percentages}
+          onSplitChange={(method, nextAmounts, nextPercentages) => {
+            setSplit(method);
+            setAmounts(nextAmounts);
+            setPercentages(nextPercentages);
+          }}
+          totalCents={Math.max(0, Math.round(Number(amount || 0) * 100))}
+          currency={currency}
+          disabled={pending}
+        />
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="h-24 md:hidden" aria-hidden="true" />
+        <ExpenseTools>
+          <ExpenseDateAction
+            value={expenseDate}
+            onValueChange={setExpenseDate}
+            recurring={recurring}
+            frequency={frequency}
+            onFrequencyChange={setFrequency}
+            onRecurringChange={(value) => {
+              setRecurring(value);
+              if (value) {
+                setAttachmentFile(undefined);
+                setAttachmentRemoved(false);
+              }
+            }}
+            recurringEnd={recurringEndDate}
+            onRecurringEndChange={setRecurringEndDate}
+            allowRecurrence={!initial}
+            disabled={pending}
+          />
+          <ExpenseAttachmentAction
+            file={attachmentFile}
+            existing={initialAttachment}
+            removed={attachmentRemoved}
+            onFileChange={(file) => {
+              setAttachmentFile(file);
+              setAttachmentRemoved(false);
+            }}
+            onRemove={() => {
+              setAttachmentFile(undefined);
+              setAttachmentRemoved(true);
+            }}
+            onError={setError}
+            disabled={pending || recurring}
+          />
+        </ExpenseTools>
+      </section>
+
+      <div className="hidden gap-3 md:flex md:justify-end">
         <Button type="button" tone="secondary" onClick={() => router.back()} disabled={pending}>
           Cancel
         </Button>
         <Button type="submit" className="min-w-36" disabled={pending || selected.size === 0}>
-          {pending ? "Saving…" : initial ? "Save changes" : "Save expense"}
+          {pending
+            ? "Saving…"
+            : initial
+              ? "Save changes"
+              : recurring
+                ? "Add recurring expense"
+                : "Add expense"}
         </Button>
       </div>
     </form>

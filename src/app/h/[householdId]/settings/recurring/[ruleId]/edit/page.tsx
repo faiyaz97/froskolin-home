@@ -26,7 +26,7 @@ export default async function EditRecurringRulePage({
     supabase
       .from("recurring_expense_rules")
       .select(
-        "id, title, amount_cents, currency, payer_member_id, paid_by_landlord, split_config, anchor_date, end_date, active, archived_at",
+        "id, title, amount_cents, currency, payer_member_id, paid_by_landlord, split_config, anchor_date, end_date, active, archived_at, frequency",
       )
       .eq("household_id", householdId)
       .eq("id", ruleId)
@@ -47,7 +47,7 @@ export default async function EditRecurringRulePage({
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        eyebrow="Monthly rule"
+        eyebrow="Recurring rule"
         title={`Edit ${ruleResult.data.title}`}
         description="Changes apply to future, ungenerated expenses only. Existing occurrences keep their own history."
       />
@@ -70,6 +70,7 @@ export default async function EditRecurringRulePage({
             ? "landlord"
             : ruleResult.data.payer_member_id,
           startDate: ruleResult.data.anchor_date,
+          frequency: ruleResult.data.frequency,
           endDate: ruleResult.data.end_date ?? undefined,
           active: ruleResult.data.active,
           splitConfig: splitConfig.data,

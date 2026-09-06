@@ -621,6 +621,7 @@ export async function saveRecurringExpenseRuleAction(
         split_method: parsed.data.splitConfig.method,
         split_config: parsed.data.splitConfig,
         anchor_date: parsed.data.startDate,
+        frequency: parsed.data.frequency,
         end_date: parsed.data.endDate ?? null,
         next_due_date: parsed.data.startDate,
         active: parsed.data.active,
@@ -673,6 +674,7 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
       Math.max(dateOnlyToEpochDay(today), dateOnlyToEpochDay(parsed.data.startDate)) + 400,
     );
     const nextDueDate = enumerateDueOccurrences({
+      frequency: parsed.data.frequency,
       startDate: parsed.data.startDate,
       throughDate: through,
       endDate: parsed.data.endDate ?? undefined,
@@ -690,6 +692,7 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
         split_method: parsed.data.splitConfig.method,
         split_config: parsed.data.splitConfig,
         anchor_date: parsed.data.startDate,
+        frequency: parsed.data.frequency,
         end_date: parsed.data.endDate ?? null,
         next_due_date: nextDueDate,
         active: parsed.data.active,
@@ -740,7 +743,7 @@ export async function setRecurringExpenseRuleActiveAction(input: unknown): Promi
         await Promise.all([
           supabase
             .from("recurring_expense_rules")
-            .select("anchor_date, end_date")
+            .select("anchor_date, end_date, frequency")
             .eq("id", parsed.data.ruleId)
             .eq("household_id", parsed.data.householdId)
             .is("archived_at", null)
@@ -749,8 +752,11 @@ export async function setRecurringExpenseRuleActiveAction(input: unknown): Promi
         ]);
       if (ruleError || homeError) throw ruleError ?? homeError;
       const today = localDateOnly(home.timezone);
-      const through = epochDayToDateOnly(dateOnlyToEpochDay(today) + 62);
+      const through = epochDayToDateOnly(
+        Math.max(dateOnlyToEpochDay(today), dateOnlyToEpochDay(rule.anchor_date)) + 366,
+      );
       nextDueDate = enumerateDueOccurrences({
+        frequency: rule.frequency,
         startDate: rule.anchor_date,
         throughDate: through,
         endDate: rule.end_date ?? undefined,

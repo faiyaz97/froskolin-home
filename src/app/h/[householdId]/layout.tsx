@@ -12,23 +12,13 @@ export default async function HouseholdLayout({
 }) {
   const { householdId } = await params;
   let shell: {
-    unreadCount: number;
     mustChangePin: boolean;
     memberName: string;
     memberAvatarColor: string | null;
   };
   try {
-    const { supabase, user, membership } = await requireHouseholdMembership(householdId);
-    const unreadResult = await supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("recipient_user_id", user.id)
-      .eq("household_id", householdId)
-      .is("read_at", null);
-    if (unreadResult.error) throw unreadResult.error;
-
+    const { user, membership } = await requireHouseholdMembership(householdId);
     shell = {
-      unreadCount: unreadResult.count ?? 0,
       mustChangePin: user.app_metadata.must_change_pin === true,
       memberName: membership.display_name,
       memberAvatarColor: membership.avatar_color,

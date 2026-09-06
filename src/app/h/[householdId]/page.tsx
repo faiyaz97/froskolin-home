@@ -58,10 +58,10 @@ export default async function HouseholdHome({
     <>
       <Surface
         tone="plain"
-        className="mb-5 overflow-hidden border-[var(--pastel-sky-line)]"
+        className="mb-4 overflow-hidden rounded-none border-x-0 border-t-0 border-[var(--pastel-sky-line)] shadow-none md:mb-5 md:rounded-[var(--radius-surface)] md:border md:shadow-[var(--shadow-sm)]"
         aria-label={`${home?.name ?? "Household"} summary`}
       >
-        <header className="relative flex min-h-[78px] items-center justify-between gap-4 border-b border-[var(--pastel-sky-line)] bg-[var(--pastel-sky)] px-3.5 py-3.5 sm:min-h-[82px] sm:px-5 sm:py-4">
+        <header className="relative flex min-h-[78px] items-center justify-between gap-4 border-b border-[var(--pastel-sky-line)] bg-[var(--pastel-sky)] px-3.5 pt-[max(.875rem,env(safe-area-inset-top))] pb-3.5 sm:min-h-[82px] sm:px-5 sm:py-4">
           <div className="max-w-[calc(100%-7rem)] min-w-0 sm:flex sm:max-w-[calc(100%-10rem)] sm:items-center sm:gap-3">
             <h1 className="truncate text-[clamp(1.4rem,5.5vw,1.85rem)] leading-tight font-black tracking-[-0.04em] text-[var(--ink)]">
               {home?.name ?? "Home"}
@@ -189,7 +189,7 @@ export default async function HouseholdHome({
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-[88px] z-20 lg:bottom-28">
-        <div className="mx-auto flex w-full max-w-[980px] justify-end px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[980px] justify-end px-3 sm:px-6 lg:px-8">
           <div className="pointer-events-auto flex flex-col items-end gap-1.5">
             <ButtonLink
               href={`/h/${householdId}/add/settlement`}

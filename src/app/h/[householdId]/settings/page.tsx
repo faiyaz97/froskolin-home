@@ -25,7 +25,7 @@ export default async function SettingsPage({
       .order("joined_at"),
     supabase
       .from("recurring_expense_rules")
-      .select("id, title, amount_cents, currency, next_due_date, active, archived_at")
+      .select("id, title, amount_cents, currency, next_due_date, active, archived_at, frequency")
       .eq("household_id", householdId)
       .is("archived_at", null)
       .order("created_at"),
@@ -65,6 +65,7 @@ export default async function SettingsPage({
           amountCents: Number(rule.amount_cents),
           currency: rule.currency,
           nextDueDate: rule.next_due_date,
+          frequency: rule.frequency,
           active: rule.active,
         }))}
       />

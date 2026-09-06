@@ -223,6 +223,27 @@ describe("derived balances and settlements", () => {
 });
 
 describe("monthly recurrence", () => {
+  it("generates weekly dates across year boundaries, respecting end and exclusions", () => {
+    expect(
+      enumerateDueOccurrences({
+        startDate: "2026-12-25",
+        throughDate: "2027-02-01",
+        endDate: "2027-01-15",
+        frequency: "weekly",
+        generatedOccurrenceDates: ["2027-01-01"],
+      }),
+    ).toEqual(["2026-12-25", "2027-01-08", "2027-01-15"]);
+  });
+
+  it("returns a yearly leap-day anchor to February 29 when available", () => {
+    expect(
+      enumerateDueOccurrences({
+        startDate: "2024-02-29",
+        throughDate: "2028-03-01",
+        frequency: "yearly",
+      }),
+    ).toEqual(["2024-02-29", "2025-02-28", "2026-02-28", "2027-02-28", "2028-02-29"]);
+  });
   it("clamps a month-end anchor without drifting and excludes known generated occurrences", () => {
     expect(enumerateDueOccurrences({ startDate: "2028-01-31", throughDate: "2028-05-31" })).toEqual(
       ["2028-01-31", "2028-02-29", "2028-03-31", "2028-04-30", "2028-05-31"],

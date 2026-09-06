@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, HandCoins, ReceiptText, Repeat2, ScanLine } from "lucide-react";
+import { ArrowRight, HandCoins, ReceiptText, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/ui/page";
 const choices = [
   {
     path: "expense",
     icon: ReceiptText,
     title: "Add expense",
-    text: "Groceries, dinner, rent and more",
+    text: "One-time or recurring shared cost",
     color: "bg-[var(--brand-soft)] text-[var(--brand)]",
   },
   {
@@ -15,13 +15,6 @@ const choices = [
     title: "Scan utility bill",
     text: "Upload a bill and review the split",
     color: "bg-[var(--violet-soft)] text-[var(--violet)]",
-  },
-  {
-    path: "recurring",
-    icon: Repeat2,
-    title: "Recurring expense",
-    text: "Create a monthly shared cost",
-    color: "bg-[var(--sky-soft)] text-[var(--sky)]",
   },
   {
     path: "settlement",

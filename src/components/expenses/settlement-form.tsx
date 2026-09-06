@@ -61,7 +61,7 @@ export function SettlementForm({
     });
   }
   return (
-    <form className="grid gap-6" onSubmit={submit} aria-busy={pending}>
+    <form data-mobile-submit className="grid gap-6" onSubmit={submit} aria-busy={pending}>
       {error && (
         <StatusNote tone="error" title={error}>
           Choose two different roommates and check the amount.
@@ -138,7 +138,7 @@ export function SettlementForm({
         Froskolin doesn’t transfer money. This entry updates balances and appears in the household
         history.
       </StatusNote>
-      <Button type="submit" className="justify-self-end" disabled={pending}>
+      <Button type="submit" className="hidden justify-self-end md:inline-flex" disabled={pending}>
         {pending ? "Saving…" : initial ? "Save settlement" : "Record settlement"}
       </Button>
     </form>

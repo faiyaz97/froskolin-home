@@ -5,21 +5,33 @@ export function PageHeader({
   title,
   description,
   action,
+  compact = false,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <header className="mb-6 flex items-start justify-between gap-4 sm:mb-8">
+    <header
+      className={cn(
+        "page-header flex items-start justify-between gap-4",
+        compact ? "mb-4" : "mb-6 sm:mb-8",
+      )}
+    >
       <div>
         {eyebrow && (
           <p className="mb-2 text-[11px] font-black tracking-[0.16em] text-[var(--brand)] uppercase">
             {eyebrow}
           </p>
         )}
-        <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] leading-[1.08] font-black tracking-[-0.045em]">
+        <h1
+          className={cn(
+            "leading-[1.08] font-black tracking-[-0.045em]",
+            compact ? "text-[clamp(1.55rem,6vw,2rem)]" : "text-[clamp(1.75rem,6vw,2.5rem)]",
+          )}
+        >
           {title}
         </h1>
         {description && (

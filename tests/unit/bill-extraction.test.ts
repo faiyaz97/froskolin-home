@@ -8,6 +8,7 @@ import {
   prepareBillUpload,
   redactSensitiveText,
 } from "@/lib/bills";
+import { determineBillEntryMode } from "@/lib/bills/entry-mode";
 import { extractedBillSchema } from "@/lib/validation";
 
 const fixture = {
@@ -45,6 +46,31 @@ class FixtureExtractor implements BillExtractor {
 }
 
 describe("bill extraction boundary", () => {
+  it("derives AI mode only from the three financial bill values", () => {
+    const baseline = { totalCents: 10_000, fixedCents: 4_041, variableCents: 5_959 };
+
+    expect(
+      determineBillEntryMode({ total: "100.00", fixed: "40.41", variable: "59.59" }, baseline),
+    ).toBe("ai");
+    expect(
+      determineBillEntryMode({ total: "100", fixed: "40.42", variable: "59.59" }, baseline),
+    ).toBe("manual");
+    expect(
+      determineBillEntryMode({ total: "100", fixed: "40.41", variable: "59.59" }, baseline),
+    ).toBe("ai");
+  });
+
+  it("supports incomplete AI buckets without treating blank values as zero", () => {
+    const baseline = { totalCents: 10_000, fixedCents: null, variableCents: null };
+    expect(determineBillEntryMode({ total: "100", fixed: "", variable: "" }, baseline)).toBe("ai");
+    expect(determineBillEntryMode({ total: "100", fixed: "0", variable: "100" }, baseline)).toBe(
+      "manual",
+    );
+    expect(determineBillEntryMode({ total: "100", fixed: "invalid", variable: "" }, baseline)).toBe(
+      "manual",
+    );
+  });
+
   it("accepts a provider-independent structured fixture", async () => {
     const result = await new FixtureExtractor().extract({
       bytes: new Uint8Array([1]),

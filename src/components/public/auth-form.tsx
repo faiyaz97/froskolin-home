@@ -32,7 +32,7 @@ function AuthGroup({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--canvas)]/55 p-2.5 [&_[aria-haspopup=listbox]]:min-h-10 [&_[aria-haspopup=listbox]]:px-3 [&_[aria-haspopup=listbox]]:text-sm [&_input:not([type=hidden])]:min-h-10 [&_input:not([type=hidden])]:px-3 [&_input:not([type=hidden])]:text-sm [&_label]:gap-1 [&_label]:text-xs">
+    <fieldset className="grid gap-2.5 rounded-2xl border border-[var(--line)] bg-[var(--canvas)]/55 p-2.5">
       <legend className="screen-reader-only">{title}</legend>
       <div className="flex items-center gap-2 border-b border-[var(--soft-line)] pb-2">
         <span className="grid size-7 place-items-center rounded-[9px] bg-white text-[var(--brand)] shadow-[var(--shadow-sm)]">
