@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireHouseholdMembership } from "@/lib/auth";
+import { requireHouseholdMutation } from "@/lib/auth";
 import {
   calculateEqualShares,
   calculateExactShares,
@@ -104,7 +104,7 @@ export async function saveExpenseAction(
   const parsed = expenseInputSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.createExpense, {
       p_household_id: parsed.data.householdId,
       p_title: parsed.data.title,
@@ -134,7 +134,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
   const parsed = updateExpenseSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
     const { error } = await callRpc(createAdminClient(), "replace_expense_with_landlord_support", {
       p_expense_id: parsed.data.expenseId,
       p_title: parsed.data.title,
@@ -161,9 +161,7 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
   const parsed = replaceAbsencesSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user, membership } = await requireHouseholdMembership(
-      parsed.data.householdId,
-    );
+    const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
     if (membership.id !== parsed.data.memberId && membership.role !== "owner") {
       return { ok: false, error: "You can only edit your own away periods." };
     }
@@ -298,7 +296,7 @@ export async function confirmUtilityBillAction(
   const parsed = utilityConfirmationSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: household, error: householdError } = await supabase
       .from("households")
       .select("timezone")
@@ -385,7 +383,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
   const parsed = utilityUpdateSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: existingExpense, error: expenseError } = await supabase
       .from("expenses")
       .select("expense_date")
@@ -479,7 +477,7 @@ export async function saveSettlementAction(
   const parsed = settlementInputSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.recordSettlement, {
       p_household_id: parsed.data.householdId,
       p_paying_member_id: parsed.data.payingMemberId,
@@ -505,7 +503,7 @@ export async function recordLandlordPaymentAction(input: unknown): Promise<Actio
     return { ok: false, error: "Enter a payment amount greater than zero." };
   }
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: household, error: householdError } = await supabase
       .from("households")
       .select("timezone")
@@ -532,7 +530,7 @@ export async function reopenLandlordBillAction(input: unknown): Promise<ActionRe
   const parsed = reopenLandlordBillSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
     const { error } = await callRpc(createAdminClient(), "reopen_landlord_bill", {
       p_household_id: parsed.data.householdId,
       p_expense_id: parsed.data.expenseId,
@@ -550,7 +548,7 @@ export async function updateSettlementAction(input: unknown): Promise<ActionResu
   const parsed = updateSettlementSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await supabase
       .from("settlements")
       .update({
@@ -579,7 +577,7 @@ export async function voidSettlementAction(input: unknown): Promise<ActionResult
   const parsed = voidSettlementSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await supabase
       .from("settlements")
       .update({
@@ -607,7 +605,7 @@ export async function saveRecurringExpenseRuleAction(
   const parsed = recurringExpenseRuleSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await supabase
       .from("recurring_expense_rules")
       .insert({
@@ -644,7 +642,7 @@ export async function generateDueRecurringExpensesAction(
   const parsed = uuidSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Choose a valid household." };
   try {
-    await requireHouseholdMembership(parsed.data);
+    await requireHouseholdMutation(parsed.data);
     const result = await generateDueRecurringExpenses(parsed.data);
     refreshHousehold(parsed.data);
     if (result.failed)
@@ -662,7 +660,7 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
   const parsed = updateRecurringExpenseRuleSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: home, error: homeError } = await supabase
       .from("households")
       .select("timezone")
@@ -715,7 +713,7 @@ export async function archiveRecurringExpenseRuleAction(input: unknown): Promise
   const parsed = archiveRecurringExpenseRuleSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await supabase
       .from("recurring_expense_rules")
       .update({ active: false, archived_at: new Date().toISOString(), updated_by: user.id })
@@ -736,7 +734,7 @@ export async function setRecurringExpenseRuleActiveAction(input: unknown): Promi
   const parsed = setRecurringExpenseRuleActiveSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     let nextDueDate: string | undefined;
     if (parsed.data.active) {
       const [{ data: rule, error: ruleError }, { data: home, error: homeError }] =
@@ -787,7 +785,7 @@ export async function voidExpenseAction(input: unknown): Promise<ActionResult> {
   const parsed = voidExpenseSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await supabase
       .from("expenses")
       .update({

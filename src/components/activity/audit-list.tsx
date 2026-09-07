@@ -2,7 +2,7 @@ import { CalendarDays, HandCoins, House, ReceiptText, Repeat2 } from "lucide-rea
 import Link from "next/link";
 
 import type { FeedEvent } from "./feed";
-import { MemberAvatar } from "../household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { formatDateTime } from "@/lib/format";
 
 const icons = {
@@ -16,13 +16,13 @@ const icons = {
 export function AuditList({
   householdId,
   events,
-  actorNames,
+  actors,
   locale,
   timezone,
 }: {
   householdId: string;
   events: Array<FeedEvent & { actor_user_id: string | null }>;
-  actorNames: Record<string, string>;
+  actors: Record<string, { name: string; avatarColor: AvatarColor | null }>;
   locale: string;
   timezone: string;
 }) {
@@ -41,9 +41,8 @@ export function AuditList({
           color: "bg-[var(--peach-soft)] text-[var(--peach)]",
         };
         const Icon = iconData.icon;
-        const actor = event.actor_user_id
-          ? (actorNames[event.actor_user_id] ?? "A roommate")
-          : "Froskolin";
+        const actorProfile = event.actor_user_id ? actors[event.actor_user_id] : undefined;
+        const actor = event.actor_user_id ? (actorProfile?.name ?? "A roommate") : "Froskolin";
         return (
           <li
             key={event.id}
@@ -59,7 +58,7 @@ export function AuditList({
               className="block text-[var(--ink)] no-underline"
             >
               <div className="flex items-start gap-3">
-                <MemberAvatar name={actor} className="size-8" />
+                <MemberAvatar name={actor} color={actorProfile?.avatarColor} className="size-8" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm">
                     <strong>{actor}</strong> · {event.summary}

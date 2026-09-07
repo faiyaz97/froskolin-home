@@ -26,7 +26,6 @@ export default async function HouseholdLayout({
   } catch {
     redirect(`/login?next=${encodeURIComponent(`/h/${householdId}`)}`);
   }
-  if (shell.mustChangePin) redirect("/change-pin");
   return (
     <AppShell householdId={householdId} {...shell}>
       {children}

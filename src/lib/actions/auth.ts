@@ -17,10 +17,12 @@ import {
   normalizeHouseCode,
   provisionAuthUser,
   requireAuthenticatedUser,
-  requireHouseholdMembership,
+  requireHouseholdMutation,
   requireHouseholdOwner,
+  requireHouseholdOwnerMutation,
   signInWithInternalAlias,
 } from "@/lib/auth";
+import { availableAvatarIds, type AvatarColor } from "@/lib/avatar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +86,11 @@ async function createUniqueHouseCode(): Promise<string> {
   throw new Error("Unable to allocate a unique House Code.");
 }
 
+function chooseAvatar(selected: Iterable<string | null>): AvatarColor {
+  const choices = availableAvatarIds(selected);
+  return choices[randomInt(choices.length)];
+}
+
 export async function createHouseholdAction(
   input: unknown,
 ): Promise<ActionResult<{ householdId: string; houseCode: string }>> {
@@ -110,6 +117,7 @@ export async function createHouseholdAction(
       p_join_pin_digest: digestJoinPin(parsed.data.joinPin),
       p_encrypted_join_pin: encryptJoinPin(parsed.data.joinPin),
       p_display_name: parsed.data.displayName,
+      p_avatar_color: chooseAvatar([]),
     });
     if (error || !householdId) throw error ?? new Error("Household was not created.");
     return { ok: true, data: { householdId: String(householdId), houseCode } };
@@ -169,12 +177,15 @@ export async function joinHouseholdAction(
     // If anything below fails, deleting the user can still cascade its alias
     // without a membership foreign key blocking cleanup.
     await signInWithInternalAlias(alias, parsed.data.pin);
-    const { error: memberError } = await admin.from("household_members").insert({
-      household_id: household.id,
-      user_id: user.id,
-      display_name: parsed.data.displayName,
-      role: "member",
-    });
+    const { error: memberError } = await callRpc(
+      admin,
+      "service_add_household_member_with_avatar",
+      {
+        p_household_id: household.id,
+        p_user_id: user.id,
+        p_display_name: parsed.data.displayName,
+      },
+    );
     if (memberError) throw memberError;
     return { ok: true, data: { householdId: household.id } };
   } catch (error) {
@@ -208,6 +219,10 @@ export async function changePinAction(input: unknown): Promise<ActionResult> {
       app_metadata: { ...user.app_metadata, must_change_pin: false },
     });
     if (error) throw error;
+    // Updating the password can invalidate the current Auth session. Establish
+    // a fresh cookie-backed session so the in-account dialog does not sign the
+    // user out after a successful PIN change.
+    await signInWithInternalAlias(alias, parsed.data.newPin);
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, error: "We couldn't change your PIN." };
@@ -220,7 +235,7 @@ export async function updateHouseholdAccessAction(
   const parsed = updateHouseholdAccessSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase } = await requireHouseholdOwner(parsed.data.householdId);
+    const { supabase } = await requireHouseholdOwnerMutation(parsed.data.householdId);
     const { error } = await callRpc(supabase, "update_household_access", {
       p_household_id: parsed.data.householdId,
       p_house_code: parsed.data.houseCode,
@@ -263,7 +278,7 @@ export async function updateHouseholdAction(input: unknown): Promise<ActionResul
   const parsed = updateHouseholdSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase } = await requireHouseholdOwner(parsed.data.householdId);
+    const { supabase } = await requireHouseholdOwnerMutation(parsed.data.householdId);
     const { error } = await supabase
       .from("households")
       .update({
@@ -287,7 +302,7 @@ export async function updatePersonalSettingsAction(input: unknown): Promise<Acti
   const parsed = updatePersonalSettingsSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, membership } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, membership } = await requireHouseholdMutation(parsed.data.householdId);
     const { error } = await supabase
       .from("household_members")
       .update({
@@ -311,7 +326,7 @@ export async function removeMemberAction(input: unknown): Promise<ActionResult> 
   const parsed = removeMemberSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { supabase, user } = await requireHouseholdOwner(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdOwnerMutation(parsed.data.householdId);
     const { data: target, error: targetError } = await supabase
       .from("household_members")
       .select("user_id, role")
@@ -344,7 +359,7 @@ export async function resetMemberPinAction(
   memberId: string,
 ): Promise<ActionResult<{ temporaryPin: string }>> {
   try {
-    const { supabase, user: actor } = await requireHouseholdOwner(householdId);
+    const { supabase, user: actor } = await requireHouseholdOwnerMutation(householdId);
     const { data: member, error } = await supabase
       .from("household_members")
       .select("user_id")

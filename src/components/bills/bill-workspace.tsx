@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 
 import { extractedBillSchema, type ExtractedBill } from "@/lib/validation";
+import type { AvatarColor } from "../household/member-avatar";
 import { StatusNote } from "../ui/page";
 import { BillConfirmation } from "./bill-confirmation";
 import { BillUpload, type PreparedBillDraft } from "./bill-upload";
 
-type Member = { id: string; name: string };
+type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 type Absence = { memberId: string; startDate: string; endDate: string };
 
 export function BillWorkspace({

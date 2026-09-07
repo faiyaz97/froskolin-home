@@ -12,6 +12,7 @@ import {
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { StatusNote } from "../ui/page";
+import type { AvatarColor } from "../household/member-avatar";
 import {
   ExpenseAttachmentAction,
   type ExistingExpenseAttachment,
@@ -26,7 +27,7 @@ import {
 import { ExpenseTools } from "./expense-tools";
 import type { RecurrenceFrequency } from "@/lib/domain/recurrence";
 
-type MemberOption = { id: string; name: string };
+type MemberOption = { id: string; name: string; avatarColor?: AvatarColor | null };
 type EditableSplitConfig =
   | { method: "equal"; participants: Array<{ memberId: string; order: number }> }
   | {
@@ -272,8 +273,8 @@ export function ExpenseForm({
                 attemptedSubmit && titleMissing && "border-[var(--negative)]",
               )}
             >
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
-                <ReceiptText className="size-5" aria-hidden="true" />
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand)]">
+                <ReceiptText className="size-5" strokeWidth={2.2} aria-hidden="true" />
               </span>
               <input
                 id="expense-title"

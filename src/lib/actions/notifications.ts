@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAuthenticatedUser, requireHouseholdMembership } from "@/lib/auth";
+import { requireAuthenticatedMutation, requireHouseholdMutation } from "@/lib/auth";
 
 import { actionFailure, type ActionResult } from "./result";
 
 export async function markNotificationReadAction(notificationId: string): Promise<ActionResult> {
   try {
-    const { supabase, user } = await requireAuthenticatedUser();
+    const { supabase, user } = await requireAuthenticatedMutation();
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -24,7 +24,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
 
 export async function markAllNotificationsReadAction(householdId: string): Promise<ActionResult> {
   try {
-    const { supabase, user } = await requireHouseholdMembership(householdId);
+    const { supabase, user } = await requireHouseholdMutation(householdId);
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })

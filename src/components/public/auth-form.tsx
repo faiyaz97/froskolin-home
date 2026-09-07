@@ -3,20 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
-import { Home, KeyRound, UserRound, type LucideIcon } from "lucide-react";
+import { Home, UserRound, type LucideIcon } from "lucide-react";
 
-import {
-  changePinAction,
-  createHouseholdAction,
-  joinHouseholdAction,
-  loginAction,
-} from "@/lib/actions";
-import {
-  forgetRememberedDevice,
-  readRememberedDevice,
-  rememberDevice,
-  type RememberedDevice,
-} from "@/lib/device-memory";
+import { createHouseholdAction, joinHouseholdAction, loginAction } from "@/lib/actions";
+import { readRememberedDevice, rememberDevice, type RememberedDevice } from "@/lib/device-memory";
 import { Button } from "../ui/button";
 import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";
@@ -45,7 +35,7 @@ function AuthGroup({
   );
 }
 
-export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin" }) {
+export function PublicForm({ kind }: { kind: "create" | "join" | "login" }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -56,7 +46,6 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
     create: { title: "Create household", action: "Create household" },
     join: { title: "Join roommates", action: "Join roommates" },
     login: { title: "Sign in", action: "Sign in" },
-    pin: { title: "Change PIN", action: "Save new PIN" },
   }[kind];
 
   useEffect(() => {
@@ -70,11 +59,6 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
     setError("");
     setFieldErrors({});
     const data = new FormData(event.currentTarget);
-    if (kind === "pin" && data.get("newPin") !== data.get("confirmation")) {
-      setFieldErrors({ confirmation: ["The two new PINs do not match."] });
-      return;
-    }
-
     startTransition(async () => {
       const displayName = String(data.get("displayName") ?? "");
       const houseCode = String(data.get("houseCode") ?? "")
@@ -100,12 +84,7 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
                 houseCode,
                 joinPin: String(data.get("joinPin") ?? ""),
               })
-            : kind === "login"
-              ? await loginAction({ ...common, houseCode })
-              : await changePinAction({
-                  currentPin: String(data.get("currentPin") ?? ""),
-                  newPin: String(data.get("newPin") ?? ""),
-                });
+            : await loginAction({ ...common, houseCode });
 
       if (!result.ok) {
         setError(result.error);
@@ -118,11 +97,6 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
         router.replace(`/h/${created.householdId}`);
         return;
       }
-      if (kind === "pin") {
-        router.replace("/");
-        return;
-      }
-
       rememberDevice({ houseCode, memberName: displayName });
       router.replace(`/h/${(result.data as { householdId: string }).householdId}`);
     });
@@ -357,92 +331,28 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" | "pin"
           </AuthGroup>
         )}
 
-        {kind === "pin" && (
-          <AuthGroup title="Your PIN" icon={KeyRound}>
-            <Field label="Current or temporary PIN" error={fieldErrors.currentPin?.[0]}>
-              <Input
-                name="currentPin"
-                className="tracking-[0.35em]"
-                inputMode="numeric"
-                pattern="(?:[0-9]{4}|[0-9]{6})"
-                minLength={4}
-                maxLength={6}
-                type="password"
-                autoComplete="current-password"
-                required
-                disabled={pending}
-              />
-            </Field>
-            <Field label="New personal PIN" error={fieldErrors.newPin?.[0]}>
-              <Input
-                name="newPin"
-                className="tracking-[0.35em]"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                minLength={6}
-                maxLength={6}
-                type="password"
-                autoComplete="new-password"
-                placeholder="••••••"
-                required
-                disabled={pending}
-              />
-            </Field>
-            <Field label="Confirm new PIN" error={fieldErrors.confirmation?.[0]}>
-              <Input
-                name="confirmation"
-                className="tracking-[0.35em]"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                minLength={6}
-                maxLength={6}
-                type="password"
-                autoComplete="new-password"
-                required
-                disabled={pending}
-              />
-            </Field>
-          </AuthGroup>
-        )}
-
         <Button type="submit" className="min-h-10 w-full py-2" disabled={pending}>
           {pending ? "One moment…" : content.action}
         </Button>
       </form>
 
-      {kind !== "pin" && (
-        <p className="mt-2 text-center text-xs text-[var(--muted)]">
-          {kind === "create" || kind === "join" ? (
-            <Link href="/login" className="font-extrabold text-[var(--brand-strong)]">
-              Sign in
+      <p className="mt-2 text-center text-xs text-[var(--muted)]">
+        {kind === "create" || kind === "join" ? (
+          <Link href="/login" className="font-extrabold text-[var(--brand-strong)]">
+            Sign in
+          </Link>
+        ) : (
+          <>
+            <Link href="/?mode=join" className="font-extrabold text-[var(--brand-strong)]">
+              Join roommates
             </Link>
-          ) : (
-            <>
-              <Link href="/?mode=join" className="font-extrabold text-[var(--brand-strong)]">
-                Join roommates
-              </Link>
-              {" · "}
-              <Link href="/?mode=create" className="font-extrabold text-[var(--brand-strong)]">
-                Create household
-              </Link>
-            </>
-          )}
-        </p>
-      )}
-
-      {useRememberedLogin && (
-        <button
-          type="button"
-          className="mx-auto mt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--negative)]"
-          onClick={() => {
-            forgetRememberedDevice();
-            setRememberedDevice(null);
-            setUseRememberedDevice(false);
-          }}
-        >
-          <Home className="size-3.5" aria-hidden="true" /> Forget this device
-        </button>
-      )}
+            {" · "}
+            <Link href="/?mode=create" className="font-extrabold text-[var(--brand-strong)]">
+              Create household
+            </Link>
+          </>
+        )}
+      </p>
     </section>
   );
 }

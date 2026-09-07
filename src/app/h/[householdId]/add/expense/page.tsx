@@ -1,4 +1,5 @@
 import { ExpenseForm } from "@/components/expenses/expense-form";
+import type { AvatarColor } from "@/components/household/member-avatar";
 import { ExpenseTypeNav } from "@/components/expenses/expense-type-nav";
 import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
@@ -28,7 +29,11 @@ export default async function NewExpensePage({
         landlordEnabled={home?.landlord_enabled ?? false}
         members={members
           .filter((member) => !member.removed_at)
-          .map((member) => ({ id: member.id, name: member.display_name }))}
+          .map((member) => ({
+            id: member.id,
+            name: member.display_name,
+            avatarColor: member.avatar_color as AvatarColor | null,
+          }))}
         defaultRecurring={query.recurring === "1"}
       />
     </div>

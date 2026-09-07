@@ -1,5 +1,6 @@
 import { AuditList } from "@/components/activity/audit-list";
 import type { FeedEvent } from "@/components/activity/feed";
+import type { AvatarColor } from "@/components/household/member-avatar";
 import { PageHeader } from "@/components/ui/page";
 import { getActivityFeed, getHousehold, getHouseholdMembers } from "@/lib/queries";
 
@@ -21,8 +22,14 @@ export default async function ActivityPage({
         <AuditList
           householdId={householdId}
           events={events as Array<FeedEvent & { actor_user_id: string | null }>}
-          actorNames={Object.fromEntries(
-            members.map((member) => [member.user_id, member.display_name]),
+          actors={Object.fromEntries(
+            members.map((member) => [
+              member.user_id,
+              {
+                name: member.display_name,
+                avatarColor: member.avatar_color as AvatarColor | null,
+              },
+            ]),
           )}
           locale={home?.locale ?? "en-GB"}
           timezone={home?.timezone ?? "UTC"}

@@ -9,12 +9,14 @@ export function Dialog({
   onClose,
   onDone,
   doneDisabled,
+  dismissible = true,
   children,
 }: {
   title: string;
   onClose: () => void;
   onDone?: () => void;
   doneDisabled?: boolean;
+  dismissible?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -35,7 +37,7 @@ export function Dialog({
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (dismissible) onClose();
       }}
       onKeyDown={(event) => {
         if (
@@ -48,7 +50,7 @@ export function Dialog({
         }
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (dismissible && event.target === event.currentTarget) onClose();
       }}
       className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-3xl border border-[var(--line)] bg-white p-0 text-[var(--ink)] shadow-xl backdrop:bg-[#1f2a44]/25"
     >
@@ -59,7 +61,8 @@ export function Dialog({
               type="button"
               onClick={onClose}
               aria-label="Back"
-              className="grid size-11 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--soft-line)]"
+              className="grid size-11 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--soft-line)] disabled:invisible"
+              disabled={!dismissible}
             >
               <ArrowLeft className="size-4" aria-hidden="true" />
             </button>

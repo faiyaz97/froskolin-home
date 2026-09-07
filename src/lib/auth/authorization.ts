@@ -19,6 +19,18 @@ export async function requireAuthenticatedUser() {
   return { supabase, user };
 }
 
+function assertPinChangeComplete(user: { app_metadata?: Record<string, unknown> }) {
+  if (user.app_metadata?.must_change_pin === true) {
+    throw new AuthorizationError("Change your personal PIN before continuing.");
+  }
+}
+
+export async function requireAuthenticatedMutation() {
+  const result = await requireAuthenticatedUser();
+  assertPinChangeComplete(result.user);
+  return result;
+}
+
 export async function requireHouseholdMembership(householdId: string) {
   const { supabase, user } = await requireAuthenticatedUser();
   const { data, error } = await supabase
@@ -43,6 +55,20 @@ export async function requireHouseholdMembership(householdId: string) {
 
 export async function requireHouseholdOwner(householdId: string) {
   const result = await requireHouseholdMembership(householdId);
+  if (result.membership.role !== "owner") {
+    throw new AuthorizationError("Only the household owner can do that.");
+  }
+  return result;
+}
+
+export async function requireHouseholdMutation(householdId: string) {
+  const result = await requireHouseholdMembership(householdId);
+  assertPinChangeComplete(result.user);
+  return result;
+}
+
+export async function requireHouseholdOwnerMutation(householdId: string) {
+  const result = await requireHouseholdMutation(householdId);
   if (result.membership.role !== "owner") {
     throw new AuthorizationError("Only the household owner can do that.");
   }

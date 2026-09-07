@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { cn } from "../ui/cn";
 import { CatMark } from "../ui/brand";
@@ -11,11 +12,13 @@ export function AppShell({
   householdId,
   memberName,
   memberAvatarColor,
+  mustChangePin,
   children,
 }: {
   householdId: string;
   memberName: string;
   memberAvatarColor: string | null;
+  mustChangePin: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -26,6 +29,10 @@ export function AppShell({
   const isHome = pathname === root;
   const mobileTitle = getMobileTitle(pathname, root);
   const canSubmit = hasMobileSubmit(pathname, root);
+
+  useEffect(() => {
+    if (mustChangePin && pathname !== `${root}/account`) router.replace(`${root}/account`);
+  }, [mustChangePin, pathname, root, router]);
 
   function goBack() {
     if (window.history.length > 1) router.back();

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { requireHouseholdMembership } from "@/lib/auth";
+import { requireHouseholdMutation } from "@/lib/auth";
 import { prepareBillUpload, sanitizeBillError } from "@/lib/bills";
 import { billUploadSchema } from "@/lib/validation";
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { supabase, user } = await requireHouseholdMembership(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const prepared = await prepareBillUpload(file);
     // The bucket policy authorizes by the first path segment; don't add user
     // identifiers or original filenames to this sensitive object key.

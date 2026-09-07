@@ -10,7 +10,7 @@ import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
 import { CurrencyAction } from "../expenses/expense-sharing-controls";
-import { MemberAvatar } from "../household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Field, Textarea } from "../ui/field";
@@ -18,7 +18,7 @@ import { MoneyInput } from "../ui/money-input";
 import { StatusNote } from "../ui/page";
 import { BillMetaControls, UtilityTypeIcon } from "./bill-meta-controls";
 
-type Member = { id: string; name: string };
+type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 type Absence = { memberId: string; startDate: string; endDate: string };
 type ExistingUtility = {
   expenseId: string;
@@ -461,6 +461,7 @@ export function BillConfirmation({
                 >
                   <MemberAvatar
                     name={member?.name ?? "Member"}
+                    color={member?.avatarColor}
                     className="size-9 border-0 shadow-none"
                   />
                   <span className="min-w-0 flex-1">

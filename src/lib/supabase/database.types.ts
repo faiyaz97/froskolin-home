@@ -946,6 +946,7 @@ export type Database = {
       create_household_with_owner: {
         Args: {
           p_access_code_digest: string;
+          p_avatar_color: string;
           p_default_currency: string;
           p_display_name: string;
           p_encrypted_join_pin: string;
@@ -1138,6 +1139,14 @@ export type Database = {
           p_variable_split_mode?: Database["public"]["Enums"]["variable_split_mode"];
         };
         Returns: undefined;
+      };
+      service_add_household_member_with_avatar: {
+        Args: {
+          p_display_name: string;
+          p_household_id: string;
+          p_user_id: string;
+        };
+        Returns: string;
       };
       service_create_recurring_occurrence: {
         Args: {

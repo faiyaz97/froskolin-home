@@ -24,8 +24,26 @@ const expenseAttachmentMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260905184500_add_expense_attachments.sql"),
   "utf8",
 ).toLowerCase();
+const avatarAssignmentMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260906205606_add_owner_avatar_assignment.sql"),
+  "utf8",
+).toLowerCase();
+const memberAvatarAssignmentMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260906211052_add_member_avatar_assignment_rpc.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
+  it("assigns joining members an unused avatar atomically through a service-only RPC", () => {
+    expect(memberAvatarAssignmentMigration).toContain("for update");
+    expect(memberAvatarAssignmentMigration).toContain("where not exists");
+    expect(memberAvatarAssignmentMigration).toContain("service role required");
+    expect(memberAvatarAssignmentMigration).toContain(
+      "grant execute on function public.service_add_household_member_with_avatar(uuid, uuid, text)",
+    );
+    expect(memberAvatarAssignmentMigration).toContain("to service_role");
+  });
+
   it("excludes voided utility expenses from away-date recalculation", () => {
     expect(financialActions).toContain("expenses!inner(voided_at)");
     expect(financialActions).toContain('.is("expenses.voided_at", null)');
@@ -85,6 +103,12 @@ describe("database security and automation contract", () => {
     );
     expect(migration).toContain("membership identity cannot be changed");
     expect(migration).toContain("with check ((select private.is_household_owner(household_id)))");
+  });
+
+  it("assigns an avatar inside atomic household creation and backfills existing members", () => {
+    expect(avatarAssignmentMigration).toContain("p_avatar_color text");
+    expect(avatarAssignmentMigration).toContain("role, avatar_color");
+    expect(avatarAssignmentMigration).toContain("avatar_color is null");
   });
 
   it("limits notification edits and safely parses private storage paths", () => {

@@ -8,7 +8,7 @@ export default async function AccountPage({
   params: Promise<{ householdId: string }>;
 }) {
   const { householdId } = await params;
-  const { supabase, membership } = await requireHouseholdMembership(householdId);
+  const { supabase, membership, user } = await requireHouseholdMembership(householdId);
   const [memberResult, householdResult] = await Promise.all([
     supabase
       .from("household_members")
@@ -27,6 +27,7 @@ export default async function AccountPage({
       houseCode={householdResult.data.house_code}
       initialName={memberResult.data.display_name}
       initialAvatarColor={(memberResult.data.avatar_color as AvatarColor | null) ?? null}
+      forcePinChange={user.app_metadata.must_change_pin === true}
     />
   );
 }

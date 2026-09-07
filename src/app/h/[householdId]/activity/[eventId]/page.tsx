@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { MemberAvatar } from "@/components/household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
 import { PageHeader, SectionTitle } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
@@ -25,17 +25,17 @@ export default async function AuditDetail({
     supabase.from("households").select("locale, timezone").eq("id", householdId).single(),
     supabase
       .from("household_members")
-      .select("user_id, display_name")
+      .select("user_id, display_name, avatar_color")
       .eq("household_id", householdId),
   ]);
   if (eventResult.error || homeResult.error || membersResult.error)
     throw eventResult.error ?? homeResult.error ?? membersResult.error;
   if (!eventResult.data) notFound();
   const event = eventResult.data;
-  const actor = event.actor_user_id
-    ? (membersResult.data?.find((member) => member.user_id === event.actor_user_id)?.display_name ??
-      "A roommate")
-    : "Froskolin";
+  const actorMember = event.actor_user_id
+    ? membersResult.data?.find((member) => member.user_id === event.actor_user_id)
+    : undefined;
+  const actor = event.actor_user_id ? (actorMember?.display_name ?? "A roommate") : "Froskolin";
   const previous = (event.previous_values ?? {}) as Record<string, unknown>;
   const next = (event.new_values ?? {}) as Record<string, unknown>;
   const fields = [...new Set([...Object.keys(previous), ...Object.keys(next)])].filter(
@@ -60,7 +60,7 @@ export default async function AuditDetail({
         )}
       />
       <div className="flex items-center gap-3 border-y border-[var(--line)] py-4">
-        <MemberAvatar name={actor} />
+        <MemberAvatar name={actor} color={actorMember?.avatar_color as AvatarColor | null} />
         <p className="text-sm">
           <strong>{actor}</strong>
           <span className="block text-[var(--muted)] capitalize">

@@ -2,13 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, Users } from "lucide-react";
-import { MemberAvatar } from "../household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Dialog } from "../ui/dialog";
 import { Input } from "../ui/field";
 import { MoneyInput } from "../ui/money-input";
 import { cn } from "../ui/cn";
 
-type Member = { id: string; name: string };
+type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 export type SplitMethod = "equal" | "exact" | "percentage";
 export type SplitValues = Record<string, string>;
 const methods = { equal: "Equally", exact: "By amounts", percentage: "By percentages" };
@@ -276,7 +276,11 @@ export function ExpenseSharingControls({
                 onClick={() => setDraftPayer(member.id)}
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar name={member.name} className="size-9 border-0 shadow-none" />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.avatarColor}
+                    className="size-9 border-0 shadow-none"
+                  />
                   <span className="font-semibold break-words">{member.name}</span>
                 </span>
               </ChoiceRow>
@@ -310,7 +314,11 @@ export function ExpenseSharingControls({
                 }
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar name={member.name} className="size-9 border-0 shadow-none" />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.avatarColor}
+                    className="size-9 border-0 shadow-none"
+                  />
                   <span className="font-semibold break-words">{member.name}</span>
                 </span>
               </ChoiceRow>
@@ -442,19 +450,15 @@ function SplitDialog({
             {draftMethod === "equal" ? `${equalShare} each` : total}
           </strong>
         </p>
-        {draftMethod !== "equal" && !valid && (
-          <p
-            role="status"
-            className="mt-1 border-t border-[var(--soft-line)] pt-2 text-right font-bold text-[var(--negative)]"
-          >
-            Shares must total {draftMethod === "exact" ? total : "100%"}.
-          </p>
-        )}
       </div>
       <div className="divide-y divide-[var(--soft-line)]">
         {members.map((member, index) => (
           <div key={member.id} className="flex min-h-[4.25rem] min-w-0 items-center gap-3 px-2">
-            <MemberAvatar name={member.name} className="size-10 border-0 shadow-none" />
+            <MemberAvatar
+              name={member.name}
+              color={member.avatarColor}
+              className="size-10 border-0 shadow-none"
+            />
             <span className="min-w-0 flex-1 text-sm font-semibold break-words">{member.name}</span>
             {draftMethod === "equal" ? (
               <span className="shrink-0 text-sm font-bold text-[var(--ink)] tabular-nums">
@@ -495,6 +499,11 @@ function SplitDialog({
           </div>
         ))}
       </div>
+      {draftMethod !== "equal" && !valid && (
+        <p role="status" className="mt-2 px-2 text-right text-xs font-bold text-[var(--negative)]">
+          Shares must total {draftMethod === "exact" ? total : "100%"}.
+        </p>
+      )}
     </Dialog>
   );
 }

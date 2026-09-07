@@ -1,25 +1,12 @@
+import Image from "next/image";
+
+import { avatarColors, avatars, resolveAvatarId, type AvatarColor } from "@/lib/avatar";
 import { cn } from "../ui/cn";
 
-export const avatarColors = {
-  teal: "#0f766e",
-  violet: "#7c3aed",
-  orange: "#ea580c",
-  blue: "#0369a1",
-  rose: "#be123c",
-  indigo: "#4f46e5",
-} as const;
-
-export type AvatarColor = keyof typeof avatarColors;
-
-const avatarColorValues = Object.values(avatarColors);
+export { avatarColors, avatars, type AvatarColor } from "@/lib/avatar";
 
 export function resolveAvatarColor(name: string, color?: AvatarColor | null) {
-  if (color) return avatarColors[color];
-  let hash = 0;
-  for (const character of name) {
-    hash = (hash * 31 + character.codePointAt(0)!) >>> 0;
-  }
-  return avatarColorValues[hash % avatarColorValues.length];
+  return avatarColors[resolveAvatarId(name, color)];
 }
 
 export function MemberAvatar({
@@ -31,24 +18,20 @@ export function MemberAvatar({
   color?: AvatarColor | null;
   className?: string;
 }) {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
+  const avatarId = resolveAvatarId(name, color);
+  const avatar = avatars[avatarId];
 
   return (
     <span
+      data-avatar={avatarId}
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-full border-2 border-white text-xs font-black text-white shadow-sm",
+        "relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white shadow-sm",
         className,
       )}
-      style={{ background: resolveAvatarColor(name, color) }}
+      style={{ background: avatar.background }}
       aria-hidden="true"
     >
-      {initials || "?"}
+      <Image src={avatar.image} alt="" fill sizes="96px" className="object-cover" />
     </span>
   );
 }

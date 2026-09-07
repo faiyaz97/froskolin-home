@@ -3,13 +3,13 @@
 import { Droplets, Flame, ReceiptText, Wifi, Zap } from "lucide-react";
 import { useState } from "react";
 
-import { MemberAvatar } from "../household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { cn } from "../ui/cn";
 import { DateInput } from "../ui/date-input";
 import { Dialog } from "../ui/dialog";
 import { ChoiceRow, InlineValue, participantSummary } from "../expenses/expense-sharing-controls";
 
-type Member = { id: string; name: string };
+type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 type UtilityType = "electricity" | "gas" | "water" | "internet" | "other";
 
 const utilityTypes = [
@@ -208,7 +208,11 @@ export function BillMetaControls({
                 onClick={() => setDraftPayer(member.id)}
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar name={member.name} className="size-9 border-0 shadow-none" />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.avatarColor}
+                    className="size-9 border-0 shadow-none"
+                  />
                   <span className="font-semibold">{member.name}</span>
                 </span>
               </ChoiceRow>
@@ -277,7 +281,11 @@ export function BillMetaControls({
                 }
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar name={member.name} className="size-9 border-0 shadow-none" />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.avatarColor}
+                    className="size-9 border-0 shadow-none"
+                  />
                   <span className="font-semibold">{member.name}</span>
                 </span>
               </ChoiceRow>

@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 
-import { MemberAvatar } from "@/components/household/member-avatar";
+import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader, SectionTitle } from "@/components/ui/page";
 import { simplifyDebts } from "@/lib/domain";
@@ -20,6 +20,7 @@ export default async function BalancesPage({
   ]);
   const locale = home?.locale ?? "en-GB";
   const names = new Map(members.map((member) => [member.id, member.display_name]));
+  const avatarColors = new Map(members.map((member) => [member.id, member.avatar_color]));
   const currencies = [...new Set(rows.map((row) => row.currency))].sort();
 
   return (
@@ -57,7 +58,10 @@ export default async function BalancesPage({
                     key={row.memberId}
                     className="flex items-center gap-3 border-b border-[var(--soft-line)] px-4 py-4 last:border-0"
                   >
-                    <MemberAvatar name={name} />
+                    <MemberAvatar
+                      name={name}
+                      color={avatarColors.get(row.memberId) as AvatarColor | null}
+                    />
                     <p className="flex-1 font-extrabold">{name}</p>
                     <p
                       className={`font-extrabold tabular-nums ${row.amountCents >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}

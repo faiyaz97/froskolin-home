@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireHouseholdMembership } from "@/lib/auth";
+import { requireHouseholdMutation } from "@/lib/auth";
 import { GeminiBillExtractor, prepareBillUpload, sanitizeBillError } from "@/lib/bills";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await requireHouseholdMembership(householdId);
+    await requireHouseholdMutation(householdId);
     const prepared = await prepareBillUpload(file);
     const extraction = await new GeminiBillExtractor().extract(prepared);
     return NextResponse.json({ extraction, pageCount: prepared.pageCount });

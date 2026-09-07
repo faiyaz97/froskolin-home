@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { requireHouseholdMembership } from "@/lib/auth";
+import { requireHouseholdMembership, requireHouseholdMutation } from "@/lib/auth";
 import { prepareBillUpload, sanitizeBillError } from "@/lib/bills";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -19,8 +19,10 @@ function cleanFileName(value: string) {
   );
 }
 
-async function authorizeExpense(householdId: string, expenseId: string) {
-  const auth = await requireHouseholdMembership(householdId);
+async function authorizeExpense(householdId: string, expenseId: string, mutation = false) {
+  const auth = mutation
+    ? await requireHouseholdMutation(householdId)
+    : await requireHouseholdMembership(householdId);
   const { data: expense, error } = await auth.supabase
     .from("expenses")
     .select("id, title, voided_at")
@@ -109,7 +111,7 @@ export async function POST(request: Request, { params }: Context) {
     if (file.size > 4 * 1024 * 1024) {
       return NextResponse.json({ error: "Attachments must be 4 MiB or smaller." }, { status: 400 });
     }
-    const { supabase, user, expense } = await authorizeExpense(householdId, expenseId);
+    const { supabase, user, expense } = await authorizeExpense(householdId, expenseId, true);
     const prepared = await prepareBillUpload(file);
     storagePath = `${householdId}/${randomUUID()}`;
     const { error: uploadError } = await supabase.storage
@@ -188,7 +190,7 @@ export async function DELETE(request: Request, { params }: Context) {
     const { expenseId } = await params;
     const body = (await request.json()) as { householdId?: string };
     const householdId = String(body.householdId ?? "");
-    const { supabase, user, expense } = await authorizeExpense(householdId, expenseId);
+    const { supabase, user, expense } = await authorizeExpense(householdId, expenseId, true);
     const { data: attachment, error } = await supabase
       .from("expense_attachments")
       .select("id, storage_path, detected_mime, byte_count")

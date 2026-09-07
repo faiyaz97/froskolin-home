@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireHouseholdMembership } from "@/lib/auth";
+import { requireHouseholdMutation } from "@/lib/auth";
 import { GeminiBillExtractor, prepareBillUpload, sanitizeBillError } from "@/lib/bills";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: Context) {
         { status: 400 },
       );
     }
-    const { supabase } = await requireHouseholdMembership(body.householdId);
+    const { supabase } = await requireHouseholdMutation(body.householdId);
     const { data: document, error } = await supabase
       .from("bill_documents")
       .select("id, household_id, storage_path, detected_mime, byte_count, status")

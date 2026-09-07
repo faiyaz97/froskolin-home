@@ -19,7 +19,7 @@ export async function getHouseholdMembers(householdId: string) {
   const { supabase } = await requireHouseholdMembership(householdId);
   const { data, error } = await supabase
     .from("household_members")
-    .select("id, user_id, display_name, role, joined_at, removed_at")
+    .select("id, user_id, display_name, role, joined_at, removed_at, avatar_color")
     .eq("household_id", householdId)
     .order("joined_at");
   if (error) throw error;

@@ -25,7 +25,15 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const expenseForm = page.locator("form[data-mobile-submit]");
-  if ((page.viewportSize()?.width ?? 0) < 768) {
+  await expect(async () => {
+    await page.getByRole("button", { name: "Currency", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Currency", exact: true })).toBeVisible();
+  }).toPass({ timeout: 15000 });
+  await page
+    .getByRole("dialog", { name: "Currency", exact: true })
+    .getByRole("button", { name: "Back", exact: true })
+    .click();
+  if (testInfo.project.use.viewport!.width < 768) {
     await page.getByRole("button", { name: "Save", exact: true }).click();
   } else {
     await expenseForm.getByRole("button", { name: "Add expense", exact: true }).click();
@@ -149,7 +157,7 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     await page.getByLabel("Amount", { exact: true }).fill("12.34");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page).toHaveURL(home);
-    await page.getByRole("link", { name: "Household settings", exact: true }).click();
+    await page.goto(`${home}/settings`);
     await expect(page.getByText(new RegExp(`^${frequency}$`, "i"))).toBeVisible();
     await page.getByRole("button", { name: "Generate due", exact: true }).click();
     await expect(page.getByText(/1 due recurring expense generated/)).toBeVisible();

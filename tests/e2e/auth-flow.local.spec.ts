@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.setTimeout(120_000);
+test.setTimeout(180_000);
 
 test("create, remembered login, access rotation, failed login, and join", async ({
   browser,
@@ -36,7 +36,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
     expect(Math.abs(navigationBox!.x + navigationBox!.width / 2 - 640)).toBeLessThan(2);
   }
 
-  await page.getByRole("link", { name: "Add expense" }).click();
+  await page.goto(`${homeUrl}/add/expense`);
   const expenseTypeNavigation = page.getByRole("navigation", { name: "Expense type" });
   if ((page.viewportSize()?.width ?? 0) < 768) {
     await expect(primaryNavigation).toBeHidden();
@@ -150,7 +150,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   );
   await expect(
     billForm.getByText("Choose the service start and end dates.", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   for (const name of ["Utility type", "Service period", "Paid by", "Split with"]) {
     await billForm.getByRole("button", { name, exact: true }).click();
     const selectionDialog = page.getByRole("dialog", { name, exact: true });
@@ -186,13 +186,53 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await page.goto(`${homeUrl}/account`);
   await expect(page).toHaveURL(`${homeUrl}/account`);
   await expect(page.getByRole("heading", { name: ownerName })).toBeVisible();
-  await page.getByRole("button", { name: "Violet avatar" }).click();
-  await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Personal settings saved.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Change personal PIN" })).toBeVisible();
+  await expect(page.getByText("Make your spot in the household feel like yours.")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit display name" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change avatar" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit display name" }).click();
+  await expect(page.getByRole("dialog", { name: "Display name" })).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "Display name" })
+    .getByRole("button", { name: "Back" })
+    .click();
+  await page.screenshot({ path: testInfo.outputPath("account-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath("account-mobile.png") });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole("button", { name: "Change avatar" }).click();
+  const avatarDialog = page.getByRole("dialog", { name: "Choose your avatar" });
+  const avatarButtons = avatarDialog.getByRole("button", { name: /avatar$/ });
+  await expect(avatarButtons).toHaveCount(6);
+  await expect(avatarButtons.locator("img")).toHaveCount(6);
+  const selectedAvatar = avatarDialog.getByRole("button", { name: /avatar$/, pressed: true });
+  await expect(selectedAvatar).toHaveCount(1);
+  const targetAvatar =
+    (await selectedAvatar.getAttribute("aria-label")) === "Siamese avatar"
+      ? { label: "Calico avatar", id: "orange" }
+      : { label: "Siamese avatar", id: "violet" };
+  await avatarDialog.getByRole("button", { name: targetAvatar.label }).click();
+  await avatarDialog.getByRole("button", { name: "Done" }).click();
+  await expect(avatarDialog).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("button", { name: "Change avatar" })
+      .locator(`[data-avatar="${targetAvatar.id}"]`),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Change personal PIN" }).click();
+  const pinDialog = page.getByRole("dialog", { name: "Change personal PIN" });
+  await expect(pinDialog).toBeVisible();
+  await pinDialog.getByLabel("Current or temporary PIN").fill("123456");
+  await pinDialog.getByLabel("New personal PIN").fill("234567");
+  await pinDialog.getByLabel("Confirm new PIN").fill("234567");
+  await pinDialog.getByRole("button", { name: "Done" }).click();
+  await expect(pinDialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Forget this device" })).toHaveCount(0);
+  await page.goto(`${homeUrl}/activity`);
+  await expect(page.locator(`[data-avatar="${targetAvatar.id}"]`).first()).toBeVisible();
 
   await page.goto(`${homeUrl}/settings`);
-  await expect(page.getByRole("link", { name: "Change personal PIN" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Change personal PIN" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
   await expect(page.locator("select")).toHaveCount(0);
   await page.getByRole("button", { name: "Default currency" }).click();
@@ -206,10 +246,11 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
   await expect(page.getByText(ownerName)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Forget this device" })).toHaveCount(0);
   await expect(page.getByLabel("House Code")).toHaveCount(0);
-  await page.getByLabel("Personal PIN").fill("123456");
+  await page.getByLabel("Personal PIN").fill("234567");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
 
   await page.goto(`${homeUrl}/settings`);
   const changedCode = `HOME-${suffix}`;
@@ -244,6 +285,48 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await secondPage.getByLabel("Personal PIN").fill("222222");
   await secondPage.getByRole("button", { name: "Join roommates" }).click();
   await expect(secondPage).toHaveURL(/\/h\/[0-9a-f-]+$/);
+  const secondHomeUrl = secondPage.url();
+  await secondPage.goto(`${secondHomeUrl}/account`);
+  await secondPage.getByRole("button", { name: "Change avatar" }).click();
+  await expect(
+    secondPage
+      .getByRole("dialog", { name: "Choose your avatar" })
+      .getByRole("button", { name: /avatar$/, pressed: true }),
+  ).not.toHaveAttribute("aria-label", targetAvatar.label);
+  await secondPage
+    .getByRole("dialog", { name: "Choose your avatar" })
+    .getByRole("button", { name: "Back" })
+    .click();
+
+  await page.goto(`${homeUrl}/settings`);
+  await page
+    .getByText(memberName, { exact: true })
+    .locator("..")
+    .locator("..")
+    .getByRole("button", { name: "Reset PIN" })
+    .click();
+  await expect(page.getByText("Temporary PIN — show it once", { exact: true })).toBeVisible();
+  const temporaryPinText = await page.locator("code").filter({ hasText: memberName }).textContent();
+  const temporaryPin = temporaryPinText?.match(/(\d{4}|\d{6})$/)?.[1];
+  expect(temporaryPin).toBeTruthy();
+  await secondPage.goto("/login");
+  await secondPage.getByLabel("House Code").fill(changedCode);
+  await secondPage.getByLabel("Member name").fill(memberName);
+  await secondPage.getByLabel("Personal PIN").fill(temporaryPin!);
+  await secondPage.getByRole("button", { name: "Sign in" }).click();
+  await expect(secondPage).toHaveURL(`${secondHomeUrl}/account`, { timeout: 15_000 });
+  await expect(secondPage.getByRole("dialog", { name: "Set a new PIN" })).toBeVisible();
+  const blockedUpload = await secondPage.request.post("/api/bills/upload", {
+    multipart: {
+      householdId: new URL(secondHomeUrl).pathname.split("/")[2],
+      file: {
+        name: "blocked.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("blocked while PIN change is required"),
+      },
+    },
+  });
+  expect(blockedUpload.status()).toBe(400);
 
   await page.goto(`${homeUrl}/calendar`);
   const monthPrefix = new Date().toISOString().slice(0, 7);

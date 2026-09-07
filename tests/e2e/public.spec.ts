@@ -102,7 +102,7 @@ test("authentication forms fit inside the viewport without page scrolling", asyn
   ]) {
     await page.setViewportSize(viewport);
 
-    for (const path of ["/?mode=create", "/?mode=join", "/login", "/change-pin"]) {
+    for (const path of ["/?mode=create", "/?mode=join", "/login"]) {
       await page.goto(path);
       const dimensions = await page.evaluate(() => ({
         viewportHeight: window.innerHeight,

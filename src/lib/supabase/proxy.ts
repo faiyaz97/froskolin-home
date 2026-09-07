@@ -28,12 +28,11 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     const mustChangePin = user?.app_metadata?.must_change_pin === true;
-    if (
-      mustChangePin &&
-      request.nextUrl.pathname.startsWith("/h/") &&
-      !request.nextUrl.pathname.startsWith("/change-pin")
-    ) {
-      const redirect = NextResponse.redirect(new URL("/change-pin", request.url));
+    if (mustChangePin && request.nextUrl.pathname.startsWith("/h/")) {
+      const householdId = request.nextUrl.pathname.split("/")[2];
+      const accountPath = `/h/${householdId}/account`;
+      if (request.nextUrl.pathname === accountPath) return response;
+      const redirect = NextResponse.redirect(new URL(accountPath, request.url));
       response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
       return redirect;
     }

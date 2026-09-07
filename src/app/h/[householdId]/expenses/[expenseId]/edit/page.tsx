@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { BillConfirmation } from "@/components/bills/bill-confirmation";
 import { ExpenseForm } from "@/components/expenses/expense-form";
+import type { AvatarColor } from "@/components/household/member-avatar";
 import { PageHeader, StatusNote } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { billEntryModeSchema, normalSplitConfigSchema, utilityTypeSchema } from "@/lib/validation";
@@ -36,7 +37,11 @@ export default async function EditExpensePage({
     const participantIds = new Set(shares.map((share) => share.member_id));
     const members = memberRows
       .filter((member) => !member.removed_at || participantIds.has(member.id))
-      .map((member) => ({ id: member.id, name: member.display_name }));
+      .map((member) => ({
+        id: member.id,
+        name: member.display_name,
+        avatarColor: member.avatar_color as AvatarColor | null,
+      }));
     const { data: absenceRows, error } = await supabase
       .from("absence_periods")
       .select("member_id, start_date, end_date")
@@ -99,7 +104,11 @@ export default async function EditExpensePage({
   );
   const members = memberRows
     .filter((member) => !member.removed_at || participantIds.has(member.id))
-    .map((member) => ({ id: member.id, name: member.display_name }));
+    .map((member) => ({
+      id: member.id,
+      name: member.display_name,
+      avatarColor: member.avatar_color as AvatarColor | null,
+    }));
   const { data: attachment, error: attachmentError } = await supabase
     .from("expense_attachments")
     .select("original_file_name")

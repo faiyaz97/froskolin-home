@@ -49,12 +49,3 @@ export function updateRememberedHouseCode(houseCode: string, memberName: string)
 export function updateRememberedMemberName(houseCode: string, memberName: string): void {
   rememberDevice({ houseCode, memberName });
 }
-
-export function forgetRememberedDevice(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // There is nothing else to forget when storage is unavailable.
-  }
-}
