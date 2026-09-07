@@ -7,7 +7,6 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import { changePinAction, signOutAction, updatePersonalSettingsAction } from "@/lib/actions";
 import { avatars, resolveAvatarId } from "@/lib/avatar";
 import { updateRememberedMemberName } from "@/lib/device-memory";
-import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
 import { StatusNote } from "../ui/page";

@@ -231,7 +231,7 @@ export default async function ExpenseDetail({
           )}
           {!expense.voided_at && (
             <ButtonLink href={`/h/${householdId}/expenses/${expenseId}/edit`} tone="secondary">
-              <Pencil className="size-4" /> Edit expense
+              <Pencil className="size-4" /> {utility ? "Edit bill" : "Edit expense"}
             </ButtonLink>
           )}
         </div>

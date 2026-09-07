@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { extractedBillSchema, type ExtractedBill } from "@/lib/validation";
 import type { AvatarColor } from "../household/member-avatar";
 import { StatusNote } from "../ui/page";
-import { BillConfirmation } from "./bill-confirmation";
+import { BillConfirmation, type ExistingUtility } from "./bill-confirmation";
 import { BillUpload, type PreparedBillDraft } from "./bill-upload";
 
 type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
@@ -19,6 +19,9 @@ export function BillWorkspace({
   absences,
   currentMemberId,
   landlordEnabled,
+  documentId,
+  existing,
+  cancelHref,
 }: {
   householdId: string;
   defaultCurrency: string;
@@ -27,26 +30,40 @@ export function BillWorkspace({
   absences: Absence[];
   currentMemberId: string;
   landlordEnabled: boolean;
+  documentId?: string;
+  existing?: ExistingUtility;
+  cancelHref?: string;
 }) {
   const [selectedFile, setSelectedFile] = useState<File>();
-  const [pageCount, setPageCount] = useState<number>();
   const [extraction, setExtraction] = useState<ExtractedBill>();
   const [extractionRevision, setExtractionRevision] = useState(0);
   const [autofillPending, setAutofillPending] = useState(false);
   const [autofillError, setAutofillError] = useState("");
-  const [entryMode, setEntryMode] = useState<"manual" | "ai">("manual");
+  const [documentRemoved, setDocumentRemoved] = useState(false);
+  const [entryMode, setEntryMode] = useState<"manual" | "ai">(existing?.entryMode ?? "manual");
   const uploadedDocument = useRef<{ documentId: string; pageCount?: number } | undefined>(
     undefined,
   );
 
   function prepareDraft(draft: PreparedBillDraft) {
     setSelectedFile(draft.file);
-    setPageCount(undefined);
+    setDocumentRemoved(false);
     setExtraction(undefined);
     setAutofillError("");
     setEntryMode("manual");
     uploadedDocument.current = undefined;
-    setExtractionRevision((revision) => revision + 1);
+  }
+
+  function removeDocument() {
+    setSelectedFile(undefined);
+    setDocumentRemoved(true);
+    setAutofillError("");
+    setEntryMode(existing?.entryMode ?? "manual");
+    uploadedDocument.current = undefined;
+    if (extraction) {
+      setExtraction(undefined);
+      setExtractionRevision((revision) => revision + 1);
+    }
   }
 
   async function autofill() {
@@ -67,7 +84,6 @@ export function BillWorkspace({
       if (!response.ok) throw new Error(result.error ?? "AI could not read this bill.");
       const parsed = extractedBillSchema.safeParse(result.extraction);
       if (!parsed.success) throw new Error("AI returned incomplete bill data.");
-      setPageCount(result.pageCount);
       setExtraction(parsed.data);
       setExtractionRevision((revision) => revision + 1);
     } catch (cause) {
@@ -109,6 +125,14 @@ export function BillWorkspace({
         onAutofill={selectedFile ? autofill : undefined}
         autofillPending={autofillPending}
         mode={entryMode}
+        initialFileName={documentId && !documentRemoved ? "Current bill document" : undefined}
+        initialViewUrl={
+          documentId && !documentRemoved
+            ? `/api/bills/${documentId}/view?householdId=${householdId}`
+            : undefined
+        }
+        onRemove={removeDocument}
+        onError={setAutofillError}
       />
       {autofillError && (
         <StatusNote tone="error" title={autofillError}>
@@ -118,16 +142,18 @@ export function BillWorkspace({
       <BillConfirmation
         key={extractionRevision}
         householdId={householdId}
+        documentId={selectedFile || documentRemoved ? undefined : documentId}
         defaultCurrency={defaultCurrency}
         locale={locale}
         initial={extraction}
-        pageCount={pageCount}
+        existing={existing}
         uploadDocumentOnConfirm={selectedFile ? uploadDocumentOnConfirm : undefined}
         members={members}
         absences={absences}
         currentMemberId={currentMemberId}
         landlordEnabled={landlordEnabled}
         onEntryModeChange={setEntryMode}
+        cancelHref={cancelHref}
       />
     </div>
   );

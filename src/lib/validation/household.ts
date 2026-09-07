@@ -85,8 +85,6 @@ export const updateHouseholdSchema = z.object({
   householdId: uuidSchema,
   name: nonEmptyTextSchema.max(80),
   defaultCurrency: currencySchema,
-  locale: localeSchema,
-  timezone: timezoneSchema,
   joiningEnabled: z.boolean(),
   landlordEnabled: z.boolean(),
 });

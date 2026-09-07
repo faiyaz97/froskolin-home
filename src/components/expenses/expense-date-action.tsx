@@ -47,6 +47,7 @@ export function ExpenseDateAction({
   recurringEnd,
   onRecurringEndChange,
   allowRecurrence,
+  recurrenceRequired = false,
   disabled,
 }: {
   value: string;
@@ -58,6 +59,7 @@ export function ExpenseDateAction({
   recurringEnd: string;
   onRecurringEndChange: (value: string) => void;
   allowRecurrence: boolean;
+  recurrenceRequired?: boolean;
   disabled?: boolean;
 }) {
   const today = new Date();
@@ -340,8 +342,16 @@ export function ExpenseDateAction({
           {allowRecurrence && (
             <div className="mt-3 border-t border-[var(--soft-line)] pt-3">
               <p className="mb-2 px-1 text-xs font-semibold text-[var(--muted)]">Repeat</p>
-              <div className="grid grid-cols-4 gap-1 rounded-xl bg-[var(--canvas)] p-1">
-                {(["none", "weekly", "monthly", "yearly"] as const).map((option) => (
+              <div
+                className={cn(
+                  "grid gap-1 rounded-xl bg-[var(--canvas)] p-1",
+                  recurrenceRequired ? "grid-cols-3" : "grid-cols-4",
+                )}
+              >
+                {(recurrenceRequired
+                  ? (["weekly", "monthly", "yearly"] as const)
+                  : (["none", "weekly", "monthly", "yearly"] as const)
+                ).map((option) => (
                   <button
                     key={option}
                     type="button"

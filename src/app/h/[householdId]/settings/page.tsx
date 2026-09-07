@@ -1,5 +1,4 @@
 import { SettingsPanel } from "@/components/household/settings-panel";
-import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { getHouseholdJoinPinAction } from "@/lib/actions";
 
@@ -13,9 +12,7 @@ export default async function SettingsPage({
   const [homeResult, membersResult, rulesResult] = await Promise.all([
     supabase
       .from("households")
-      .select(
-        "name, default_currency, locale, timezone, house_code, joining_enabled, landlord_enabled",
-      )
+      .select("name, default_currency, locale, house_code, joining_enabled, landlord_enabled")
       .eq("id", householdId)
       .single(),
     supabase
@@ -35,40 +32,36 @@ export default async function SettingsPage({
   const joinPinResult =
     membership.role === "owner" ? await getHouseholdJoinPinAction(householdId) : null;
   return (
-    <>
-      <PageHeader title="Household settings" />
-      <SettingsPanel
-        householdId={householdId}
-        home={{
-          name: homeResult.data.name,
-          defaultCurrency: homeResult.data.default_currency,
-          locale: homeResult.data.locale,
-          timezone: homeResult.data.timezone,
-          houseCode: homeResult.data.house_code,
-          joinPin: joinPinResult?.ok ? joinPinResult.data.joinPin : null,
-          joiningEnabled: homeResult.data.joining_enabled,
-          landlordEnabled: homeResult.data.landlord_enabled,
-        }}
-        currentUserId={user.id}
-        isOwner={membership.role === "owner"}
-        members={(membersResult.data ?? []).map((member) => ({
-          id: member.id,
-          userId: member.user_id,
-          name: member.display_name,
-          role: member.role,
-          removed: Boolean(member.removed_at),
-          avatarColor: member.avatar_color,
-        }))}
-        rules={(rulesResult.data ?? []).map((rule) => ({
-          id: rule.id,
-          title: rule.title,
-          amountCents: Number(rule.amount_cents),
-          currency: rule.currency,
-          nextDueDate: rule.next_due_date,
-          frequency: rule.frequency,
-          active: rule.active,
-        }))}
-      />
-    </>
+    <SettingsPanel
+      householdId={householdId}
+      home={{
+        name: homeResult.data.name,
+        defaultCurrency: homeResult.data.default_currency,
+        formatLocale: homeResult.data.locale,
+        houseCode: homeResult.data.house_code,
+        joinPin: joinPinResult?.ok ? joinPinResult.data.joinPin : null,
+        joiningEnabled: homeResult.data.joining_enabled,
+        landlordEnabled: homeResult.data.landlord_enabled,
+      }}
+      currentUserId={user.id}
+      isOwner={membership.role === "owner"}
+      members={(membersResult.data ?? []).map((member) => ({
+        id: member.id,
+        userId: member.user_id,
+        name: member.display_name,
+        role: member.role,
+        removed: Boolean(member.removed_at),
+        avatarColor: member.avatar_color,
+      }))}
+      rules={(rulesResult.data ?? []).map((rule) => ({
+        id: rule.id,
+        title: rule.title,
+        amountCents: Number(rule.amount_cents),
+        currency: rule.currency,
+        nextDueDate: rule.next_due_date,
+        frequency: rule.frequency,
+        active: rule.active,
+      }))}
+    />
   );
 }

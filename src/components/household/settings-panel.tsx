@@ -2,18 +2,19 @@
 
 import {
   Archive,
+  Banknote,
+  Building2,
+  ChevronRight,
   KeyRound,
   Pause,
   Pencil,
   Play,
   RefreshCcw,
-  Save,
-  ShieldCheck,
-  X,
   UserMinus,
+  UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition } from "react";
 
 import {
   archiveRecurringExpenseRuleAction,
@@ -27,18 +28,20 @@ import {
 import { updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
 import { Button, ButtonLink } from "../ui/button";
-import { choiceInputClass, Field, Input } from "../ui/field";
-import { SectionTitle, StatusNote } from "../ui/page";
-import { SelectInput } from "../ui/select-input";
+import { cn } from "../ui/cn";
+import { Dialog } from "../ui/dialog";
+import { Field, Input } from "../ui/field";
+import { StatusNote } from "../ui/page";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
+
+type Currency = "EUR" | "GBP" | "USD";
 
 type Props = {
   householdId: string;
   home: {
     name: string;
     defaultCurrency: string;
-    locale: string;
-    timezone: string;
+    formatLocale: string;
     houseCode: string;
     joinPin: string | null;
     joiningEnabled: boolean;
@@ -65,6 +68,8 @@ type Props = {
   }>;
 };
 
+const currencies: Currency[] = ["EUR", "GBP", "USD"];
+
 export function SettingsPanel({
   householdId,
   home,
@@ -76,181 +81,276 @@ export function SettingsPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const [name, setName] = useState(home.name);
+  const [defaultCurrency, setDefaultCurrency] = useState(home.defaultCurrency as Currency);
+  const [joiningEnabled, setJoiningEnabled] = useState(home.joiningEnabled);
+  const [landlordEnabled, setLandlordEnabled] = useState(home.landlordEnabled);
   const [houseCode, setHouseCode] = useState(home.houseCode);
   const [joinPin, setJoinPin] = useState(home.joinPin ?? "");
-  const [editingAccess, setEditingAccess] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+  const [draftName, setDraftName] = useState(name);
+  const [draftHouseCode, setDraftHouseCode] = useState(houseCode);
+  const [draftJoinPin, setDraftJoinPin] = useState(joinPin);
+  const [draftCurrency, setDraftCurrency] = useState(defaultCurrency);
   const [temporaryPin, setTemporaryPin] = useState("");
   const currentMemberName = members.find((member) => member.userId === currentUserId)?.name ?? "";
+  const activeMembers = members.filter((member) => !member.removed);
+  const messageIsSuccess = [
+    "saved.",
+    "generated.",
+    "up to date.",
+    "paused.",
+    "resumed.",
+    "archived.",
+    "removed.",
+    "changed.",
+  ].some((ending) => message.endsWith(ending));
 
-  function saveAccess(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    startTransition(async () => {
-      const result = await updateHouseholdAccessAction({
-        householdId,
-        houseCode: String(data.get("houseCode") ?? ""),
-        joinPin: String(data.get("joinPin") ?? ""),
-      });
-      if (result.ok) {
-        setHouseCode(result.data.houseCode);
-        setJoinPin(result.data.joinPin);
-        setEditingAccess(false);
-        updateRememberedHouseCode(result.data.houseCode, currentMemberName);
-        setMessage("Household access saved.");
-        router.refresh();
-      } else {
-        setMessage(result.error);
-      }
-    });
-  }
-
-  function saveHome(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
+  function saveGroup(
+    next: Partial<{
+      name: string;
+      defaultCurrency: Currency;
+      joiningEnabled: boolean;
+      landlordEnabled: boolean;
+    }>,
+    onSuccess?: () => void,
+  ) {
+    setMessage("");
     startTransition(async () => {
       const result = await updateHouseholdAction({
         householdId,
-        name: String(data.get("name") ?? ""),
-        defaultCurrency: String(data.get("defaultCurrency") ?? "EUR"),
-        locale: String(data.get("locale") ?? "en-GB"),
-        timezone: String(data.get("timezone") ?? "UTC"),
-        joiningEnabled: data.get("joiningEnabled") === "on",
-        landlordEnabled: data.get("landlordEnabled") === "on",
+        name: next.name ?? name,
+        defaultCurrency: next.defaultCurrency ?? defaultCurrency,
+        joiningEnabled: next.joiningEnabled ?? joiningEnabled,
+        landlordEnabled: next.landlordEnabled ?? landlordEnabled,
       });
-      setMessage(result.ok ? "Household settings saved." : result.error);
-      if (result.ok) router.refresh();
+      if (!result.ok) {
+        setMessage(result.error);
+        return;
+      }
+      if (next.name !== undefined) setName(next.name);
+      if (next.defaultCurrency !== undefined) setDefaultCurrency(next.defaultCurrency);
+      if (next.joiningEnabled !== undefined) setJoiningEnabled(next.joiningEnabled);
+      if (next.landlordEnabled !== undefined) setLandlordEnabled(next.landlordEnabled);
+      setMessage("Group settings saved.");
+      onSuccess?.();
+      router.refresh();
+    });
+  }
+
+  function saveAccess() {
+    setMessage("");
+    startTransition(async () => {
+      const result = await updateHouseholdAccessAction({
+        householdId,
+        houseCode: draftHouseCode,
+        joinPin: draftJoinPin,
+      });
+      if (!result.ok) {
+        setMessage(result.error);
+        return;
+      }
+      setHouseCode(result.data.houseCode);
+      setJoinPin(result.data.joinPin);
+      updateRememberedHouseCode(result.data.houseCode, currentMemberName);
+      setAccessDialogOpen(false);
+      setMessage("Group access saved.");
+      router.refresh();
     });
   }
 
   return (
-    <div className={isOwner ? "grid gap-10 lg:grid-cols-[1fr_19rem]" : undefined}>
-      <div className="space-y-10">
-        {message && (
-          <StatusNote
-            tone={
-              message.endsWith("saved.") ||
-              message.endsWith("changed.") ||
-              message.endsWith("generated.") ||
-              message.endsWith("up to date.")
-                ? "success"
-                : "error"
-            }
-            title={message}
-          >
-            The audit trail records owner changes.
-          </StatusNote>
-        )}
-        <section>
-          <SectionTitle>Home details</SectionTitle>
-          <form
-            className="grid gap-4 rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-5"
-            onSubmit={saveHome}
-          >
-            <Field label="Household name">
-              <Input name="name" defaultValue={home.name} disabled={!isOwner || pending} />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Default currency">
-                <SelectInput
-                  name="defaultCurrency"
-                  defaultValue={home.defaultCurrency}
-                  ariaLabel="Default currency"
-                  disabled={!isOwner || pending}
-                  options={[
-                    { value: "EUR", label: "EUR" },
-                    { value: "GBP", label: "GBP" },
-                    { value: "USD", label: "USD" },
-                  ]}
-                />
-              </Field>
-              <Field label="Timezone">
-                <Input
-                  name="timezone"
-                  defaultValue={home.timezone}
-                  disabled={!isOwner || pending}
-                />
-              </Field>
+    <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-28">
+      <header className="relative -mx-3 -mt-3 overflow-hidden rounded-b-[28px] bg-[linear-gradient(135deg,var(--pastel-sky),var(--pastel-mint))] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 shadow-[var(--shadow-sm)] md:mx-0 md:mt-0 md:rounded-[28px] md:p-7">
+        <div className="flex items-center gap-4">
+          <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white/75 text-[var(--brand)] shadow-[var(--shadow-sm)] sm:size-20">
+            <UsersRound className="size-8 sm:size-9" strokeWidth={2.2} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-black tracking-[0.14em] text-[var(--brand-strong)] uppercase">
+              Your group
+            </p>
+            <div className="mt-1 flex min-w-0 items-center gap-1.5">
+              <h1 className="truncate text-2xl font-black tracking-[-0.04em] sm:text-3xl">
+                {name}
+              </h1>
+              {isOwner && (
+                <button
+                  type="button"
+                  aria-label="Edit group name"
+                  className="grid size-7 shrink-0 place-items-center rounded-full text-[var(--brand)] transition hover:text-[var(--brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                  disabled={pending}
+                  onClick={() => {
+                    setDraftName(name);
+                    setMessage("");
+                    setNameDialogOpen(true);
+                  }}
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
             </div>
-            <Field label="Locale">
-              <Input name="locale" defaultValue={home.locale} disabled={!isOwner || pending} />
-            </Field>
-            <label className="flex items-center gap-3 text-sm font-bold">
-              <input
-                name="joiningEnabled"
-                type="checkbox"
-                defaultChecked={home.joiningEnabled}
-                disabled={!isOwner || pending}
-                className={choiceInputClass}
-              />{" "}
-              Allow new roommates to join
-            </label>
-            <label className="flex items-center gap-3 text-sm font-bold">
-              <input
-                name="landlordEnabled"
-                type="checkbox"
-                defaultChecked={home.landlordEnabled}
-                disabled={!isOwner || pending}
-                className={choiceInputClass}
-              />
-              Enable landlord
-            </label>
+          </div>
+        </div>
+
+        <div className="mt-5 grid w-full grid-cols-2 rounded-2xl bg-white/65 text-left">
+          <span className="min-w-0 px-4 py-3.5">
+            <span className="block text-[10px] font-black tracking-[0.12em] text-[var(--muted)] uppercase">
+              Group code
+            </span>
+            <span className="mt-0.5 block cursor-text truncate text-sm font-black tracking-[0.06em] select-text">
+              {houseCode}
+            </span>
+          </span>
+          <span className="relative min-w-0 px-4 py-3.5 before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-[var(--line)]">
+            <span className="flex items-center justify-between gap-2">
+              <span>
+                <span className="block text-[10px] font-black tracking-[0.12em] text-[var(--muted)] uppercase">
+                  Group PIN
+                </span>
+                <span className="mt-0.5 block cursor-text text-sm font-black tracking-[0.2em] select-text">
+                  {isOwner ? joinPin || "Not set" : "••••••"}
+                </span>
+              </span>
+              {isOwner && (
+                <button
+                  type="button"
+                  aria-label="Edit group access"
+                  disabled={pending}
+                  onClick={() => {
+                    setDraftHouseCode(houseCode);
+                    setDraftJoinPin(joinPin);
+                    setMessage("");
+                    setAccessDialogOpen(true);
+                  }}
+                  className="grid size-10 shrink-0 place-items-center rounded-xl text-[var(--brand)] transition-colors hover:bg-white/80 hover:text-[var(--brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-40"
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
+            </span>
+          </span>
+        </div>
+      </header>
+
+      {message && <StatusNote tone={messageIsSuccess ? "success" : "error"} title={message} />}
+
+      <section aria-labelledby="group-preferences-title">
+        <h2
+          id="group-preferences-title"
+          className="mb-2 px-1 text-xs font-black tracking-[0.12em] text-[var(--muted)] uppercase"
+        >
+          Group preferences
+        </h2>
+        <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
+          <button
+            type="button"
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            disabled={!isOwner || pending}
+            onClick={() => {
+              setDraftCurrency(defaultCurrency);
+              setMessage("");
+              setCurrencyDialogOpen(true);
+            }}
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+              <Banknote className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">Default currency</span>
+            <span className="text-[var(--muted)]">{defaultCurrency}</span>
             {isOwner && (
-              <Button type="submit" className="justify-self-end" disabled={pending}>
-                Save details
-              </Button>
+              <ChevronRight
+                className="size-5 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
             )}
-          </form>
-        </section>
-        <section>
-          <SectionTitle aside={`${members.filter((member) => !member.removed).length} active`}>
-            Roommates
-          </SectionTitle>
-          <div className="overflow-hidden border-y border-[var(--line)] bg-white sm:rounded-2xl sm:border">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 border-b border-[var(--soft-line)] px-4 py-4 last:border-0"
-              >
+          </button>
+          <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={joiningEnabled}
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            disabled={!isOwner || pending}
+            onClick={() => saveGroup({ joiningEnabled: !joiningEnabled })}
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--sky-soft)] text-[var(--sky)]">
+              <UsersRound className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">Allow people to join</span>
+            <Switch checked={joiningEnabled} />
+          </button>
+          <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={landlordEnabled}
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            disabled={!isOwner || pending}
+            onClick={() => saveGroup({ landlordEnabled: !landlordEnabled })}
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]">
+              <Building2 className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">Landlord mode</span>
+            <Switch checked={landlordEnabled} />
+          </button>
+        </div>
+      </section>
+
+      <section aria-labelledby="group-members-title">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <h2
+            id="group-members-title"
+            className="text-xs font-black tracking-[0.12em] text-[var(--muted)] uppercase"
+          >
+            Members
+          </h2>
+          <span className="text-xs font-bold text-[var(--muted)]">
+            {activeMembers.length} active
+          </span>
+        </div>
+        <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
+          {members.map((member, index) => (
+            <div key={member.id}>
+              {index > 0 && <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />}
+              <div className="flex min-h-16 items-center gap-3 px-4 py-2.5">
                 <MemberAvatar name={member.name} color={member.avatarColor} />
-                <p className="flex-1 text-sm">
-                  <strong>{member.name}</strong>
-                  <span className="block text-[var(--muted)] capitalize">
+                <p className="min-w-0 flex-1 text-sm">
+                  <strong className="block truncate">{member.name}</strong>
+                  <span className="text-xs text-[var(--muted)] capitalize">
                     {member.removed ? "Removed" : member.role}
                     {member.userId === currentUserId ? " · you" : ""}
                   </span>
                 </p>
                 {isOwner && !member.removed && member.userId !== currentUserId && (
-                  <>
-                    <Button
+                  <div className="flex items-center gap-1">
+                    <button
                       type="button"
-                      tone="quiet"
-                      className="px-3"
+                      className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition hover:bg-[var(--pastel-mint)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                      aria-label={`Reset PIN for ${member.name}`}
                       disabled={pending}
                       onClick={() =>
                         startTransition(async () => {
                           const result = await resetMemberPinAction(householdId, member.id);
                           if (result.ok) {
                             setTemporaryPin(`${member.name}: ${result.data.temporaryPin}`);
-                            if (result.message) setMessage(result.message);
+                            setMessage(result.message ?? "");
                           } else setMessage(result.error);
                         })
                       }
                     >
-                      <KeyRound className="size-4" /> Reset PIN
-                    </Button>
-                    <Button
+                      <KeyRound className="size-4" aria-hidden="true" />
+                    </button>
+                    <button
                       type="button"
-                      tone="quiet"
-                      className="px-3 text-[var(--negative)]"
+                      className="grid size-10 place-items-center rounded-xl text-[var(--negative)] transition hover:bg-[var(--negative-soft)] focus-visible:ring-2 focus-visible:ring-[var(--negative)] focus-visible:outline-none"
                       aria-label={`Remove ${member.name}`}
                       disabled={pending}
                       onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Remove ${member.name}? Their balances must be zero in every currency.`,
-                          )
-                        )
-                          return;
+                        if (!window.confirm(`Remove ${member.name}?`)) return;
                         startTransition(async () => {
                           const result = await removeMemberAction({
                             householdId,
@@ -261,202 +361,247 @@ export function SettingsPanel({
                         });
                       }}
                     >
-                      <UserMinus className="size-4" />
-                    </Button>
-                  </>
+                      <UserMinus className="size-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 )}
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+        {temporaryPin && (
+          <div className="mt-3 rounded-2xl bg-[var(--pastel-peach)] px-4 py-3 text-sm font-bold text-[var(--ink)]">
+            Temporary PIN · <code className="font-black tracking-wider">{temporaryPin}</code>
           </div>
-          {temporaryPin && (
-            <StatusNote tone="warning" title="Temporary PIN — show it once">
-              <code className="font-extrabold tracking-wider">{temporaryPin}</code>. The roommate
-              must replace it after signing in.
-            </StatusNote>
-          )}
-          <StatusNote title="Removing a roommate is intentionally careful">
-            They must have a zero balance in every currency and be removed from active recurring
-            rules first. Their historical records remain.
-          </StatusNote>
-        </section>
-        <section>
-          <SectionTitle
-            aside={
-              <Button
-                type="button"
-                tone="quiet"
-                disabled={pending}
-                onClick={() =>
-                  startTransition(async () => {
-                    const result = await generateDueRecurringExpensesAction(householdId);
-                    setMessage(
-                      result.ok
-                        ? result.data === 0
-                          ? "Recurring expenses are up to date."
-                          : `${result.data} due recurring expense${result.data === 1 ? "" : "s"} generated.`
-                        : result.error,
-                    );
-                    if (result.ok) router.refresh();
-                  })
-                }
-              >
-                <RefreshCcw className="size-4" /> Generate due
-              </Button>
-            }
+        )}
+      </section>
+
+      <section aria-labelledby="recurring-title">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <h2
+            id="recurring-title"
+            className="text-xs font-black tracking-[0.12em] text-[var(--muted)] uppercase"
           >
             Recurring expenses
-          </SectionTitle>
-          <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--paper)]">
-            {!rules.length && (
-              <p className="p-5 text-sm text-[var(--muted)]">No recurring rules yet.</p>
-            )}
-            {rules.map((rule) => (
-              <div
-                key={rule.id}
-                className="flex flex-wrap items-center gap-3 border-b border-[var(--soft-line)] p-4 last:border-0"
-              >
-                <span className="grid size-10 place-items-center rounded-xl bg-[var(--brand-soft)]">
-                  <RefreshCcw className="size-5 text-[var(--brand)]" />
+          </h2>
+          <Button
+            type="button"
+            tone="quiet"
+            className="min-h-9 px-2.5 py-1.5"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const result = await generateDueRecurringExpensesAction(householdId);
+                setMessage(
+                  result.ok
+                    ? result.data === 0
+                      ? "Recurring expenses are up to date."
+                      : `${result.data} due recurring expense${result.data === 1 ? "" : "s"} generated.`
+                    : result.error,
+                );
+                if (result.ok) router.refresh();
+              })
+            }
+          >
+            <RefreshCcw className="size-4" aria-hidden="true" /> Generate due
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
+          {!rules.length && (
+            <p className="px-4 py-5 text-sm font-semibold text-[var(--muted)]">
+              No recurring expenses
+            </p>
+          )}
+          {rules.map((rule, index) => (
+            <div key={rule.id}>
+              {index > 0 && <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />}
+              <div className="flex flex-wrap items-center gap-3 p-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--violet-soft)] text-[var(--violet)]">
+                  <RefreshCcw className="size-5" aria-hidden="true" />
                 </span>
-                <p className="min-w-48 flex-1 text-sm">
-                  <strong>
-                    {rule.title} · {formatMoney(rule.amountCents, rule.currency, home.locale)}
+                <p className="min-w-40 flex-1 text-sm">
+                  <strong className="block truncate">
+                    {rule.title} · {formatMoney(rule.amountCents, rule.currency, home.formatLocale)}
                   </strong>
-                  <span className="block text-[var(--muted)]">
-                    <span className="capitalize">{rule.frequency}</span> ·{" "}
-                    {rule.active ? `Next ${rule.nextDueDate}` : "Paused"}
+                  <span className="text-xs text-[var(--muted)] capitalize">
+                    {rule.frequency} · {rule.active ? rule.nextDueDate : "Paused"}
                   </span>
                 </p>
-                <Button
-                  type="button"
-                  tone="quiet"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(async () => {
-                      const result = await setRecurringExpenseRuleActiveAction({
-                        householdId,
-                        ruleId: rule.id,
-                        active: !rule.active,
-                      });
-                      setMessage(
-                        result.ok
-                          ? `${rule.title} ${rule.active ? "paused" : "resumed"}.`
-                          : result.error,
-                      );
-                      if (result.ok) router.refresh();
-                    })
-                  }
-                >
-                  {rule.active ? <Pause className="size-4" /> : <Play className="size-4" />}
-                  {rule.active ? "Pause" : "Resume"}
-                </Button>
-                <ButtonLink
-                  href={`/h/${householdId}/settings/recurring/${rule.id}/edit`}
-                  tone="quiet"
-                >
-                  <Pencil className="size-4" /> Edit
-                </ButtonLink>
-                <Button
-                  type="button"
-                  tone="quiet"
-                  className="text-[var(--negative)]"
-                  disabled={pending}
-                  onClick={() => {
-                    if (!window.confirm(`Archive ${rule.title}? Generated expenses remain.`))
-                      return;
-                    startTransition(async () => {
-                      const result = await archiveRecurringExpenseRuleAction({
-                        householdId,
-                        ruleId: rule.id,
-                      });
-                      setMessage(result.ok ? `${rule.title} archived.` : result.error);
-                      if (result.ok) router.refresh();
-                    });
-                  }}
-                >
-                  <Archive className="size-4" /> Archive
-                </Button>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-      {isOwner && (
-        <aside>
-          <section className="rounded-2xl border border-[var(--line)] bg-white p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-[var(--peach)] uppercase">
-                <ShieldCheck className="size-4" /> Household access
-              </p>
-              {!editingAccess && (
-                <button
-                  type="button"
-                  className="grid size-9 place-items-center rounded-full text-[var(--ink-soft)] transition hover:bg-[var(--soft-line)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
-                  aria-label="Edit household access"
-                  onClick={() => setEditingAccess(true)}
-                >
-                  <Pencil className="size-4" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-
-            {editingAccess ? (
-              <form className="mt-5 grid gap-4" onSubmit={saveAccess}>
-                <Field label="House Code">
-                  <Input
-                    name="houseCode"
-                    defaultValue={houseCode}
-                    autoCapitalize="characters"
-                    autoComplete="off"
-                    minLength={6}
-                    maxLength={24}
-                    required
-                    disabled={pending}
-                  />
-                </Field>
-                <Field label="House Join PIN">
-                  <Input
-                    name="joinPin"
-                    defaultValue={joinPin}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    required
-                    disabled={pending}
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
+                <div className="flex items-center gap-1">
+                  <button
                     type="button"
-                    tone="quiet"
+                    className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition hover:bg-[var(--pastel-mint)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                    aria-label={rule.active ? `Pause ${rule.title}` : `Resume ${rule.title}`}
                     disabled={pending}
-                    onClick={() => setEditingAccess(false)}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const result = await setRecurringExpenseRuleActiveAction({
+                          householdId,
+                          ruleId: rule.id,
+                          active: !rule.active,
+                        });
+                        setMessage(
+                          result.ok
+                            ? `${rule.title} ${rule.active ? "paused" : "resumed"}.`
+                            : result.error,
+                        );
+                        if (result.ok) router.refresh();
+                      })
+                    }
                   >
-                    <X className="size-4" /> Cancel
-                  </Button>
-                  <Button type="submit" tone="secondary" disabled={pending}>
-                    <Save className="size-4" /> Save
-                  </Button>
+                    {rule.active ? (
+                      <Pause className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Play className="size-4" aria-hidden="true" />
+                    )}
+                  </button>
+                  <ButtonLink
+                    href={`/h/${householdId}/settings/recurring/${rule.id}/edit`}
+                    tone="quiet"
+                    className="min-h-10 px-3 py-2"
+                  >
+                    <Pencil className="size-4" aria-hidden="true" /> Edit
+                  </ButtonLink>
+                  <button
+                    type="button"
+                    className="grid size-10 place-items-center rounded-xl text-[var(--negative)] transition hover:bg-[var(--negative-soft)] focus-visible:ring-2 focus-visible:ring-[var(--negative)] focus-visible:outline-none"
+                    aria-label={`Archive ${rule.title}`}
+                    disabled={pending}
+                    onClick={() => {
+                      if (!window.confirm(`Archive ${rule.title}?`)) return;
+                      startTransition(async () => {
+                        const result = await archiveRecurringExpenseRuleAction({
+                          householdId,
+                          ruleId: rule.id,
+                        });
+                        setMessage(result.ok ? `${rule.title} archived.` : result.error);
+                        if (result.ok) router.refresh();
+                      });
+                    }}
+                  >
+                    <Archive className="size-4" aria-hidden="true" />
+                  </button>
                 </div>
-              </form>
-            ) : (
-              <dl className="mt-5 grid gap-4">
-                <div>
-                  <dt className="text-xs font-bold text-[var(--muted)]">House Code</dt>
-                  <dd className="mt-1 font-extrabold tracking-[0.06em]">{houseCode}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold text-[var(--muted)]">House Join PIN</dt>
-                  <dd className="mt-1 font-extrabold tracking-[0.2em]">
-                    {joinPin || "Not available — set a new PIN"}
-                  </dd>
-                </div>
-              </dl>
-            )}
-          </section>
-        </aside>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {nameDialogOpen && (
+        <Dialog
+          title="Group name"
+          onClose={() => !pending && setNameDialogOpen(false)}
+          onDone={() => saveGroup({ name: draftName.trim() }, () => setNameDialogOpen(false))}
+          doneDisabled={pending || !draftName.trim() || draftName.trim() === name}
+        >
+          <div className="grid gap-4 px-2 pt-2 pb-3">
+            {message && !message.endsWith("saved.") && <StatusNote tone="error" title={message} />}
+            <Field label="Group name">
+              <Input
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                maxLength={80}
+                autoFocus
+                disabled={pending}
+              />
+            </Field>
+          </div>
+        </Dialog>
+      )}
+
+      {accessDialogOpen && (
+        <Dialog
+          title="Group access"
+          onClose={() => !pending && setAccessDialogOpen(false)}
+          onDone={saveAccess}
+          doneDisabled={
+            pending ||
+            !/^[A-Z0-9](?:[A-Z0-9-]{4,22})[A-Z0-9]$/.test(draftHouseCode.trim().toUpperCase()) ||
+            !/^\d{6}$/.test(draftJoinPin) ||
+            (draftHouseCode.trim().toUpperCase() === houseCode && draftJoinPin === joinPin)
+          }
+        >
+          <div className="grid gap-4 px-2 pt-2 pb-3">
+            {message && !message.endsWith("saved.") && <StatusNote tone="error" title={message} />}
+            <Field label="Group code">
+              <Input
+                value={draftHouseCode}
+                onChange={(event) => setDraftHouseCode(event.target.value.toUpperCase())}
+                autoCapitalize="characters"
+                autoComplete="off"
+                minLength={6}
+                maxLength={24}
+                disabled={pending}
+              />
+            </Field>
+            <Field label="Group PIN">
+              <Input
+                value={draftJoinPin}
+                onChange={(event) =>
+                  setDraftJoinPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                disabled={pending}
+              />
+            </Field>
+          </div>
+        </Dialog>
+      )}
+
+      {currencyDialogOpen && (
+        <Dialog
+          title="Default currency"
+          onClose={() => !pending && setCurrencyDialogOpen(false)}
+          onDone={() =>
+            saveGroup({ defaultCurrency: draftCurrency }, () => setCurrencyDialogOpen(false))
+          }
+          doneDisabled={pending || draftCurrency === defaultCurrency}
+        >
+          <div className="grid grid-cols-3 gap-2 px-2 pt-2 pb-3">
+            {currencies.map((currency) => {
+              const selected = currency === draftCurrency;
+              return (
+                <button
+                  key={currency}
+                  type="button"
+                  className={cn(
+                    "min-h-16 rounded-2xl text-sm font-black transition focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none",
+                    selected
+                      ? "bg-[var(--pastel-mint)] text-[var(--brand-strong)]"
+                      : "bg-[var(--canvas)] text-[var(--ink-soft)] hover:bg-[var(--brand-soft)]",
+                  )}
+                  aria-pressed={selected}
+                  onClick={() => setDraftCurrency(currency)}
+                >
+                  {currency}
+                </button>
+              );
+            })}
+          </div>
+        </Dialog>
       )}
     </div>
+  );
+}
+
+function Switch({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={cn(
+        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+        checked ? "bg-[var(--brand)]" : "bg-[#cbd5e1]",
+      )}
+      aria-hidden="true"
+    >
+      <span
+        className={cn(
+          "absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-6" : "translate-x-1",
+        )}
+      />
+    </span>
   );
 }

@@ -56,7 +56,6 @@ export default async function ConfirmBillPage({
         currentMemberId={membership.id}
         landlordEnabled={homeResult.data.landlord_enabled}
         initial={extraction.success ? extraction.data : undefined}
-        pageCount={Number(documentResult.data?.page_count ?? 0) || undefined}
         members={(membersResult.data ?? []).map((member) => ({
           id: member.id,
           name: member.display_name,

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, FileText, Plus, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -20,7 +20,7 @@ import { BillMetaControls, UtilityTypeIcon } from "./bill-meta-controls";
 
 type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 type Absence = { memberId: string; startDate: string; endDate: string };
-type ExistingUtility = {
+export type ExistingUtility = {
   expenseId: string;
   title: string;
   utilityType: ExtractedBill["utilityType"];
@@ -47,13 +47,13 @@ export function BillConfirmation({
   locale,
   initial,
   existing,
-  pageCount,
   uploadDocumentOnConfirm,
   members,
   absences,
   currentMemberId,
   landlordEnabled,
   onEntryModeChange,
+  cancelHref,
 }: {
   householdId: string;
   documentId?: string;
@@ -61,56 +61,57 @@ export function BillConfirmation({
   locale: string;
   initial?: ExtractedBill;
   existing?: ExistingUtility;
-  pageCount?: number;
   uploadDocumentOnConfirm?: () => Promise<{ documentId: string; pageCount?: number }>;
   members: Member[];
   absences: Absence[];
   currentMemberId: string;
   landlordEnabled: boolean;
   onEntryModeChange?: (mode: "manual" | "ai") => void;
+  cancelHref?: string;
 }) {
   const router = useRouter();
-  const initialUtilityType = existing?.utilityType ?? initial?.utilityType ?? "other";
+  const initialUtilityType = initial?.utilityType ?? existing?.utilityType ?? "other";
   const [total, setTotal] = useState(
-    existing
-      ? (existing.totalCents / 100).toFixed(2)
-      : initial
-        ? (initial.totalDueCents / 100).toFixed(2)
+    initial
+      ? (initial.totalDueCents / 100).toFixed(2)
+      : existing
+        ? (existing.totalCents / 100).toFixed(2)
         : "",
   );
   const [fixed, setFixed] = useState(
-    existing
-      ? (existing.fixedCents / 100).toFixed(2)
-      : initial?.charges.fixedCents != null
-        ? (initial.charges.fixedCents / 100).toFixed(2)
+    initial?.charges.fixedCents != null
+      ? (initial.charges.fixedCents / 100).toFixed(2)
+      : existing
+        ? (existing.fixedCents / 100).toFixed(2)
         : "",
   );
   const [variable, setVariable] = useState(
-    existing
-      ? (existing.variableCents / 100).toFixed(2)
-      : initial?.charges.consumptionCents != null
-        ? (initial.charges.consumptionCents / 100).toFixed(2)
+    initial?.charges.consumptionCents != null
+      ? (initial.charges.consumptionCents / 100).toFixed(2)
+      : existing
+        ? (existing.variableCents / 100).toFixed(2)
         : "",
   );
   const [serviceStart, setServiceStart] = useState(
-    existing?.serviceStart ?? initial?.servicePeriod.start ?? "",
+    initial?.servicePeriod.start ?? existing?.serviceStart ?? "",
   );
   const [serviceEnd, setServiceEnd] = useState(
-    existing?.serviceEnd ?? initial?.servicePeriod.end ?? "",
+    initial?.servicePeriod.end ?? existing?.serviceEnd ?? "",
   );
   const [utilityType, setUtilityType] = useState(initialUtilityType);
   const [title, setTitle] = useState(
-    existing?.title ??
-      formatUtilityBillTitle(
-        initialUtilityType,
-        existing?.serviceStart ?? initial?.servicePeriod.start ?? "",
-        existing?.serviceEnd ?? initial?.servicePeriod.end ?? "",
-        locale,
-      ),
+    initial
+      ? formatUtilityBillTitle(
+          initialUtilityType,
+          initial.servicePeriod.start,
+          initial.servicePeriod.end,
+          locale,
+        )
+      : (existing?.title ?? formatUtilityBillTitle(initialUtilityType, "", "", locale)),
   );
-  const [titleWasEdited, setTitleWasEdited] = useState(Boolean(existing));
+  const [titleWasEdited, setTitleWasEdited] = useState(Boolean(existing && !initial));
   const [currency, setCurrency] = useState(
-    existing?.currency ?? initial?.currency ?? defaultCurrency,
+    initial?.currency ?? existing?.currency ?? defaultCurrency,
   );
   const [payer, setPayer] = useState(
     existing?.payerMemberId ?? (landlordEnabled ? "landlord" : currentMemberId),
@@ -220,7 +221,7 @@ export function BillConfirmation({
     startTransition(async () => {
       setError("");
       let confirmedDocumentId = documentId;
-      if (!existing && !confirmedDocumentId && uploadDocumentOnConfirm) {
+      if (!confirmedDocumentId && uploadDocumentOnConfirm) {
         try {
           confirmedDocumentId = (await uploadDocumentOnConfirm()).documentId;
         } catch (cause) {
@@ -246,8 +247,8 @@ export function BillConfirmation({
         participants: members
           .filter((member) => selected.has(member.id))
           .map((member, order) => ({ memberId: member.id, order })),
-        consumptionAmount: existing?.consumptionAmount ?? initial?.consumption.amount ?? null,
-        consumptionUnit: existing?.consumptionUnit ?? initial?.consumption.unit ?? null,
+        consumptionAmount: initial?.consumption.amount ?? existing?.consumptionAmount ?? null,
+        consumptionUnit: initial?.consumption.unit ?? existing?.consumptionUnit ?? null,
         classificationNote: String(data.get("classificationNote") ?? "") || null,
         entryMode,
       };
@@ -303,25 +304,6 @@ export function BillConfirmation({
         <StatusNote tone="error" title={error}>
           Correct the bill fields and try again.
         </StatusNote>
-      )}
-      {documentId && (
-        <div className="flex items-center gap-3 rounded-xl bg-[var(--pastel-mint)] p-4">
-          <FileText className="size-6 text-[var(--brand)]" aria-hidden="true" />
-          <p className="min-w-0 flex-1 text-sm">
-            <strong className="block truncate">Private uploaded bill</strong>
-            <span className="text-[var(--muted)]">
-              {pageCount ? `${pageCount} page${pageCount === 1 ? "" : "s"} · ` : ""}private document
-            </span>
-          </p>
-          <a
-            href={`/api/bills/${documentId}/view?householdId=${householdId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm font-bold text-[var(--brand-strong)]"
-          >
-            View
-          </a>
-        </div>
       )}
       <fieldset className="grid gap-4 px-1 py-2 sm:px-4 sm:py-4" disabled={pending}>
         <legend className="screen-reader-only">Bill facts</legend>
@@ -497,7 +479,7 @@ export function BillConfirmation({
           type="button"
           tone="quiet"
           className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
-          onClick={() => router.back()}
+          onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
           disabled={pending}
         >
           <X className="size-4" aria-hidden="true" /> Cancel

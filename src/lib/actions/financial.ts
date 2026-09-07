@@ -458,6 +458,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
         p_variable_cents: parsed.data.variableCents,
         p_consumption_amount: parsed.data.consumptionAmount ?? null,
         p_consumption_unit: parsed.data.consumptionUnit ?? null,
+        p_bill_document_id: parsed.data.documentId ?? null,
         p_classification_note: parsed.data.classificationNote ?? null,
         p_variable_split_mode: utility.variableMode,
         p_actor_user_id: user.id,

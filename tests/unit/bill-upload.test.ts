@@ -17,11 +17,18 @@ describe("bill upload", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    render(React.createElement(BillUpload, { onPrepared }));
+    render(
+      React.createElement(BillUpload, {
+        onPrepared,
+        onRemove: vi.fn(),
+        onError: vi.fn(),
+      }),
+    );
 
-    const input = screen.getByLabelText(/choose a bill/i);
+    const input = document.querySelector('input[type="file"]');
+    expect(input).toBeTruthy();
     const file = new File(["bill"], "utility.pdf", { type: "application/pdf" });
-    fireEvent.change(input, {
+    fireEvent.change(input!, {
       target: {
         files: [file],
       },
@@ -30,6 +37,24 @@ describe("bill upload", () => {
     expect(onPrepared).toHaveBeenCalledWith({ file });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText("utility.pdf")).toBeTruthy();
-    expect(screen.getByText(/tap to change/i)).toBeTruthy();
+    expect(screen.getByText(/tap for options/i)).toBeTruthy();
+  });
+
+  it("shows document actions for an existing bill", () => {
+    render(
+      React.createElement(BillUpload, {
+        onPrepared: vi.fn(),
+        onRemove: vi.fn(),
+        onError: vi.fn(),
+        initialFileName: "Current bill document",
+        initialViewUrl: "/api/bills/document/view",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /bill document: current bill document/i }));
+
+    expect(screen.getByRole("button", { name: /view/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /replace/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /remove/i })).toBeTruthy();
   });
 });

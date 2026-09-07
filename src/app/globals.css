@@ -49,6 +49,7 @@
 html {
   min-width: 320px;
   background: var(--canvas);
+  scrollbar-gutter: stable;
 }
 
 body {

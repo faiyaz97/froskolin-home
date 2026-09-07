@@ -19,7 +19,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
 
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
   const homeUrl = page.url();
-  await expect(page.getByRole("link", { name: "Household settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Group settings" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Notifications/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Upload bill" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Add expense" })).toBeVisible();
@@ -235,13 +235,28 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.getByRole("button", { name: "Change personal PIN" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
   await expect(page.locator("select")).toHaveCount(0);
+  await expect(page.getByLabel("Locale")).toHaveCount(0);
+  await expect(page.getByLabel("Timezone")).toHaveCount(0);
   await page.getByRole("button", { name: "Default currency" }).click();
-  await expect(page.getByRole("listbox", { name: "Default currency" })).toBeVisible();
-  await page.getByRole("option", { name: "EUR" }).click();
-  const accessSection = page.locator("aside section").filter({ hasText: "Household access" });
-  const initialCode = (await accessSection.locator("dd").first().textContent())?.trim();
+  const currencyDialog = page.getByRole("dialog", { name: "Default currency" });
+  await expect(currencyDialog).toBeVisible();
+  await expect(currencyDialog.getByRole("button", { name: "EUR" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await currencyDialog.getByRole("button", { name: "Back" }).click();
+  const accessSection = page.locator("header").filter({ hasText: "Group code" });
+  const initialCode = (await accessSection.getByText(/^FROSKO-\d{4}$/).textContent())?.trim();
   expect(initialCode).toMatch(/^FROSKO-\d{4}$/);
   await expect(accessSection.getByText("654321", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("group-settings-desktop.png"),
+    fullPage: true,
+  });
+  const settingsViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath("group-settings-mobile.png"), fullPage: true });
+  if (settingsViewport) await page.setViewportSize(settingsViewport);
   await page.goto(`${homeUrl}/account`);
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
@@ -254,11 +269,12 @@ test("create, remembered login, access rotation, failed login, and join", async 
 
   await page.goto(`${homeUrl}/settings`);
   const changedCode = `HOME-${suffix}`;
-  await accessSection.getByRole("button", { name: "Edit household access" }).click();
-  await accessSection.getByLabel("House Code").fill(changedCode);
-  await accessSection.getByLabel("House Join PIN").fill("777777");
-  await accessSection.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Household access saved.")).toBeVisible();
+  await accessSection.getByRole("button", { name: "Edit group access" }).click();
+  const accessDialog = page.getByRole("dialog", { name: "Group access" });
+  await accessDialog.getByLabel("Group code").fill(changedCode);
+  await accessDialog.getByLabel("Group PIN").fill("777777");
+  await accessDialog.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("Group access saved.")).toBeVisible();
   await expect(accessSection.getByText(changedCode, { exact: true })).toBeVisible();
   await expect(accessSection.getByText("777777", { exact: true })).toBeVisible();
   await expect
@@ -305,7 +321,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
     .locator("..")
     .getByRole("button", { name: "Reset PIN" })
     .click();
-  await expect(page.getByText("Temporary PIN — show it once", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Temporary PIN/)).toBeVisible();
   const temporaryPinText = await page.locator("code").filter({ hasText: memberName }).textContent();
   const temporaryPin = temporaryPinText?.match(/(\d{4}|\d{6})$/)?.[1];
   expect(temporaryPin).toBeTruthy();
@@ -332,19 +348,22 @@ test("create, remembered login, access rotation, failed login, and join", async 
   const monthPrefix = new Date().toISOString().slice(0, 7);
   await page.locator(`[data-day="${monthPrefix}-10"] button`).click();
   await page.locator(`[data-day="${monthPrefix}-12"] button`).click();
-  await page.getByRole("button", { name: "Add range" }).click();
-  await page.getByRole("button", { name: "Confirm away periods" }).click();
-  await expect(page.getByText("Away periods saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Add period" }).click();
+  await expect(page.getByRole("button", { name: "Add period" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: memberName }).click();
-  const awayEditor = page.locator('aside[aria-labelledby="periods-heading"]');
-  await expect(awayEditor.getByText("0 days", { exact: true })).toBeVisible();
-  await expect(awayEditor.getByRole("button", { name: "Confirm away periods" })).toBeDisabled();
-  await expect(page.locator(`[data-day="${monthPrefix}-10"] button`)).toHaveAttribute(
+  await page
+    .getByRole("button", { name: new RegExp(`Choose member, currently ${ownerName}`) })
+    .click();
+  const memberDialog = page.getByRole("dialog", { name: "Add away period for" });
+  await memberDialog.getByRole("radio", { name: memberName }).click();
+  await memberDialog.getByRole("button", { name: "Done" }).click();
+  await expect(page).toHaveURL(new RegExp(`/calendar\\?member=`));
+  await expect(page.getByText("No days away.")).toBeVisible();
+  await expect(page.getByText("Who’s away")).toHaveCount(0);
+  await expect(page.locator(`[data-day="${monthPrefix}-10"] button`)).not.toHaveAttribute(
     "aria-label",
     new RegExp(`Away: ${ownerName}`),
   );
-  await expect(page.getByRole("region", { name: "Who’s away" }).getByText(ownerName)).toBeVisible();
 
   await secondContext.close();
 });

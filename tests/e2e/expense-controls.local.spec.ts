@@ -158,14 +158,13 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page).toHaveURL(home);
     await page.goto(`${home}/settings`);
-    await expect(page.getByText(new RegExp(`^${frequency}$`, "i"))).toBeVisible();
+    await expect(page.getByText(new RegExp(`^${frequency} ·`, "i"))).toBeVisible();
     await page.getByRole("button", { name: "Generate due", exact: true }).click();
     await expect(page.getByText(/1 due recurring expense generated/)).toBeVisible();
   }
 
-  await page.getByLabel("Enable landlord").check();
-  await page.getByRole("button", { name: "Save details" }).click();
-  await expect(page.getByText("Household settings saved.")).toBeVisible();
+  await page.getByRole("switch", { name: "Landlord mode" }).click();
+  await expect(page.getByText("Group settings saved.")).toBeVisible();
   await page.goto(home);
   await page.setViewportSize({ width: 320, height: 360 });
   const summary = page.locator(".home-summary-motion");

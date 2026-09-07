@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { RecurringForm } from "@/components/expenses/recurring-form";
-import { PageHeader, StatusNote } from "@/components/ui/page";
+import { ExpenseForm } from "@/components/expenses/expense-form";
+import type { AvatarColor } from "@/components/household/member-avatar";
+import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { normalSplitConfigSchema } from "@/lib/validation";
 
@@ -20,7 +21,7 @@ export default async function EditRecurringRulePage({
       .single(),
     supabase
       .from("household_members")
-      .select("id, display_name, removed_at")
+      .select("id, display_name, avatar_color, removed_at")
       .eq("household_id", householdId)
       .order("joined_at"),
     supabase
@@ -42,26 +43,22 @@ export default async function EditRecurringRulePage({
   );
   const members = (membersResult.data ?? [])
     .filter((member) => !member.removed_at || participantIds.has(member.id))
-    .map((member) => ({ id: member.id, name: member.display_name }));
+    .map((member) => ({
+      id: member.id,
+      name: member.display_name,
+      avatarColor: member.avatar_color as AvatarColor | null,
+    }));
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <PageHeader
-        eyebrow="Recurring rule"
-        title={`Edit ${ruleResult.data.title}`}
-        description="Changes apply to future, ungenerated expenses only. Existing occurrences keep their own history."
-      />
-      <StatusNote title="No retroactive rewrite">
-        Already generated expenses remain ordinary editable records. The new schedule starts with
-        the next due occurrence.
-      </StatusNote>
-      <RecurringForm
+    <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-2xl min-w-0 flex-col md:min-h-[calc(100dvh-7rem)]">
+      <PageHeader title="Edit recurring expense" compact />
+      <ExpenseForm
         householdId={householdId}
         defaultCurrency={homeResult.data.default_currency}
         currentMemberId={membership.id}
         landlordEnabled={homeResult.data.landlord_enabled}
         members={members}
-        initial={{
+        initialRecurring={{
           ruleId,
           title: ruleResult.data.title,
           amountCents: Number(ruleResult.data.amount_cents),
@@ -75,6 +72,7 @@ export default async function EditRecurringRulePage({
           active: ruleResult.data.active,
           splitConfig: splitConfig.data,
         }}
+        cancelHref={`/h/${householdId}/settings`}
       />
     </div>
   );

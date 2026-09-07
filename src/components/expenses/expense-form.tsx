@@ -8,6 +8,7 @@ import {
   saveExpenseAction,
   saveRecurringExpenseRuleAction,
   updateExpenseAction,
+  updateRecurringExpenseRuleAction,
 } from "@/lib/actions";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
@@ -49,6 +50,19 @@ type InitialExpense = {
   splitConfig: EditableSplitConfig;
 };
 
+type InitialRecurringExpense = {
+  ruleId: string;
+  title: string;
+  amountCents: number;
+  currency: string;
+  payerMemberId: string;
+  startDate: string;
+  frequency: RecurrenceFrequency;
+  endDate?: string;
+  active: boolean;
+  splitConfig: EditableSplitConfig;
+};
+
 export function ExpenseForm({
   householdId,
   defaultCurrency,
@@ -56,8 +70,10 @@ export function ExpenseForm({
   landlordEnabled,
   members,
   initial,
+  initialRecurring,
   initialAttachment,
   defaultRecurring = false,
+  cancelHref,
 }: {
   householdId: string;
   defaultCurrency: string;
@@ -65,27 +81,38 @@ export function ExpenseForm({
   landlordEnabled: boolean;
   members: MemberOption[];
   initial?: InitialExpense;
+  initialRecurring?: InitialRecurringExpense;
   initialAttachment?: ExistingExpenseAttachment;
   defaultRecurring?: boolean;
+  cancelHref?: string;
 }) {
   const router = useRouter();
+  const initialSplitConfig = initial?.splitConfig ?? initialRecurring?.splitConfig;
   const [split, setSplit] = useState<"equal" | "exact" | "percentage">(
-    initial?.splitConfig.method ?? "equal",
+    initialSplitConfig?.method ?? "equal",
   );
   const [selected, setSelected] = useState(
     () =>
       new Set(
-        initial?.splitConfig.participants.map((participant) => participant.memberId) ??
+        initialSplitConfig?.participants.map((participant) => participant.memberId) ??
           members.map((member) => member.id),
       ),
   );
-  const [payer, setPayer] = useState(initial?.payerMemberId ?? currentMemberId);
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [amount, setAmount] = useState(initial ? (initial.totalCents / 100).toFixed(2) : "");
+  const [payer, setPayer] = useState(
+    initial?.payerMemberId ?? initialRecurring?.payerMemberId ?? currentMemberId,
+  );
+  const [title, setTitle] = useState(initial?.title ?? initialRecurring?.title ?? "");
+  const [amount, setAmount] = useState(
+    initial
+      ? (initial.totalCents / 100).toFixed(2)
+      : initialRecurring
+        ? (initialRecurring.amountCents / 100).toFixed(2)
+        : "",
+  );
   const [amounts, setAmounts] = useState<SplitValues>(() =>
-    initial?.splitConfig.method === "exact"
+    initialSplitConfig?.method === "exact"
       ? Object.fromEntries(
-          initial.splitConfig.participants.map((p) => [
+          initialSplitConfig.participants.map((p) => [
             p.memberId,
             (p.amountCents / 100).toFixed(2),
           ]),
@@ -93,9 +120,9 @@ export function ExpenseForm({
       : {},
   );
   const [percentages, setPercentages] = useState<SplitValues>(() =>
-    initial?.splitConfig.method === "percentage"
+    initialSplitConfig?.method === "percentage"
       ? Object.fromEntries(
-          initial.splitConfig.participants.map((p) => [
+          initialSplitConfig.participants.map((p) => [
             p.memberId,
             (p.basisPoints / 100).toFixed(2),
           ]),
@@ -105,13 +132,19 @@ export function ExpenseForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [recurring, setRecurring] = useState(!initial && defaultRecurring);
-  const [frequency, setFrequency] = useState<RecurrenceFrequency>("monthly");
-  const [expenseDate, setExpenseDate] = useState(
-    initial?.expenseDate ?? new Date().toISOString().slice(0, 10),
+  const [recurring, setRecurring] = useState(
+    Boolean(initialRecurring) || (!initial && defaultRecurring),
   );
-  const [recurringEndDate, setRecurringEndDate] = useState("");
-  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>(
+    initialRecurring?.frequency ?? "monthly",
+  );
+  const [expenseDate, setExpenseDate] = useState(
+    initial?.expenseDate ?? initialRecurring?.startDate ?? new Date().toISOString().slice(0, 10),
+  );
+  const [recurringEndDate, setRecurringEndDate] = useState(initialRecurring?.endDate ?? "");
+  const [currency, setCurrency] = useState(
+    initial?.currency ?? initialRecurring?.currency ?? defaultCurrency,
+  );
   const [attachmentFile, setAttachmentFile] = useState<File>();
   const [attachmentRemoved, setAttachmentRemoved] = useState(false);
   const [createdExpenseId, setCreatedExpenseId] = useState<string>();
@@ -197,8 +230,8 @@ export function ExpenseForm({
         expenseDate,
         splitConfig,
       };
-      if (!initial && recurring) {
-        const createdRule = await saveRecurringExpenseRuleAction({
+      if (recurring) {
+        const recurringInput = {
           householdId,
           title: input.title,
           amountCents: input.totalCents,
@@ -208,13 +241,19 @@ export function ExpenseForm({
           startDate: input.expenseDate,
           frequency,
           endDate: recurringEndDate || undefined,
-          active: true,
-        });
-        if (!createdRule.ok) {
-          setError(createdRule.error);
+          active: initialRecurring?.active ?? true,
+        };
+        const savedRule = initialRecurring
+          ? await updateRecurringExpenseRuleAction({
+              ...recurringInput,
+              ruleId: initialRecurring.ruleId,
+            })
+          : await saveRecurringExpenseRuleAction(recurringInput);
+        if (!savedRule.ok) {
+          setError(savedRule.error);
           return;
         }
-        router.replace(`/h/${householdId}`);
+        router.replace(initialRecurring ? `/h/${householdId}/settings` : `/h/${householdId}`);
         router.refresh();
         return;
       }
@@ -283,7 +322,7 @@ export function ExpenseForm({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 required
-                autoFocus={!initial}
+                autoFocus={!initial && !initialRecurring}
                 aria-invalid={(attemptedSubmit && titleMissing) || undefined}
                 className="expense-primary-input h-12 w-0 min-w-0 flex-1 bg-transparent text-xl font-black tracking-[-0.025em] text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[#94a3b8]"
               />
@@ -374,6 +413,7 @@ export function ExpenseForm({
             recurringEnd={recurringEndDate}
             onRecurringEndChange={setRecurringEndDate}
             allowRecurrence={!initial}
+            recurrenceRequired={Boolean(initialRecurring)}
             disabled={pending}
           />
           <ExpenseAttachmentAction
@@ -399,7 +439,7 @@ export function ExpenseForm({
           type="button"
           tone="quiet"
           className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
-          onClick={() => router.back()}
+          onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
           disabled={pending}
         >
           <X className="size-4" aria-hidden="true" /> Cancel
@@ -410,14 +450,14 @@ export function ExpenseForm({
           className="min-w-40 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
           disabled={pending}
         >
-          {initial ? (
+          {initial || initialRecurring ? (
             <Check className="size-4" aria-hidden="true" />
           ) : (
             <Plus className="size-[18px]" aria-hidden="true" />
           )}
           {pending
             ? "Saving…"
-            : initial
+            : initial || initialRecurring
               ? "Save changes"
               : recurring
                 ? "Add recurring expense"

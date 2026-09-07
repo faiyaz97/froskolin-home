@@ -124,7 +124,7 @@ function getMobileTitle(pathname: string, root: string) {
   if (pathname === `${root}/add`) return "Add";
   if (pathname === `${root}/balances`) return "Group balances";
   if (pathname === `${root}/landlord`) return "Landlord";
-  if (pathname === `${root}/settings`) return "Household settings";
+  if (pathname === `${root}/settings`) return "Group settings";
   if (/\/settings\/recurring\/[^/]+\/edit$/.test(pathname)) return "Edit recurring";
   if (/\/expenses\/[^/]+\/edit$/.test(pathname)) return "Edit expense";
   if (/\/bills\/[^/]+\/confirm$/.test(pathname)) return "Utility bill";

@@ -245,9 +245,9 @@ export async function updateHouseholdAccessAction(
     });
     if (error) {
       if (error.message?.toLowerCase().includes("unique")) {
-        return { ok: false, error: "That House Code is already in use." };
+        return { ok: false, error: "That group code is already in use." };
       }
-      throw new Error(error.message ?? "Household access could not be updated.");
+      throw new Error(error.message ?? "Group access could not be updated.");
     }
     revalidatePath(`/h/${parsed.data.householdId}`, "layout");
     return {
@@ -284,8 +284,6 @@ export async function updateHouseholdAction(input: unknown): Promise<ActionResul
       .update({
         name: parsed.data.name,
         default_currency: parsed.data.defaultCurrency,
-        locale: parsed.data.locale,
-        timezone: parsed.data.timezone,
         joining_enabled: parsed.data.joiningEnabled,
         landlord_enabled: parsed.data.landlordEnabled,
       })

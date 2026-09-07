@@ -78,7 +78,7 @@ export default async function HouseholdHome({
             <Link
               href={`/h/${householdId}/settings`}
               className="relative z-10 grid size-9 shrink-0 place-items-center rounded-xl bg-white/85 text-[var(--ink-soft)] shadow-[var(--shadow-sm)] transition-colors hover:text-[var(--sky)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sky)]"
-              aria-label="Household settings"
+              aria-label="Group settings"
             >
               <Settings className="size-[17px]" aria-hidden="true" />
             </Link>

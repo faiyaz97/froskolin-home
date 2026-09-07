@@ -1092,6 +1092,7 @@ export type Database = {
       replace_utility_bill_with_landlord_support: {
         Args: {
           p_actor_user_id?: string;
+          p_bill_document_id?: string;
           p_classification_note?: string;
           p_consumption_amount?: number;
           p_consumption_unit?: string;

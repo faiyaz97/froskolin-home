@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 
-import { BillConfirmation } from "@/components/bills/bill-confirmation";
+import { BillWorkspace } from "@/components/bills/bill-workspace";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import type { AvatarColor } from "@/components/household/member-avatar";
-import { PageHeader, StatusNote } from "@/components/ui/page";
+import { PageHeader } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { billEntryModeSchema, normalSplitConfigSchema, utilityTypeSchema } from "@/lib/validation";
 import { getExpenseDetail, getHousehold, getHouseholdMembers } from "@/lib/queries";
@@ -50,13 +50,9 @@ export default async function EditExpensePage({
     if (error) throw error;
 
     return (
-      <div className="mx-auto max-w-2xl">
-        <PageHeader
-          eyebrow="Utility bill"
-          title={`Edit ${expense.title}`}
-          description="Changing dates, participants, or cost buckets recalculates every share from the current away periods and records the edit in Activity."
-        />
-        <BillConfirmation
+      <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-2xl min-w-0 flex-col md:min-h-[calc(100dvh-7rem)]">
+        <PageHeader title="Edit utility bill" compact />
+        <BillWorkspace
           householdId={householdId}
           documentId={utilityValue.bill_document_id ?? undefined}
           defaultCurrency={home?.default_currency ?? expense.currency}
@@ -91,6 +87,7 @@ export default async function EditExpensePage({
             classificationNote: utilityValue.classification_note,
             entryMode: entryMode.success ? entryMode.data : "manual",
           }}
+          cancelHref={`/h/${householdId}/expenses/${expenseId}`}
         />
       </div>
     );
@@ -119,17 +116,8 @@ export default async function EditExpensePage({
   if (attachmentError) throw attachmentError;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <PageHeader
-        eyebrow={expense.kind === "recurring" ? "Generated occurrence" : "Manual expense"}
-        title={`Edit ${expense.title}`}
-        description="This updates the explicit shares, recalculates balances, and records the before-and-after values in Activity."
-      />
-      {expense.kind === "recurring" && (
-        <StatusNote title="This occurrence only">
-          Editing this expense does not change its recurring rule.
-        </StatusNote>
-      )}
+    <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-2xl min-w-0 flex-col md:min-h-[calc(100dvh-7rem)]">
+      <PageHeader title="Edit expense" compact />
       <ExpenseForm
         householdId={householdId}
         defaultCurrency={home?.default_currency ?? expense.currency}
@@ -153,6 +141,7 @@ export default async function EditExpensePage({
           expenseDate: expense.expense_date,
           splitConfig: splitConfig.data,
         }}
+        cancelHref={`/h/${householdId}/expenses/${expenseId}`}
       />
     </div>
   );
