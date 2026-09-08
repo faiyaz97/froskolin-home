@@ -28,6 +28,23 @@ test("root opens the household entry form without marketing content or overflow"
   expect(browserErrors).toEqual([]);
 });
 
+test("a remembered login does not block creating or joining a group", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "froskolin.remembered-device.v1",
+      JSON.stringify({ houseCode: "FROSKO-6114", memberName: "Andrea" }),
+    );
+  });
+
+  await page.goto("/?mode=create");
+  await expect(page).toHaveURL(/\?mode=create$/);
+  await expect(page.getByRole("heading", { name: "Create household" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Join roommates" }).click();
+  await expect(page).toHaveURL(/\?mode=join$/);
+  await expect(page.getByRole("heading", { name: "Join roommates" })).toBeVisible();
+});
+
 test("login form has accessible labels for the House Code and personal PIN", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();

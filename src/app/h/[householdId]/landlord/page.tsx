@@ -13,15 +13,14 @@ export default async function LandlordBalancePage({
     getLandlordBillBalances(householdId),
   ]);
   return (
-    <>
-      <PageHeader title="Landlord" />
+    <div className="mx-auto w-full max-w-2xl">
+      <PageHeader title="Landlord balance" />
       {!home?.landlord_enabled && (
-        <StatusNote title="Landlord is disabled">
-          Existing payment history remains available. Enable the landlord in Household Settings to
-          add new landlord-paid expenses.
-        </StatusNote>
+        <div className="mb-5">
+          <StatusNote tone="warning" title="Landlord mode is off" />
+        </div>
       )}
       <LandlordBalanceView householdId={householdId} rows={rows} locale={home?.locale ?? "en-GB"} />
-    </>
+    </div>
   );
 }

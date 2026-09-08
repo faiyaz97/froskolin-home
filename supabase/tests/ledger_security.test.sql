@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(45);
 
 select set_config('app.suppress_audit', 'true', true);
 
@@ -119,6 +119,19 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.landlord_payments', 'INSERT'),
   'landlord payments cannot be inserted directly by members'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.household_pair_balances', 'SELECT'),
+  'members can read direct pair balances'
+);
+select ok(
+  not has_table_privilege('anon', 'public.household_pair_balances', 'SELECT'),
+  'anonymous clients cannot read direct pair balances'
+);
+select is(
+  (select count(*) from public.household_pair_balances where household_id = '00000000-0000-4000-8000-00000000b002'),
+  0::bigint,
+  'members cannot see another household direct pair balances'
 );
 select is(
   (select count(*) from information_schema.routine_privileges where grantee = 'authenticated' and routine_name = 'create_expense_with_shares'),
@@ -250,6 +263,9 @@ select throws_like(
   '%expenses_note_length%',
   'expense notes are length-checked inside the atomic expense creation function'
 );
+-- The remaining assertions inspect derived ledger state as the test owner.
+-- Keep the service-role JWT claim so service-only functions still validate it.
+reset role;
 select lives_ok(
   $test$
   update public.households
@@ -283,6 +299,18 @@ select is(
   '00000000-0000-4000-8000-00000000c001:50,00000000-0000-4000-8000-00000000c002:-50',
   'a Landlord-paid expense does not change roommate balances'
 );
+select is(
+  (
+    select string_agg(
+      paying_member_id::text || '>' || receiving_member_id::text || ':' || amount_cents::text,
+      ',' order by paying_member_id, receiving_member_id
+    )
+    from public.household_pair_balances
+    where household_id = '00000000-0000-4000-8000-00000000b001' and currency = 'EUR'
+  ),
+  '00000000-0000-4000-8000-00000000c002>00000000-0000-4000-8000-00000000c001:50',
+  'direct pair balances preserve who actually owes whom'
+);
 select lives_ok(
   $test$
   select public.record_landlord_payment(
@@ -306,7 +334,7 @@ select is(
       and s.member_id = '00000000-0000-4000-8000-00000000c001'
     group by s.share_cents
   ),
-  30::bigint,
+  30::numeric,
   'partial Landlord payments leave the correct derived remainder'
 );
 select lives_ok(

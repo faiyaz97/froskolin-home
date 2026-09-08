@@ -1,11 +1,10 @@
-import { ArrowRight } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
-import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
-import { ButtonLink } from "@/components/ui/button";
-import { PageHeader, SectionTitle } from "@/components/ui/page";
-import { simplifyDebts } from "@/lib/domain";
-import { formatMoney } from "@/lib/format";
-import { getBalances, getHousehold, getHouseholdMembers } from "@/lib/queries";
+import { GroupBalancesView } from "@/components/expenses/group-balances-view";
+import type { AvatarColor } from "@/components/household/member-avatar";
+import { PageHeader } from "@/components/ui/page";
+import { requireHouseholdMembership } from "@/lib/auth";
+import { getBalances, getHousehold, getHouseholdMembers, getPairBalances } from "@/lib/queries";
 
 export default async function BalancesPage({
   params,
@@ -13,98 +12,48 @@ export default async function BalancesPage({
   params: Promise<{ householdId: string }>;
 }) {
   const { householdId } = await params;
-  const [home, members, rows] = await Promise.all([
+  const [{ membership }, home, members, rows, pairRows] = await Promise.all([
+    requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getBalances(householdId),
+    getPairBalances(householdId),
   ]);
-  const locale = home?.locale ?? "en-GB";
-  const names = new Map(members.map((member) => [member.id, member.display_name]));
-  const avatarColors = new Map(members.map((member) => [member.id, member.avatar_color]));
-  const currencies = [...new Set(rows.map((row) => row.currency))].sort();
 
   return (
-    <>
-      <PageHeader
-        title="Balances"
-        action={
-          <ButtonLink href={`/h/${householdId}/add/settlement`} className="hidden sm:inline-flex">
-            Settle up
-          </ButtonLink>
-        }
-      />
-      {!currencies.length && (
-        <p className="rounded-2xl border border-dashed border-[#a7f3d0] bg-[#f0fdfa] p-8 text-center font-extrabold text-[var(--positive)]">
-          All settled up
-        </p>
-      )}
-      {currencies.map((currency) => {
-        const ledger = rows
-          .filter((row) => row.currency === currency)
-          .map((row) => ({
+    <div className="mx-auto w-full max-w-2xl">
+      <PageHeader title="Group balances" />
+
+      {!rows.length ? (
+        <div className="flex items-center gap-3 rounded-[22px] bg-white px-4 py-5 shadow-[var(--shadow-sm)]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--positive-soft)] text-[var(--positive)]">
+            <CheckCircle2 className="size-5" aria-hidden="true" />
+          </span>
+          <p className="font-black">All settled</p>
+        </div>
+      ) : (
+        <GroupBalancesView
+          householdId={householdId}
+          currentMemberId={membership.id}
+          locale={home?.locale ?? "en-GB"}
+          members={members.map((member) => ({
+            id: member.id,
+            name: member.display_name,
+            avatarColor: member.avatar_color as AvatarColor | null,
+          }))}
+          balances={rows.map((row) => ({
             memberId: row.member_id,
-            currency,
+            currency: row.currency,
             amountCents: Number(row.net_cents),
-          }));
-        const suggestions = simplifyDebts(ledger);
-        return (
-          <section key={currency} className="mb-10">
-            <SectionTitle aside={`${currency} ledger`}>{currency}</SectionTitle>
-            <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[var(--shadow-sm)]">
-              {ledger.map((row) => {
-                const name = names.get(row.memberId) ?? "Former roommate";
-                return (
-                  <div
-                    key={row.memberId}
-                    className="flex items-center gap-3 border-b border-[var(--soft-line)] px-4 py-4 last:border-0"
-                  >
-                    <MemberAvatar
-                      name={name}
-                      color={avatarColors.get(row.memberId) as AvatarColor | null}
-                    />
-                    <p className="flex-1 font-extrabold">{name}</p>
-                    <p
-                      className={`font-extrabold tabular-nums ${row.amountCents >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}
-                    >
-                      {row.amountCents >= 0 ? "+" : "−"}
-                      {formatMoney(Math.abs(row.amountCents), currency, locale)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            {suggestions.length > 0 && (
-              <div className="mt-7">
-                <SectionTitle
-                  aside={`${suggestions.length} payment${suggestions.length === 1 ? "" : "s"}`}
-                >
-                  A simple way to settle
-                </SectionTitle>
-                <div className="divide-y divide-[var(--soft-line)] overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[var(--shadow-sm)]">
-                  {suggestions.map((suggestion) => (
-                    <div
-                      key={`${suggestion.fromMemberId}-${suggestion.toMemberId}`}
-                      className="flex items-center gap-3 px-4 py-4"
-                    >
-                      <div className="min-w-0 flex-1 text-sm">
-                        <strong>{names.get(suggestion.fromMemberId) ?? "Former roommate"}</strong>
-                        <ArrowRight
-                          className="mx-2 inline size-4 text-[var(--muted)]"
-                          aria-hidden="true"
-                        />
-                        <strong>{names.get(suggestion.toMemberId) ?? "Former roommate"}</strong>
-                      </div>
-                      <strong className="tabular-nums">
-                        {formatMoney(suggestion.amountCents, currency, locale)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        );
-      })}
-    </>
+          }))}
+          pairBalances={pairRows.map((row) => ({
+            payingMemberId: row.paying_member_id,
+            receivingMemberId: row.receiving_member_id,
+            currency: row.currency,
+            amountCents: Number(row.amount_cents),
+          }))}
+        />
+      )}
+    </div>
   );
 }

@@ -141,6 +141,13 @@ net(member, currency)
 
 A positive net means the member should receive money; a negative net means they owe money. Debt simplification deterministically pairs debtors and creditors and is calculated on demand, never persisted.
 
+Two read projections support the balance UI:
+
+- `household_balances` exposes each member's net position. `simplifyDebts` turns those nets into the minimum deterministic set of payments.
+- `household_pair_balances` exposes the actual remaining debt between each original participant and payer. Settlements reduce only their matching member pair; overpayment can reverse that pair's direction. Voided records and Landlord-paid expenses are excluded.
+
+Both are read-only `security_invoker` views, so the underlying household RLS remains the authorization boundary. The UI may switch between simplified and actual relationships, but it must use the selected projection consistently for both explanatory breakdowns and settlement actions. Neither projection is persisted mutable balance state.
+
 ### Expense shares
 
 The split configuration preserves the user’s intent (`equal`, exact amounts, or percentages). `expense_shares` stores the final integer-cent allocation.

@@ -32,8 +32,21 @@ const memberAvatarAssignmentMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260906211052_add_member_avatar_assignment_rpc.sql"),
   "utf8",
 ).toLowerCase();
+const pairBalancesMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260908205313_add_household_pair_balances.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
+  it("keeps real pair balances RLS-backed and read-only", () => {
+    expect(pairBalancesMigration).toContain("with (security_invoker = true)");
+    expect(pairBalancesMigration).toContain("not e.paid_by_landlord");
+    expect(pairBalancesMigration).toContain("s.voided_at is null");
+    expect(pairBalancesMigration).toContain(
+      "grant select on public.household_pair_balances to authenticated",
+    );
+  });
+
   it("assigns joining members an unused avatar atomically through a service-only RPC", () => {
     expect(memberAvatarAssignmentMigration).toContain("for update");
     expect(memberAvatarAssignmentMigration).toContain("where not exists");

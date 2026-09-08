@@ -72,6 +72,7 @@ export function SettlementForm({
   defaultCurrency,
   currentMemberId,
   defaultReceivingMemberId,
+  defaultAmountCents,
   members,
   initial,
   cancelHref,
@@ -80,6 +81,7 @@ export function SettlementForm({
   defaultCurrency: string;
   currentMemberId: string;
   defaultReceivingMemberId?: string;
+  defaultAmountCents?: number;
   members: MemberOption[];
   cancelHref?: string;
   initial?: {
@@ -98,7 +100,13 @@ export function SettlementForm({
   const [receiver, setReceiver] = useState(
     initial?.receivingMemberId ?? defaultReceivingMemberId ?? fallbackReceiver,
   );
-  const [amount, setAmount] = useState(initial ? (initial.amountCents / 100).toFixed(2) : "");
+  const [amount, setAmount] = useState(
+    initial
+      ? (initial.amountCents / 100).toFixed(2)
+      : defaultAmountCents
+        ? (defaultAmountCents / 100).toFixed(2)
+        : "",
+  );
   const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
   const [paymentDate, setPaymentDate] = useState(initial?.settlementDate ?? localToday());
   const [note, setNote] = useState(initial?.note ?? "");

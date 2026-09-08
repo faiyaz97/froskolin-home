@@ -907,6 +907,16 @@ export type Database = {
         };
         Relationships: [];
       };
+      household_pair_balances: {
+        Row: {
+          amount_cents: number | null;
+          currency: string | null;
+          household_id: string | null;
+          paying_member_id: string | null;
+          receiving_member_id: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       create_expense_with_landlord_support: {

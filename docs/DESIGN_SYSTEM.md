@@ -15,8 +15,9 @@ Canonical reference pages:
 7. Expense and Utility Bill Details: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`
 8. Payment Add and Details: `src/app/h/[householdId]/add/settlement/page.tsx` and `src/app/h/[householdId]/settlements/[settlementId]/page.tsx`
 9. Activity List and Detail: `src/app/h/[householdId]/activity/page.tsx` and `src/app/h/[householdId]/activity/[eventId]/page.tsx`
+10. Group and Landlord Balances: `src/app/h/[householdId]/balances/page.tsx` and `src/app/h/[householdId]/landlord/page.tsx`
 
-Repeated patterns across these pages are canonical. Balances, landlord, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the nine pages above.
+Repeated patterns across these pages are canonical. Authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the ten page groups above.
 
 ## Design principles
 
@@ -169,6 +170,7 @@ Canonical form pattern: `InlineValue` and `ChoiceRow` from `src/components/expen
 - Multi-select and radio-style dialog choices use `ChoiceRow`, with accessible `aria-checked` state and a visual check/radio indicator.
 - Native checkbox visuals from older/unfinished pages are not canonical references.
 - Settings toggles are entire 64px rows with `role="switch"`, `aria-checked`, a pastel icon tile, and a teal 44×24 track with a white 16px thumb.
+- Compact view toggles may sit beside a section title. Pair a short current-state label with a 36×20 track and 16px thumb, keep the whole label-and-track target clickable, and expose `role="switch"` plus `aria-checked`.
 - The Group Settings switch is currently local to `settings-panel.tsx`; `SwitchField` in `ui/field.tsx` is a second implementation. Consolidation is unresolved—reuse the completed Group Settings appearance, but do not refactor solely for consistency without a separate task.
 
 ### Dialogs
@@ -261,6 +263,15 @@ Canonical list: `src/components/activity/audit-list.tsx`; canonical presentation
 - Show only a whitelist of meaningful fields. Updated records display only values that actually changed, with a compact before → after treatment. Created records show concise recorded details.
 - Resolve member and user references to display names. Never expose UUIDs, raw snapshots, internal normalized fields, or JSON blobs in the interface.
 - Use `ActivityTypeIcon` from `src/components/activity/activity-type-icon.tsx` for consistent entity colors and icons across list and detail views. Utility-bill activity must resolve the saved utility type and delegate to the canonical `UtilityTypeIcon`; use its gas, electricity, water, internet, or other-bill icon and pastel tone instead of the generic expense receipt.
+
+### Group and landlord balances
+
+- Both balance routes use a centered `max-w-2xl` column, the standard desktop `PageHeader`, short section labels, and borderless 22px grouped cards with soft full-width row dividers.
+- The first Group Balances section is “Members”; do not add a currency label beside its title because each formatted amount already communicates currency. Each member row shows the avatar, name, and absolute balance, followed by smaller counterpart rows that explain the balance. Reuse the utility-detail breakdown structure: connect child rows beneath the parent avatar on the left, keep each counterpart avatar and name together, and align every amount at the right edge. Breakdown amounts repeat the parent total's positive-green or negative-red meaning at lower opacity.
+- Place the compact `Simplified`/`Actual` switch at the right edge of the Members heading. Simplified is the default and shows the minimum-payment projection; Actual preserves the remaining original payer-to-participant relationships. Switching modes must update the connected member breakdowns and Settle up rows together.
+- Settlement suggestions use avatar → avatar rows, member names, and one right-aligned amount. When the authenticated member is the payer, place a compact text-only mint `Settle up` action immediately before the amount and prefill the existing payment form with that exact payer, recipient, currency, and amount. Do not show a generic page-level settlement action.
+- Landlord balances lead with one restrained pastel-peach outstanding summary. Outstanding bill rows show title, date, amount left, compact paid-versus-total copy, and a small mint `Mark paid` action.
+- Paid landlord bills use compact grouped history rows and an icon-only reopen action with an explicit accessible label. Empty states are short borderless cards or one line of muted copy; do not restore dashed panels or explanatory paragraphs.
 
 ### Tables
 
