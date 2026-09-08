@@ -1,8 +1,16 @@
 import { AuditList } from "@/components/activity/audit-list";
-import type { FeedEvent } from "@/components/activity/feed";
 import type { AvatarColor } from "@/components/household/member-avatar";
+import type { UtilityType } from "@/components/bills/bill-meta-controls";
 import { PageHeader } from "@/components/ui/page";
-import { getActivityFeed, getHousehold, getHouseholdMembers } from "@/lib/queries";
+import type { ActivityEvent } from "@/lib/activity/presentation";
+import {
+  getActivityFeed,
+  getActivityUtilityTypes,
+  getHousehold,
+  getHouseholdMembers,
+} from "@/lib/queries";
+
+const PAGE_SIZE = 10;
 
 export default async function ActivityPage({
   params,
@@ -13,28 +21,34 @@ export default async function ActivityPage({
   const [home, members, events] = await Promise.all([
     getHousehold(householdId),
     getHouseholdMembers(householdId),
-    getActivityFeed(householdId, 100),
+    getActivityFeed(householdId, PAGE_SIZE + 1),
   ]);
+  const visibleEvents = events.slice(0, PAGE_SIZE) as ActivityEvent[];
+  const utilityTypes = await getActivityUtilityTypes(
+    householdId,
+    visibleEvents
+      .filter((event) => event.entity_type === "expense")
+      .map((event) => event.entity_id),
+  );
   return (
-    <>
+    <div className="mx-auto w-full max-w-2xl">
       <PageHeader title="Activity" />
-      <div className="rounded-2xl border border-[var(--line)] bg-white px-4 shadow-[var(--shadow-sm)] sm:px-5">
+      <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
         <AuditList
           householdId={householdId}
-          events={events as Array<FeedEvent & { actor_user_id: string | null }>}
-          actors={Object.fromEntries(
-            members.map((member) => [
-              member.user_id,
-              {
-                name: member.display_name,
-                avatarColor: member.avatar_color as AvatarColor | null,
-              },
-            ]),
-          )}
+          initialEvents={visibleEvents}
+          initialUtilityTypes={utilityTypes as Record<string, UtilityType>}
+          members={members.map((member) => ({
+            id: member.id,
+            userId: member.user_id,
+            name: member.display_name,
+            avatarColor: member.avatar_color as AvatarColor | null,
+          }))}
           locale={home?.locale ?? "en-GB"}
           timezone={home?.timezone ?? "UTC"}
+          initialHasMore={events.length > PAGE_SIZE}
         />
       </div>
-    </>
+    </div>
   );
 }

@@ -1,77 +1,173 @@
-import { CalendarDays, HandCoins, House, ReceiptText, Repeat2 } from "lucide-react";
+"use client";
+
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useState, useTransition } from "react";
 
-import type { FeedEvent } from "./feed";
-import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
+import {
+  activityActor,
+  activityAmount,
+  activityHeadline,
+  type ActivityEvent,
+  type ActivityMember,
+} from "@/lib/activity/presentation";
 import { formatDateTime } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
+import type { UtilityType } from "../bills/bill-meta-controls";
+import { ActivityTypeIcon } from "./activity-type-icon";
 
-const icons = {
-  absence_period: { icon: CalendarDays, color: "bg-[var(--sky-soft)] text-[var(--sky)]" },
-  expense: { icon: ReceiptText, color: "bg-[var(--brand-soft)] text-[var(--brand)]" },
-  recurring_rule: { icon: Repeat2, color: "bg-[var(--violet-soft)] text-[var(--violet)]" },
-  settlement: { icon: HandCoins, color: "bg-[var(--positive-soft)] text-[var(--positive)]" },
-  landlord_payment: { icon: House, color: "bg-[var(--peach-soft)] text-[var(--peach)]" },
-};
+type Member = ActivityMember & { avatarColor: AvatarColor | null };
 
 export function AuditList({
   householdId,
-  events,
-  actors,
+  initialEvents,
+  initialUtilityTypes,
+  members,
   locale,
   timezone,
+  initialHasMore,
 }: {
   householdId: string;
-  events: Array<FeedEvent & { actor_user_id: string | null }>;
-  actors: Record<string, { name: string; avatarColor: AvatarColor | null }>;
+  initialEvents: ActivityEvent[];
+  initialUtilityTypes: Record<string, UtilityType>;
+  members: Member[];
   locale: string;
   timezone: string;
+  initialHasMore: boolean;
 }) {
+  const [events, setEvents] = useState(initialEvents);
+  const [utilityTypes, setUtilityTypes] = useState(initialUtilityTypes);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadError, setLoadError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function loadMore() {
+    const lastEvent = events.at(-1);
+    if (!lastEvent || pending) return;
+    startTransition(async () => {
+      setLoadError("");
+      const { data, error } = await createClient()
+        .from("audit_events")
+        .select(
+          "id, action_type, entity_type, entity_id, summary, occurred_at, actor_user_id, previous_values, new_values",
+        )
+        .eq("household_id", householdId)
+        .lt("occurred_at", lastEvent.occurred_at)
+        .order("occurred_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(11);
+      if (error) {
+        setLoadError("More activity could not be loaded.");
+        return;
+      }
+      const nextEvents = (data ?? []) as ActivityEvent[];
+      const visibleNextEvents = nextEvents.slice(0, 10);
+      const expenseIds = visibleNextEvents
+        .filter((event) => event.entity_type === "expense")
+        .map((event) => event.entity_id);
+
+      if (expenseIds.length) {
+        const { data: bills, error: billsError } = await createClient()
+          .from("utility_bills")
+          .select("expense_id, utility_type")
+          .eq("household_id", householdId)
+          .in("expense_id", [...new Set(expenseIds)]);
+        if (billsError) {
+          setLoadError("More activity could not be loaded.");
+          return;
+        }
+        setUtilityTypes((current) => ({
+          ...current,
+          ...Object.fromEntries(
+            (bills ?? []).map((bill: { expense_id: string; utility_type: string }) => [
+              bill.expense_id,
+              bill.utility_type as UtilityType,
+            ]),
+          ),
+        }));
+      }
+
+      setEvents((current) => [...current, ...visibleNextEvents]);
+      setHasMore(nextEvents.length > 10);
+    });
+  }
+
   if (!events.length) {
     return (
-      <p className="py-8 text-center text-sm text-[var(--muted)]">
-        No important changes have been recorded yet.
+      <p className="px-4 py-10 text-center text-sm text-[var(--muted)]">
+        No activity recorded yet.
       </p>
     );
   }
+
   return (
-    <ol className="relative ml-4 border-l border-[var(--line)] pl-6 sm:ml-5 sm:pl-8">
-      {events.map((event) => {
-        const iconData = icons[event.entity_type as keyof typeof icons] ?? {
-          icon: ReceiptText,
-          color: "bg-[var(--peach-soft)] text-[var(--peach)]",
-        };
-        const Icon = iconData.icon;
-        const actorProfile = event.actor_user_id ? actors[event.actor_user_id] : undefined;
-        const actor = event.actor_user_id ? (actorProfile?.name ?? "A roommate") : "Froskolin";
-        return (
-          <li
-            key={event.id}
-            className="relative border-b border-[var(--soft-line)] py-5 first:pt-1"
-          >
-            <span
-              className={`absolute top-5 -left-[2.37rem] grid size-8 place-items-center rounded-full ring-4 ring-white sm:-left-[3.04rem] ${iconData.color}`}
-            >
-              <Icon className="size-4" aria-hidden="true" />
-            </span>
-            <Link
-              href={`/h/${householdId}/activity/${event.id}`}
-              className="block text-[var(--ink)] no-underline"
-            >
-              <div className="flex items-start gap-3">
-                <MemberAvatar name={actor} color={actorProfile?.avatarColor} className="size-8" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm">
-                    <strong>{actor}</strong> · {event.summary}
-                  </p>
-                  <time className="mt-2 block text-xs text-[var(--muted)]">
-                    {formatDateTime(event.occurred_at, locale, timezone)}
-                  </time>
-                </div>
-              </div>
-            </Link>
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      <ol aria-label="Group activity">
+        {events.map((event) => {
+          const actor = activityActor(event, members);
+          const actorProfile = event.actor_user_id
+            ? members.find((member) => member.userId === event.actor_user_id)
+            : undefined;
+          const amount = activityAmount(event, locale);
+
+          return (
+            <li key={event.id} className="border-b border-[var(--soft-line)] last:border-0">
+              <Link
+                href={`/h/${householdId}/activity/${event.id}`}
+                className="group flex min-h-20 items-center gap-3 px-3.5 py-3 text-[var(--ink)] no-underline transition-colors hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-5"
+              >
+                <span className="relative shrink-0">
+                  <MemberAvatar
+                    name={actor}
+                    color={actorProfile?.avatarColor}
+                    className="size-11 border-0 shadow-none"
+                  />
+                  <ActivityTypeIcon
+                    entityType={event.entity_type}
+                    utilityType={utilityTypes[event.entity_id]}
+                    className="absolute -right-1 -bottom-1 size-5 rounded-full ring-2 ring-white"
+                    iconClassName="size-3"
+                  />
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm leading-5">
+                    {activityHeadline(event, members)}
+                  </strong>
+                  <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                    {actor} · {formatDateTime(event.occurred_at, locale, timezone)}
+                  </span>
+                </span>
+
+                {amount && (
+                  <strong className="shrink-0 text-sm tabular-nums sm:text-base">{amount}</strong>
+                )}
+                <ChevronRight
+                  className="size-4 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={loadMore}
+          disabled={pending}
+          className="block w-full border-t border-[var(--soft-line)] px-4 py-4 text-center text-xs font-bold text-[var(--muted)] transition-colors hover:bg-[var(--canvas)] hover:text-[var(--brand)] focus-visible:bg-[var(--canvas)] focus-visible:text-[var(--brand)] focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+        >
+          {pending ? "Loading…" : "Click to load more"}
+        </button>
+      )}
+      {loadError && (
+        <p role="alert" className="px-4 py-3 text-center text-xs font-bold text-[var(--negative)]">
+          {loadError}
+        </p>
+      )}
+    </>
   );
 }

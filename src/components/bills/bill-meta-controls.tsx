@@ -10,7 +10,7 @@ import { Dialog } from "../ui/dialog";
 import { ChoiceRow, InlineValue, participantSummary } from "../expenses/expense-sharing-controls";
 
 type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
-type UtilityType = "electricity" | "gas" | "water" | "internet" | "other";
+export type UtilityType = "electricity" | "gas" | "water" | "internet" | "other";
 
 const utilityTypes = [
   { value: "electricity", label: "Electricity", icon: Zap, tone: "bg-[#fef3c7] text-[#d97706]" },

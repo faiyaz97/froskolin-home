@@ -2,20 +2,33 @@ import "server-only";
 
 import { requireHouseholdMembership } from "@/lib/auth";
 
-export async function getActivityFeed(householdId: string, limit = 50, before?: string) {
+export async function getActivityFeed(householdId: string, limit = 10) {
   const { supabase } = await requireHouseholdMembership(householdId);
-  let query = supabase
+  const { data, error } = await supabase
     .from("audit_events")
     .select(
-      "id, action_type, entity_type, entity_id, summary, occurred_at, actor_user_id, new_values",
+      "id, action_type, entity_type, entity_id, summary, occurred_at, actor_user_id, previous_values, new_values",
     )
     .eq("household_id", householdId)
     .order("occurred_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 100));
-  if (before) query = query.lt("occurred_at", before);
-  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getActivityUtilityTypes(householdId: string, expenseIds: string[]) {
+  if (!expenseIds.length) return {};
+
+  const { supabase } = await requireHouseholdMembership(householdId);
+  const { data, error } = await supabase
+    .from("utility_bills")
+    .select("expense_id, utility_type")
+    .eq("household_id", householdId)
+    .in("expense_id", [...new Set(expenseIds)]);
+  if (error) throw error;
+
+  return Object.fromEntries((data ?? []).map((bill) => [bill.expense_id, bill.utility_type]));
 }
 
 export async function getHouseholdTransactions(householdId: string, limit = 50) {

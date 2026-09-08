@@ -14,8 +14,9 @@ Canonical reference pages:
 6. Calendar: `src/app/h/[householdId]/calendar/page.tsx`
 7. Expense and Utility Bill Details: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`
 8. Payment Add and Details: `src/app/h/[householdId]/add/settlement/page.tsx` and `src/app/h/[householdId]/settlements/[settlementId]/page.tsx`
+9. Activity List and Detail: `src/app/h/[householdId]/activity/page.tsx` and `src/app/h/[householdId]/activity/[eventId]/page.tsx`
 
-Repeated patterns across these pages are canonical. Activity, balances, landlord, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the eight pages above.
+Repeated patterns across these pages are canonical. Balances, landlord, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the nine pages above.
 
 ## Design principles
 
@@ -250,6 +251,17 @@ Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`)
 - Show non-empty notes inside the main payment card, directly beneath the payer-to-receiver row, as compact inline copy in the form “Notes: …”. Date and note icon tools belong only to the form; do not use them to hide information on the view page.
 - Use compact void and edit icon actions below the view card. The edit action opens the dedicated edit route, which reuses `SettlementForm` with initial values and returns to the read-only detail after saving or cancelling.
 
+### Activity list and detail
+
+Canonical list: `src/components/activity/audit-list.tsx`; canonical presentation helpers: `src/lib/activity/presentation.ts`.
+
+- Use one borderless 22px grouped card with soft row dividers. Each row shows the actor avatar, a small pastel entity badge, a concise action headline, actor name, timestamp, and an amount only when relevant.
+- Activity is progressive: show the latest 10 records initially and reveal 10 more through the soft, centered `Click to load more` action. Never fetch the complete audit history by default.
+- Detail pages use the standard `max-w-2xl` transaction-card composition. Lead with the entity icon, human-readable action, timestamp, and actor identity.
+- Show only a whitelist of meaningful fields. Updated records display only values that actually changed, with a compact before → after treatment. Created records show concise recorded details.
+- Resolve member and user references to display names. Never expose UUIDs, raw snapshots, internal normalized fields, or JSON blobs in the interface.
+- Use `ActivityTypeIcon` from `src/components/activity/activity-type-icon.tsx` for consistent entity colors and icons across list and detail views. Utility-bill activity must resolve the saved utility type and delegate to the canonical `UtilityTypeIcon`; use its gas, electricity, water, internet, or other-bill icon and pastel tone instead of the generic expense receipt.
+
 ### Tables
 
 No completed reference page defines a canonical data-table design. Use responsive grouped rows for member/share/transaction data today. If a true table becomes necessary, treat its density, mobile transformation, headers, sorting, and empty states as an explicit design decision rather than copying an unfinished page.
@@ -308,6 +320,8 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | Away date-range calendar      | `src/components/calendar/away-calendar.tsx`                         | Canonical for member range selection                                |
 | Expense/bill detail view      | `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`             | Canonical shared detail composition                                 |
 | Payment form                  | `src/components/expenses/settlement-form.tsx`                       | Canonical add/edit payment composition                              |
+| Activity entity icon          | `src/components/activity/activity-type-icon.tsx`                    | Canonical across activity list and detail                           |
+| Activity list                 | `src/components/activity/audit-list.tsx`                            | Canonical grouped audit summary                                     |
 | Service period inputs         | `src/components/bills/bill-meta-controls.tsx` + `ui/date-input.tsx` | Canonical for bills                                                 |
 | Expense attachment            | `src/components/expenses/expense-attachment-action.tsx`             | Canonical                                                           |
 | Bill document upload          | `src/components/bills/bill-upload.tsx`                              | Canonical                                                           |
