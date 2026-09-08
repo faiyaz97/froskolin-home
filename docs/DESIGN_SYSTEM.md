@@ -255,8 +255,8 @@ Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`)
 
 Canonical list: `src/components/activity/audit-list.tsx`; canonical presentation helpers: `src/lib/activity/presentation.ts`.
 
-- Use one borderless 22px grouped card with soft row dividers. Each row shows the actor avatar, a small pastel entity badge, a concise action headline, actor name, timestamp, and an amount only when relevant.
-- Activity is progressive: show the latest 10 records initially and reveal 10 more through the soft, centered `Click to load more` action. Never fetch the complete audit history by default.
+- Use one borderless 22px grouped card with soft row dividers. On mobile the list reaches the viewport edges like Home while the title keeps normal page padding; restore the contained card alignment from the desktop breakpoint. Each row shows the actor avatar, a small pastel entity badge, a concise action headline, actor name, timestamp, and an amount only when relevant.
+- Activity is progressive: show the latest 10 records initially and reveal 10 more through the shared, centered `Load more` text action. Never fetch the complete audit history by default.
 - Detail pages use the standard `max-w-2xl` transaction-card composition. Lead with the entity icon, human-readable action, timestamp, and actor identity.
 - Show only a whitelist of meaningful fields. Updated records display only values that actually changed, with a compact before → after treatment. Created records show concise recorded details.
 - Resolve member and user references to display names. Never expose UUIDs, raw snapshots, internal normalized fields, or JSON blobs in the interface.
@@ -280,6 +280,8 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - User and Group Settings use feature headers with a sky→mint gradient, 28px lower/outer radius, compact uppercase eyebrow, bold name, and a minimal pencil edit affordance.
 - Group credentials are selectable plain text. Only the dedicated pencil button opens the Group Access dialog; the surrounding credential surface is never clickable.
 - Home uses a sky header and its own responsive summary system rather than the generic `PageHeader`.
+- Home transaction history uses Activity’s grouped-list shell: a borderless 22px white card, clipped outer corners, rectangular middle rows, and soft dividers. Preserve Home’s existing row content and month labels outside each card.
+- Home transaction history is progressive: render the latest 10 combined expense/payment rows, then reveal batches of 10 with the shared `LoadMoreAction`. On Home and Activity, place this centered text-only action outside the grouped card and label it “Load more,” which works for pointer and touch input.
 - Expense/Utility type switch: `src/components/expenses/expense-type-nav.tsx`; show only in add mode, not edit mode.
 - Home floating actions use stacked pastel pill `ButtonLink`s and remain above navigation/content.
 
@@ -322,6 +324,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | Payment form                  | `src/components/expenses/settlement-form.tsx`                       | Canonical add/edit payment composition                              |
 | Activity entity icon          | `src/components/activity/activity-type-icon.tsx`                    | Canonical across activity list and detail                           |
 | Activity list                 | `src/components/activity/audit-list.tsx`                            | Canonical grouped audit summary                                     |
+| Progressive load action       | `src/components/ui/load-more-action.tsx`                            | Canonical text-only action for Home and Activity                    |
 | Service period inputs         | `src/components/bills/bill-meta-controls.tsx` + `ui/date-input.tsx` | Canonical for bills                                                 |
 | Expense attachment            | `src/components/expenses/expense-attachment-action.tsx`             | Canonical                                                           |
 | Bill document upload          | `src/components/bills/bill-upload.tsx`                              | Canonical                                                           |

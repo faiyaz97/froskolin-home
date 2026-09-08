@@ -13,8 +13,9 @@ import {
 } from "@/lib/activity/presentation";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
-import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import type { UtilityType } from "../bills/bill-meta-controls";
+import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
+import { LoadMoreAction } from "../ui/load-more-action";
 import { ActivityTypeIcon } from "./activity-type-icon";
 
 type Member = ActivityMember & { avatarColor: AvatarColor | null };
@@ -103,7 +104,10 @@ export function AuditList({
 
   return (
     <>
-      <ol aria-label="Group activity">
+      <ol
+        aria-label="Group activity"
+        className="-mx-3 overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)] md:mx-0"
+      >
         {events.map((event) => {
           const actor = activityActor(event, members);
           const actorProfile = event.actor_user_id
@@ -153,16 +157,7 @@ export function AuditList({
         })}
       </ol>
 
-      {hasMore && (
-        <button
-          type="button"
-          onClick={loadMore}
-          disabled={pending}
-          className="block w-full border-t border-[var(--soft-line)] px-4 py-4 text-center text-xs font-bold text-[var(--muted)] transition-colors hover:bg-[var(--canvas)] hover:text-[var(--brand)] focus-visible:bg-[var(--canvas)] focus-visible:text-[var(--brand)] focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
-        >
-          {pending ? "Loading…" : "Click to load more"}
-        </button>
-      )}
+      {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} />}
       {loadError && (
         <p role="alert" className="px-4 py-3 text-center text-xs font-bold text-[var(--negative)]">
           {loadError}

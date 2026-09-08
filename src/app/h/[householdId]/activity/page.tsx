@@ -33,22 +33,20 @@ export default async function ActivityPage({
   return (
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader title="Activity" />
-      <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
-        <AuditList
-          householdId={householdId}
-          initialEvents={visibleEvents}
-          initialUtilityTypes={utilityTypes as Record<string, UtilityType>}
-          members={members.map((member) => ({
-            id: member.id,
-            userId: member.user_id,
-            name: member.display_name,
-            avatarColor: member.avatar_color as AvatarColor | null,
-          }))}
-          locale={home?.locale ?? "en-GB"}
-          timezone={home?.timezone ?? "UTC"}
-          initialHasMore={events.length > PAGE_SIZE}
-        />
-      </div>
+      <AuditList
+        householdId={householdId}
+        initialEvents={visibleEvents}
+        initialUtilityTypes={utilityTypes as Record<string, UtilityType>}
+        members={members.map((member) => ({
+          id: member.id,
+          userId: member.user_id,
+          name: member.display_name,
+          avatarColor: member.avatar_color as AvatarColor | null,
+        }))}
+        locale={home?.locale ?? "en-GB"}
+        timezone={home?.timezone ?? "UTC"}
+        initialHasMore={events.length > PAGE_SIZE}
+      />
     </div>
   );
 }

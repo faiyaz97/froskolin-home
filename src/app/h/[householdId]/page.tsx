@@ -26,6 +26,8 @@ import {
   getLandlordBillBalances,
 } from "@/lib/queries";
 
+const HOME_PAGE_SIZE = 10;
+
 export default async function HouseholdHome({
   params,
 }: {
@@ -37,7 +39,7 @@ export default async function HouseholdHome({
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getBalances(householdId),
-    getHouseholdTransactions(householdId),
+    getHouseholdTransactions(householdId, HOME_PAGE_SIZE + 1),
     getLandlordBillBalances(householdId),
   ]);
   const locale = home?.locale ?? "en-GB";
@@ -188,8 +190,10 @@ export default async function HouseholdHome({
           householdId={householdId}
           currentMemberId={membership.id}
           memberNames={memberNames}
-          expenses={transactions.expenses}
-          settlements={transactions.settlements}
+          expenses={transactions.expenses.slice(0, HOME_PAGE_SIZE)}
+          settlements={transactions.settlements.slice(0, HOME_PAGE_SIZE)}
+          expenseHasMore={transactions.expenses.length > HOME_PAGE_SIZE}
+          settlementHasMore={transactions.settlements.length > HOME_PAGE_SIZE}
           locale={locale}
           timezone={home?.timezone ?? "UTC"}
         />

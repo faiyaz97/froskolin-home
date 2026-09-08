@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Droplets,
@@ -11,10 +13,13 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
+import { useState, useTransition } from "react";
 
 import { formatMoney, timestampToDateOnly } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
+import { LoadMoreAction } from "../ui/load-more-action";
 
-type Expense = {
+export type LedgerExpense = {
   id: string;
   title: string;
   total_cents: number;
@@ -33,7 +38,7 @@ type Expense = {
     | null;
 };
 
-type Settlement = {
+export type LedgerSettlement = {
   id: string;
   paying_member_id: string;
   receiving_member_id: string;
@@ -83,7 +88,7 @@ function formatDay(value: string, locale: string) {
   };
 }
 
-function ExpenseIcon({ expense }: { expense: Expense }) {
+function ExpenseIcon({ expense }: { expense: LedgerExpense }) {
   const utility = Array.isArray(expense.utility_bills)
     ? expense.utility_bills[0]
     : expense.utility_bills;
@@ -117,19 +122,32 @@ export function HouseholdLedger({
   memberNames,
   expenses,
   settlements,
+  expenseHasMore,
+  settlementHasMore,
   locale,
   timezone,
 }: {
   householdId: string;
   currentMemberId: string;
   memberNames: Record<string, string>;
-  expenses: Expense[];
-  settlements: Settlement[];
+  expenses: LedgerExpense[];
+  settlements: LedgerSettlement[];
+  expenseHasMore: boolean;
+  settlementHasMore: boolean;
   locale: string;
   timezone: string;
 }) {
+  const pageSize = 10;
+  const [loadedExpenses, setLoadedExpenses] = useState(expenses);
+  const [loadedSettlements, setLoadedSettlements] = useState(settlements);
+  const [moreExpenses, setMoreExpenses] = useState(expenseHasMore);
+  const [moreSettlements, setMoreSettlements] = useState(settlementHasMore);
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+  const [loadError, setLoadError] = useState("");
+  const [pending, startTransition] = useTransition();
+
   const rows = [
-    ...expenses.map((expense) => ({
+    ...loadedExpenses.map((expense) => ({
       kind: "expense" as const,
       date:
         expense.kind === "utility"
@@ -138,15 +156,68 @@ export function HouseholdLedger({
       createdAt: expense.created_at,
       value: expense,
     })),
-    ...settlements.map((settlement) => ({
+    ...loadedSettlements.map((settlement) => ({
       kind: "settlement" as const,
       date: settlement.settlement_date,
       createdAt: settlement.created_at,
       value: settlement,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  const visibleRows = rows.slice(0, visibleCount);
+  const hasMore = rows.length > visibleCount || moreExpenses || moreSettlements;
 
-  const groups = rows.reduce<Array<{ key: string; label: string; rows: typeof rows }>>(
+  function loadMore() {
+    if (pending) return;
+    if (rows.length >= visibleCount + pageSize) {
+      setVisibleCount((count) => count + pageSize);
+      return;
+    }
+
+    startTransition(async () => {
+      setLoadError("");
+      const supabase = createClient();
+      const [expenseResult, settlementResult] = await Promise.all([
+        moreExpenses
+          ? supabase
+              .from("expenses")
+              .select(
+                "id, title, total_cents, currency, payer_member_id, paid_by_landlord, expense_date, created_at, kind, split_method, recurring_rule_id, expense_shares(member_id, share_cents), utility_bills(utility_type)",
+              )
+              .eq("household_id", householdId)
+              .is("voided_at", null)
+              .order("created_at", { ascending: false })
+              .range(loadedExpenses.length, loadedExpenses.length + pageSize)
+          : Promise.resolve({ data: [], error: null }),
+        moreSettlements
+          ? supabase
+              .from("settlements")
+              .select(
+                "id, paying_member_id, receiving_member_id, amount_cents, currency, settlement_date, created_at",
+              )
+              .eq("household_id", householdId)
+              .is("voided_at", null)
+              .order("settlement_date", { ascending: false })
+              .order("created_at", { ascending: false })
+              .range(loadedSettlements.length, loadedSettlements.length + pageSize)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (expenseResult.error || settlementResult.error) {
+        setLoadError("More transactions could not be loaded.");
+        return;
+      }
+
+      const nextExpenses = (expenseResult.data ?? []) as LedgerExpense[];
+      const nextSettlements = (settlementResult.data ?? []) as LedgerSettlement[];
+      setLoadedExpenses((current) => [...current, ...nextExpenses.slice(0, pageSize)]);
+      setLoadedSettlements((current) => [...current, ...nextSettlements.slice(0, pageSize)]);
+      setMoreExpenses(nextExpenses.length > pageSize);
+      setMoreSettlements(nextSettlements.length > pageSize);
+      setVisibleCount((count) => count + pageSize);
+    });
+  }
+
+  const groups = visibleRows.reduce<Array<{ key: string; label: string; rows: typeof rows }>>(
     (result, row) => {
       const key = row.date.slice(0, 7);
       const current = result.at(-1);
@@ -166,7 +237,7 @@ export function HouseholdLedger({
               <h3 className="mb-1.5 px-1 text-[11px] font-black tracking-[0.08em] text-[var(--muted)] uppercase">
                 {group.label}
               </h3>
-              <div className="grid gap-1.5">
+              <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
                 {group.rows.map((row) => {
                   const date = formatDay(row.date, locale);
                   if (row.kind === "settlement") {
@@ -175,7 +246,7 @@ export function HouseholdLedger({
                       <Link
                         key={`settlement-${settlement.id}`}
                         href={`/h/${householdId}/settlements/${settlement.id}`}
-                        className="flex min-h-[68px] items-center gap-3 rounded-2xl bg-white px-3 py-2.5 text-[var(--ink)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--canvas)] sm:px-4"
+                        className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-4"
                       >
                         <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                           {date.month}
@@ -231,7 +302,7 @@ export function HouseholdLedger({
                     <Link
                       key={`expense-${expense.id}`}
                       href={`/h/${householdId}/expenses/${expense.id}`}
-                      className="flex min-h-[68px] items-center gap-3 rounded-2xl bg-white px-3 py-2.5 text-[var(--ink)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--canvas)] sm:px-4"
+                      className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-4"
                     >
                       <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                         {date.month}
@@ -264,6 +335,12 @@ export function HouseholdLedger({
               </div>
             </section>
           ))}
+          {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} />}
+          {loadError && (
+            <p role="alert" className="text-center text-xs font-bold text-[var(--negative)]">
+              {loadError}
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex items-center gap-4 rounded-2xl bg-white px-4 py-5 shadow-[var(--shadow-sm)] sm:px-5">

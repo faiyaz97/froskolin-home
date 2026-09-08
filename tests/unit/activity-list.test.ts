@@ -79,11 +79,11 @@ describe("activity list pagination", () => {
     );
 
     expect(screen.getAllByRole("listitem")).toHaveLength(10);
-    fireEvent.click(screen.getByRole("button", { name: "Click to load more" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
 
     await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(11));
     expect(query.builder.lt).toHaveBeenCalledWith("occurred_at", initialEvents[9]?.occurred_at);
-    expect(screen.queryByRole("button", { name: "Click to load more" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 
   it("uses the canonical utility icon for bill activity", () => {
