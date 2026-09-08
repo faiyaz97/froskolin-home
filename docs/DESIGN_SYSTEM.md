@@ -12,8 +12,9 @@ Canonical reference pages:
 4. User Settings: `src/app/h/[householdId]/account/page.tsx`
 5. Group Settings: `src/app/h/[householdId]/settings/page.tsx`
 6. Calendar: `src/app/h/[householdId]/calendar/page.tsx`
+7. Expense and Utility Bill Details: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`
 
-Repeated patterns across these pages are canonical. Activity, balances, landlord, settlement, detail, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the six pages above.
+Repeated patterns across these pages are canonical. Activity, balances, landlord, settlement, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the seven pages above.
 
 ## Design principles
 
@@ -209,6 +210,21 @@ Canonical feature component: `src/components/calendar/away-calendar.tsx` (`AwayC
 - Home balance cards use mint/peach semantic surfaces and collapse into a borderless divided strip during the mobile scroll morph.
 - `src/components/ui/surface.tsx` is useful for semantic pastel surfaces, but its default visible border is not the default for completed-page cards. Override deliberately or use the grouped-card pattern.
 
+### Expense and utility-bill details
+
+Canonical route: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`.
+
+- Expense and utility-bill records share one responsive detail route while using purpose-built breakdowns for their different data.
+- Use a `max-w-2xl` column and a borderless 24px white transaction hero. The hero starts with the canonical icon, title and date, with the total aligned at the far right. Do not repeat the record or utility type as an eyebrow beside the icon; the icon already provides that cue.
+- Both record types continue below the hero divider with a compact payer summary and connected avatar share rows. The payer row ends with participant count; ordinary expenses also show the split method. Every known member uses `MemberAvatar`, with the share total right aligned. Bill rows add one compact line for days at home and the fixed-plus-usage share breakdown.
+- Active recurring expense occurrences show the rule's authoritative next due date directly below the occurrence date with a compact violet recurrence cue. Hide the cue when the rule is paused, archived, or has reached its end date.
+- The edit tool on a recurring occurrence opens the shared `ExpenseForm` in recurring-rule mode, so its calendar includes the Repeat frequency and end-date controls. Ordinary occurrence editing remains a separate domain operation and must not masquerade as schedule editing.
+- Utility totals show concise Fixed and Usage values directly beneath the total at the right of the hero. Do not restore a separate allocation strip or explanatory allocation paragraphs.
+- Use compact document/attachment, void, and edit icon tools below the card. Only render the left document tool when a file exists; ordinary expenses use a paperclip and utility bills use the bill-document icon. Keep authorized view routes.
+- Present optional notes as a small separate grouped card.
+- Keep edit as the positive pastel action, away dates as a quiet utility action for bills, and void as the clearly destructive action. Voided records remain readable but cannot be edited or voided again.
+- The shared route sets the mobile shell title from the loaded record: `Expense` or `Utility bill`. Desktop shows the same specific record type through `PageHeader`.
+
 ### Tables
 
 No completed reference page defines a canonical data-table design. Use responsive grouped rows for member/share/transaction data today. If a true table becomes necessary, treat its density, mobile transformation, headers, sorting, and empty states as an explicit design decision rather than copying an unfinished page.
@@ -264,6 +280,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | Inline selections/choice rows | `src/components/expenses/expense-sharing-controls.tsx`              | Canonical across expense and bill forms                             |
 | Date dialog/tool              | `src/components/expenses/expense-date-action.tsx`                   | Canonical for expense date/recurrence                               |
 | Away date-range calendar      | `src/components/calendar/away-calendar.tsx`                         | Canonical for member range selection                                |
+| Expense/bill detail view      | `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`             | Canonical shared detail composition                                 |
 | Service period inputs         | `src/components/bills/bill-meta-controls.tsx` + `ui/date-input.tsx` | Canonical for bills                                                 |
 | Expense attachment            | `src/components/expenses/expense-attachment-action.tsx`             | Canonical                                                           |
 | Bill document upload          | `src/components/bills/bill-upload.tsx`                              | Canonical                                                           |
@@ -298,5 +315,5 @@ These are not defined by the completed pages and should be decided in a future t
 6. A branded destructive-confirmation dialog to replace `window.confirm`.
 7. Consolidation of the two attachment action/popover implementations.
 8. Token names for remaining literal hover, icon, backdrop, and focus colors.
-9. Canonical visual treatment for public/authentication, detail, balance, activity, settlement, loading, error, and recurring-management pages.
+9. Canonical visual treatment for public/authentication, balance, activity, settlement, loading, error, and recurring-management pages.
 10. Whether internal `household` terminology should ever be migrated; no such migration is implied by the current UI language.

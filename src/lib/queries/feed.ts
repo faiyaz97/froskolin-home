@@ -64,3 +64,28 @@ export async function getExpenseDetail(householdId: string, expenseId: string) {
   if (error) throw error;
   return data;
 }
+
+export async function getExpenseAttachment(householdId: string, expenseId: string) {
+  const { supabase } = await requireHouseholdMembership(householdId);
+  const { data, error } = await supabase
+    .from("expense_attachments")
+    .select("original_file_name")
+    .eq("household_id", householdId)
+    .eq("expense_id", expenseId)
+    .is("removed_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getRecurringExpenseSchedule(householdId: string, ruleId: string) {
+  const { supabase } = await requireHouseholdMembership(householdId);
+  const { data, error } = await supabase
+    .from("recurring_expense_rules")
+    .select("next_due_date, end_date, active, archived_at")
+    .eq("household_id", householdId)
+    .eq("id", ruleId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

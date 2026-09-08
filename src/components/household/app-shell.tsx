@@ -2,11 +2,24 @@
 
 import { ArrowLeft, Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { cn } from "../ui/cn";
 import { CatMark } from "../ui/brand";
 import { AppNavigation } from "./app-navigation";
+
+const MobileTitleContext = createContext<((title: string | null) => void) | null>(null);
+
+export function MobilePageTitle({ title }: { title: string }) {
+  const setTitle = useContext(MobileTitleContext);
+
+  useEffect(() => {
+    setTitle?.(title);
+    return () => setTitle?.(null);
+  }, [setTitle, title]);
+
+  return null;
+}
 
 export function AppShell({
   householdId,
@@ -24,10 +37,11 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const root = `/h/${householdId}`;
+  const [mobileTitleOverride, setMobileTitleOverride] = useState<string | null>(null);
   const primaryPaths = [root, `${root}/calendar`, `${root}/activity`, `${root}/account`];
   const isPrimaryPage = primaryPaths.includes(pathname);
   const isHome = pathname === root;
-  const mobileTitle = getMobileTitle(pathname, root);
+  const mobileTitle = mobileTitleOverride ?? getMobileTitle(pathname, root);
   const canSubmit = hasMobileSubmit(pathname, root);
 
   useEffect(() => {
@@ -47,62 +61,64 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-dvh overflow-x-clip bg-[var(--canvas)]">
-      <div className="min-w-0">
-        <header className="sticky top-0 z-30 hidden border-b border-[var(--line)] bg-white/92 px-6 py-2.5 backdrop-blur-xl md:block lg:px-8">
-          <div className="mx-auto flex max-w-[980px] items-center">
-            <CatMark />
-          </div>
-        </header>
-
-        {!isPrimaryPage && (
-          <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-white/96 pt-[env(safe-area-inset-top)] backdrop-blur-xl md:hidden">
-            <div className="grid min-h-13 grid-cols-[3rem_minmax(0,1fr)_3rem] items-center px-1.5">
-              <button
-                type="button"
-                onClick={goBack}
-                className="grid size-10 place-items-center rounded-xl text-[var(--ink)] transition-colors hover:bg-[var(--soft-line)]"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="size-5" strokeWidth={2.4} aria-hidden="true" />
-              </button>
-              <h1 className="truncate text-center text-[15px] font-black tracking-[-0.02em]">
-                {mobileTitle}
-              </h1>
-              {canSubmit ? (
-                <button
-                  type="button"
-                  onClick={submitCurrentForm}
-                  className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition-colors hover:bg-[var(--brand-soft)]"
-                  aria-label="Save"
-                >
-                  <Check className="size-5" strokeWidth={3} aria-hidden="true" />
-                </button>
-              ) : (
-                <span aria-hidden="true" />
-              )}
+    <MobileTitleContext.Provider value={setMobileTitleOverride}>
+      <div className="min-h-dvh overflow-x-clip bg-[var(--canvas)]">
+        <div className="min-w-0">
+          <header className="sticky top-0 z-30 hidden border-b border-[var(--line)] bg-white/92 px-6 py-2.5 backdrop-blur-xl md:block lg:px-8">
+            <div className="mx-auto flex max-w-[980px] items-center">
+              <CatMark />
             </div>
           </header>
-        )}
 
-        <main
-          className={cn(
-            "mx-auto w-full max-w-[980px] md:px-6 md:py-7 lg:px-8 lg:py-8",
-            isHome ? "px-0 pt-0" : "px-3 pt-3",
-            isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6 md:pb-28",
+          {!isPrimaryPage && (
+            <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-white/96 pt-[env(safe-area-inset-top)] backdrop-blur-xl md:hidden">
+              <div className="grid min-h-13 grid-cols-[3rem_minmax(0,1fr)_3rem] items-center px-1.5">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="grid size-10 place-items-center rounded-xl text-[var(--ink)] transition-colors hover:bg-[var(--soft-line)]"
+                  aria-label="Go back"
+                >
+                  <ArrowLeft className="size-5" strokeWidth={2.4} aria-hidden="true" />
+                </button>
+                <h1 className="truncate text-center text-[15px] font-black tracking-[-0.02em]">
+                  {mobileTitle}
+                </h1>
+                {canSubmit ? (
+                  <button
+                    type="button"
+                    onClick={submitCurrentForm}
+                    className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition-colors hover:bg-[var(--brand-soft)]"
+                    aria-label="Save"
+                  >
+                    <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+              </div>
+            </header>
           )}
-        >
-          {children}
-        </main>
-      </div>
 
-      <AppNavigation
-        householdId={householdId}
-        memberName={memberName}
-        memberAvatarColor={memberAvatarColor}
-        showOnMobile={isPrimaryPage}
-      />
-    </div>
+          <main
+            className={cn(
+              "mx-auto w-full max-w-[980px] md:px-6 md:py-7 lg:px-8 lg:py-8",
+              isHome ? "px-0 pt-0" : "px-3 pt-3",
+              isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6 md:pb-28",
+            )}
+          >
+            {children}
+          </main>
+        </div>
+
+        <AppNavigation
+          householdId={householdId}
+          memberName={memberName}
+          memberAvatarColor={memberAvatarColor}
+          showOnMobile={isPrimaryPage}
+        />
+      </div>
+    </MobileTitleContext.Provider>
   );
 }
 
