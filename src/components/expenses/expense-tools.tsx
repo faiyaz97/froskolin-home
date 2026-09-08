@@ -2,7 +2,13 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
-export function ExpenseTools({ children }: { children: ReactNode }) {
+export function ExpenseTools({
+  children,
+  ariaLabel = "Expense tools",
+}: {
+  children: ReactNode;
+  ariaLabel?: string;
+}) {
   const [keyboardInset, setKeyboardInset] = useState(0);
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -24,7 +30,7 @@ export function ExpenseTools({ children }: { children: ReactNode }) {
   return (
     <div
       role="group"
-      aria-label="Expense tools"
+      aria-label={ariaLabel}
       style={{ "--keyboard-inset": `${keyboardInset}px` } as CSSProperties}
       className="fixed inset-x-0 bottom-[var(--keyboard-inset)] z-30 flex justify-end gap-1 border-t border-[var(--soft-line)] bg-[var(--canvas)] px-3 pt-1 pb-[max(.5rem,env(safe-area-inset-bottom))] md:static md:mt-4 md:border-0 md:bg-transparent md:p-0"
     >

@@ -119,6 +119,7 @@ export async function saveExpenseAction(
       p_split_config: parsed.data.splitConfig,
       p_shares: normalExpenseShares(parsed.data),
       p_actor_user_id: user.id,
+      p_note: parsed.data.note ?? null,
       p_recurring_rule_id: null,
       p_occurrence_date: null,
     });
@@ -148,6 +149,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
       p_split_config: parsed.data.splitConfig,
       p_shares: normalExpenseShares(parsed.data),
       p_actor_user_id: user.id,
+      p_note: parsed.data.note ?? null,
     });
     if (error) throw error;
     refreshHousehold(parsed.data.householdId);

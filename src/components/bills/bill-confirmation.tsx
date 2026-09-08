@@ -10,10 +10,12 @@ import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
 import { CurrencyAction } from "../expenses/expense-sharing-controls";
+import { ExpenseTools } from "../expenses/expense-tools";
+import { TransactionNoteAction } from "../expenses/transaction-note-action";
 import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { Field, Textarea } from "../ui/field";
+import { Field } from "../ui/field";
 import { MoneyInput } from "../ui/money-input";
 import { StatusNote } from "../ui/page";
 import { BillMetaControls, UtilityTypeIcon } from "./bill-meta-controls";
@@ -122,6 +124,7 @@ export function BillConfirmation({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [note, setNote] = useState(existing?.classificationNote ?? "");
   function updateGeneratedTitle(type: string, start: string, end: string) {
     if (!titleWasEdited) setTitle(formatUtilityBillTitle(type, start, end, locale));
   }
@@ -217,7 +220,6 @@ export function BillConfirmation({
     setAttemptedSubmit(true);
     setError("");
     if (!valid) return;
-    const data = new FormData(event.currentTarget);
     startTransition(async () => {
       setError("");
       let confirmedDocumentId = documentId;
@@ -249,7 +251,7 @@ export function BillConfirmation({
           .map((member, order) => ({ memberId: member.id, order })),
         consumptionAmount: initial?.consumption.amount ?? existing?.consumptionAmount ?? null,
         consumptionUnit: initial?.consumption.unit ?? existing?.consumptionUnit ?? null,
-        classificationNote: String(data.get("classificationNote") ?? "") || null,
+        classificationNote: note || null,
         entryMode,
       };
       let expenseId: string;
@@ -466,14 +468,15 @@ export function BillConfirmation({
           </div>
         </section>
       )}
-      <Field label="Notes (optional)" className="px-1 py-2 sm:px-4">
-        <Textarea
-          name="classificationNote"
-          className="min-h-20 border-0 bg-white/80"
+      <ExpenseTools ariaLabel="Bill tools">
+        <TransactionNoteAction
+          value={note}
+          onChange={setNote}
+          disabled={pending}
+          title="Bill notes"
           placeholder="Add anything useful about this bill."
-          defaultValue={existing?.classificationNote ?? ""}
         />
-      </Field>
+      </ExpenseTools>
       <div className="hidden items-center justify-end gap-2.5 md:mb-28 md:flex">
         <Button
           type="button"

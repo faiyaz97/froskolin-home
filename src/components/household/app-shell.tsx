@@ -129,6 +129,7 @@ function hasMobileSubmit(pathname: string, root: string) {
     pathname === `${root}/add/settlement` ||
     /^\/h\/[^/]+\/expenses\/[^/]+\/edit$/.test(pathname) ||
     /^\/h\/[^/]+\/bills\/[^/]+\/confirm$/.test(pathname) ||
+    /^\/h\/[^/]+\/settlements\/[^/]+\/edit$/.test(pathname) ||
     /^\/h\/[^/]+\/settings\/recurring\/[^/]+\/edit$/.test(pathname)
   );
 }
@@ -136,7 +137,7 @@ function hasMobileSubmit(pathname: string, root: string) {
 function getMobileTitle(pathname: string, root: string) {
   if (pathname === `${root}/add/expense`) return "Add expense";
   if (pathname === `${root}/add/bill`) return "Utility bill";
-  if (pathname === `${root}/add/settlement`) return "Settle up";
+  if (pathname === `${root}/add/settlement`) return "Record payment";
   if (pathname === `${root}/add`) return "Add";
   if (pathname === `${root}/balances`) return "Group balances";
   if (pathname === `${root}/landlord`) return "Landlord";
@@ -144,6 +145,7 @@ function getMobileTitle(pathname: string, root: string) {
   if (/\/settings\/recurring\/[^/]+\/edit$/.test(pathname)) return "Edit recurring";
   if (/\/expenses\/[^/]+\/edit$/.test(pathname)) return "Edit expense";
   if (/\/bills\/[^/]+\/confirm$/.test(pathname)) return "Utility bill";
+  if (/\/settlements\/[^/]+\/edit$/.test(pathname)) return "Edit payment";
   if (/\/expenses\/[^/]+$/.test(pathname)) return "Expense";
   if (/\/settlements\/[^/]+$/.test(pathname)) return "Payment";
   if (/\/activity\/[^/]+$/.test(pathname)) return "Activity";

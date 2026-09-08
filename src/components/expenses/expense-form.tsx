@@ -26,6 +26,7 @@ import {
   type SplitValues,
 } from "./expense-sharing-controls";
 import { ExpenseTools } from "./expense-tools";
+import { TransactionNoteAction } from "./transaction-note-action";
 import type { RecurrenceFrequency } from "@/lib/domain/recurrence";
 
 type MemberOption = { id: string; name: string; avatarColor?: AvatarColor | null };
@@ -47,6 +48,7 @@ type InitialExpense = {
   currency: string;
   payerMemberId: string;
   expenseDate: string;
+  note?: string;
   splitConfig: EditableSplitConfig;
 };
 
@@ -147,6 +149,7 @@ export function ExpenseForm({
   );
   const [attachmentFile, setAttachmentFile] = useState<File>();
   const [attachmentRemoved, setAttachmentRemoved] = useState(false);
+  const [note, setNote] = useState(initial?.note ?? "");
   const [createdExpenseId, setCreatedExpenseId] = useState<string>();
   const participants = members.filter((member) => selected.has(member.id));
   const totalCents = Math.round(Number(amount) * 100);
@@ -228,6 +231,7 @@ export function ExpenseForm({
         currency,
         payerMemberId: payer,
         expenseDate,
+        note: note || undefined,
         splitConfig,
       };
       if (recurring) {
@@ -431,6 +435,15 @@ export function ExpenseForm({
             onError={setError}
             disabled={pending || recurring}
           />
+          {!recurring && (
+            <TransactionNoteAction
+              value={note}
+              onChange={setNote}
+              disabled={pending}
+              title="Expense notes"
+              placeholder="Add anything useful about this expense."
+            />
+          )}
         </ExpenseTools>
       </section>
 

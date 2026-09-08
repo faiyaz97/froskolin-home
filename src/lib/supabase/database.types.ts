@@ -323,6 +323,7 @@ export type Database = {
           household_id: string;
           id: string;
           kind: Database["public"]["Enums"]["expense_kind"];
+          note: string | null;
           occurrence_date: string | null;
           paid_by_landlord: boolean;
           payer_member_id: string | null;
@@ -345,6 +346,7 @@ export type Database = {
           household_id: string;
           id?: string;
           kind?: Database["public"]["Enums"]["expense_kind"];
+          note?: string | null;
           occurrence_date?: string | null;
           paid_by_landlord?: boolean;
           payer_member_id?: string | null;
@@ -367,6 +369,7 @@ export type Database = {
           household_id?: string;
           id?: string;
           kind?: Database["public"]["Enums"]["expense_kind"];
+          note?: string | null;
           occurrence_date?: string | null;
           paid_by_landlord?: boolean;
           payer_member_id?: string | null;
@@ -913,6 +916,7 @@ export type Database = {
           p_expense_date: string;
           p_household_id: string;
           p_kind: Database["public"]["Enums"]["expense_kind"];
+          p_note?: string;
           p_occurrence_date?: string;
           p_paid_by_landlord: boolean;
           p_payer_member_id: string;
@@ -1064,6 +1068,7 @@ export type Database = {
           p_currency: string;
           p_expense_date: string;
           p_expense_id: string;
+          p_note?: string;
           p_paid_by_landlord: boolean;
           p_payer_member_id: string;
           p_shares: Json;

@@ -13,6 +13,7 @@ import {
 import { ParticipantDisclosure } from "@/components/expenses/participant-disclosure";
 import { PayerSelect } from "@/components/expenses/payer-select";
 import { ExpenseTools } from "@/components/expenses/expense-tools";
+import { TransactionNoteAction } from "@/components/expenses/transaction-note-action";
 
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal = function () {
@@ -178,6 +179,23 @@ describe("expense quick controls", () => {
       if (previous) Object.defineProperty(window, "visualViewport", previous);
       else Reflect.deleteProperty(window, "visualViewport");
     }
+  });
+
+  it("commits a transaction note from the shared dialog and shows its filled state", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      React.createElement(TransactionNoteAction, { value: "", onChange }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add notes" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Notes" }), {
+      target: { value: "  Paid in cash  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onChange).toHaveBeenCalledWith("Paid in cash");
+
+    rerender(React.createElement(TransactionNoteAction, { value: "Paid in cash", onChange }));
+    expect(screen.getByRole("button", { name: "Edit notes" })).toBeTruthy();
   });
 
   it("uses an empty outline state and accepts a valid local attachment", () => {

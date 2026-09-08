@@ -58,6 +58,7 @@ export const expenseInputSchema = z
     currency: currencySchema,
     payerMemberId: payerSelectionSchema,
     expenseDate: dateOnlySchema,
+    note: z.string().trim().max(500).optional(),
     splitConfig: normalSplitConfigSchema,
   })
   .superRefine((value, context) => {

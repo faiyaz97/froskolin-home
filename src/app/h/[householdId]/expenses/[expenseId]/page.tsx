@@ -313,22 +313,14 @@ export default async function ExpenseDetail({
                 );
               })}
             </ul>
+            {notes && (
+              <p className="mt-3 border-t border-[var(--soft-line)] pt-3 text-sm leading-5 whitespace-pre-wrap text-[var(--ink-soft)]">
+                <strong className="text-[var(--ink)]">Notes:</strong> {notes}
+              </p>
+            )}
           </div>
         </div>
       </article>
-
-      {notes && (
-        <section className="mt-5 overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
-          <div className="px-4 py-4">
-            <p className="text-[10px] font-black tracking-[0.12em] text-[var(--muted)] uppercase">
-              Notes
-            </p>
-            <p className="mt-1 text-sm leading-5 whitespace-pre-wrap text-[var(--ink-soft)]">
-              {notes}
-            </p>
-          </div>
-        </section>
-      )}
 
       <div className="mt-4 mb-6 flex items-center justify-between px-1">
         <div>

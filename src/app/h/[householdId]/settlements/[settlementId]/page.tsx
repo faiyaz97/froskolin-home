@@ -1,13 +1,26 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, HandCoins, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { SettlementForm } from "@/components/expenses/settlement-form";
-import { Button } from "@/components/ui/button";
+import { MobilePageTitle } from "@/components/household/app-shell";
+import {
+  MemberAvatar,
+  resolveAvatarColor,
+  type AvatarColor,
+} from "@/components/household/member-avatar";
 import { PageHeader, StatusNote } from "@/components/ui/page";
 import { voidSettlementAction } from "@/lib/actions";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
+
+function formatDate(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
 
 export default async function SettlementDetailPage({
   params,
@@ -23,71 +36,147 @@ export default async function SettlementDetailPage({
       .eq("household_id", householdId)
       .eq("id", settlementId)
       .maybeSingle(),
-    supabase.from("households").select("default_currency, locale").eq("id", householdId).single(),
+    supabase.from("households").select("locale").eq("id", householdId).single(),
     supabase
       .from("household_members")
-      .select("id, display_name, removed_at")
-      .eq("household_id", householdId)
-      .order("joined_at"),
+      .select("id, display_name, avatar_color")
+      .eq("household_id", householdId),
   ]);
-  if (settlementResult.error || homeResult.error || membersResult.error)
+  if (settlementResult.error || homeResult.error || membersResult.error) {
     throw settlementResult.error ?? homeResult.error ?? membersResult.error;
+  }
   const settlement = settlementResult.data;
   if (!settlement) notFound();
-  const involvedIds = new Set([settlement.paying_member_id, settlement.receiving_member_id]);
-  const members = (membersResult.data ?? [])
-    .filter((member) => !member.removed_at || involvedIds.has(member.id))
-    .map((member) => ({ id: member.id, name: member.display_name }));
-  const names = new Map(members.map((member) => [member.id, member.name]));
+
+  const members = new Map(
+    (membersResult.data ?? []).map((member) => [
+      member.id,
+      {
+        name: member.display_name,
+        avatarColor: member.avatar_color as AvatarColor | null,
+      },
+    ]),
+  );
+  const payer = members.get(settlement.paying_member_id) ?? {
+    name: "Former member",
+    avatarColor: null,
+  };
+  const receiver = members.get(settlement.receiving_member_id) ?? {
+    name: "Former member",
+    avatarColor: null,
+  };
+  const locale = homeResult.data.locale;
+  const note = settlement.note?.trim();
+
   const voidSettlement = async () => {
     "use server";
     const result = await voidSettlementAction({
       householdId,
       settlementId,
-      reason: "Voided from the settlement detail page.",
+      reason: "Voided from the payment detail page.",
     });
     if (result.ok) redirect(`/h/${householdId}/balances`);
   };
 
   return (
     <div className="mx-auto max-w-2xl">
+      <MobilePageTitle title="Payment" />
       <Link
-        href={`/h/${householdId}/balances`}
-        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[var(--muted)] no-underline"
+        href={`/h/${householdId}`}
+        className="mb-5 hidden min-h-10 items-center gap-2 rounded-xl px-2 text-sm font-bold text-[var(--muted)] no-underline hover:bg-white hover:text-[var(--ink)] md:inline-flex"
       >
-        <ArrowLeft className="size-4" /> Balances
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Home
       </Link>
-      <PageHeader
-        eyebrow="Settlement"
-        title={`${names.get(settlement.paying_member_id) ?? "Former roommate"} paid ${names.get(settlement.receiving_member_id) ?? "Former roommate"}`}
-        description={`${formatMoney(Number(settlement.amount_cents), settlement.currency, homeResult.data.locale)} · ${settlement.settlement_date}`}
-      />
-      {settlement.voided_at ? (
-        <StatusNote tone="warning" title="This settlement was voided">
-          It remains in Activity but no longer affects balances.
-        </StatusNote>
-      ) : (
-        <>
-          <SettlementForm
-            householdId={householdId}
-            defaultCurrency={homeResult.data.default_currency}
-            members={members}
-            initial={{
-              settlementId,
-              payingMemberId: settlement.paying_member_id,
-              receivingMemberId: settlement.receiving_member_id,
-              amountCents: Number(settlement.amount_cents),
-              currency: settlement.currency,
-              settlementDate: settlement.settlement_date,
-              note: settlement.note ?? undefined,
-            }}
-          />
-          <form action={voidSettlement} className="mt-6 border-t border-[var(--line)] pt-6">
-            <Button type="submit" tone="danger">
-              Void settlement
-            </Button>
+
+      <PageHeader title="Payment" compact />
+
+      <article className="overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-sm)]">
+        <div className="p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+              <HandCoins className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2 className="text-lg leading-tight font-black tracking-[-0.025em]">Payment</h2>
+              <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                {formatDate(settlement.settlement_date, locale)}
+              </p>
+            </div>
+            <strong className="shrink-0 pt-1 text-xl font-black tracking-[-0.025em] tabular-nums sm:text-2xl">
+              {formatMoney(Number(settlement.amount_cents), settlement.currency, locale)}
+            </strong>
+          </div>
+
+          <div className="my-5 h-px bg-[var(--soft-line)]" />
+
+          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_minmax(0,1fr)] items-center gap-1.5 sm:gap-3">
+            <div
+              className="flex min-w-0 items-center gap-2.5 rounded-2xl px-3 py-2.5"
+              style={{
+                background: `color-mix(in srgb, ${resolveAvatarColor(payer.name, payer.avatarColor)} 38%, white)`,
+              }}
+            >
+              <MemberAvatar
+                name={payer.name}
+                color={payer.avatarColor}
+                className="size-10 border-0 shadow-none"
+              />
+              <span className="min-w-0 truncate text-sm font-extrabold">{payer.name}</span>
+            </div>
+            <ArrowRight className="mx-auto size-5 text-[var(--muted)]" aria-hidden="true" />
+            <div
+              className="flex min-w-0 items-center gap-2.5 rounded-2xl px-3 py-2.5"
+              style={{
+                background: `color-mix(in srgb, ${resolveAvatarColor(receiver.name, receiver.avatarColor)} 38%, white)`,
+              }}
+            >
+              <MemberAvatar
+                name={receiver.name}
+                color={receiver.avatarColor}
+                className="size-10 border-0 shadow-none"
+              />
+              <span className="min-w-0 truncate text-sm font-extrabold">{receiver.name}</span>
+            </div>
+          </div>
+
+          {note && (
+            <p className="mt-4 border-t border-[var(--soft-line)] pt-4 text-sm leading-5 whitespace-pre-wrap text-[var(--ink-soft)]">
+              <strong className="text-[var(--ink)]">Notes:</strong> {note}
+            </p>
+          )}
+        </div>
+      </article>
+
+      {settlement.voided_at && (
+        <div className="mt-5">
+          <StatusNote tone="warning" title="This payment was voided">
+            It remains in Activity but no longer affects balances.
+          </StatusNote>
+        </div>
+      )}
+
+      {!settlement.voided_at && (
+        <div className="mt-4 mb-6 flex items-center justify-end gap-2 px-1">
+          <form action={voidSettlement}>
+            <button
+              type="submit"
+              aria-label="Void payment"
+              title="Void payment"
+              className="grid size-12 place-items-center rounded-xl bg-[var(--negative-soft)] text-[var(--negative)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[#fecaca]"
+            >
+              <Trash2 className="size-5" aria-hidden="true" />
+            </button>
           </form>
-        </>
+          <Link
+            href={`/h/${householdId}/settlements/${settlementId}/edit`}
+            aria-label="Edit payment"
+            title="Edit payment"
+            className="grid size-12 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--brand-soft)]"
+          >
+            <Pencil className="size-5" aria-hidden="true" />
+          </Link>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(41);
 
 select set_config('app.suppress_audit', 'true', true);
 
@@ -228,6 +228,27 @@ select lives_ok(
   )
   $test$,
   'the service-only expense commit accepts a verified actor and complete shares'
+);
+select throws_like(
+  $test$
+  select public.create_expense_with_landlord_support(
+    p_household_id => '00000000-0000-4000-8000-00000000b001',
+    p_title => 'Oversized note',
+    p_total_cents => 100,
+    p_currency => 'EUR',
+    p_payer_member_id => '00000000-0000-4000-8000-00000000c001',
+    p_paid_by_landlord => false,
+    p_expense_date => '2030-01-30',
+    p_kind => 'manual',
+    p_split_method => 'equal',
+    p_split_config => '{"method":"equal","participants":[{"memberId":"00000000-0000-4000-8000-00000000c001","order":0}]}'::jsonb,
+    p_shares => '[{"member_id":"00000000-0000-4000-8000-00000000c001","share_cents":100,"allocation_order":0}]'::jsonb,
+    p_actor_user_id => '00000000-0000-4000-8000-00000000a001',
+    p_note => repeat('n', 501)
+  )
+  $test$,
+  '%expenses_note_length%',
+  'expense notes are length-checked inside the atomic expense creation function'
 );
 select lives_ok(
   $test$

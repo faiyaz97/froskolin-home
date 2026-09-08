@@ -31,11 +31,13 @@ export function ChoiceRow({
   children,
   onClick,
   multiple = false,
+  disabled = false,
 }: {
   selected: boolean;
   children: ReactNode;
   onClick: () => void;
   multiple?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -43,11 +45,13 @@ export function ChoiceRow({
       role={multiple ? "checkbox" : "radio"}
       aria-checked={selected}
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         "flex min-h-12 w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
         selected
           ? "bg-[var(--pastel-mint)] text-[var(--brand-strong)]"
           : "text-[var(--ink)] hover:bg-[var(--canvas)]",
+        disabled && "cursor-not-allowed opacity-35 hover:bg-transparent",
       )}
     >
       <span className="min-w-0 flex-1">{children}</span>

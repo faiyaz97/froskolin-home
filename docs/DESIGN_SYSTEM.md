@@ -13,8 +13,9 @@ Canonical reference pages:
 5. Group Settings: `src/app/h/[householdId]/settings/page.tsx`
 6. Calendar: `src/app/h/[householdId]/calendar/page.tsx`
 7. Expense and Utility Bill Details: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`
+8. Payment Add and Details: `src/app/h/[householdId]/add/settlement/page.tsx` and `src/app/h/[householdId]/settlements/[settlementId]/page.tsx`
 
-Repeated patterns across these pages are canonical. Activity, balances, landlord, settlement, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the seven pages above.
+Repeated patterns across these pages are canonical. Activity, balances, landlord, authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the eight pages above.
 
 ## Design principles
 
@@ -43,7 +44,7 @@ Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 | Brand           | `--brand`                              | `#0f766e`             | Primary action/accent            |
 | Brand strong    | `--brand-strong`                       | `#115e59`             | Strong brand text and hover      |
 | Brand soft      | `--brand-soft`                         | `#ccfbf1`             | Active and hover backgrounds     |
-| Violet          | `--violet` / `--violet-soft`           | `#7c3aed` / `#ede9fe` | AI, settlement, recurrence       |
+| Violet          | `--violet` / `--violet-soft`           | `#7c3aed` / `#ede9fe` | AI, secondary cues, recurrence   |
 | Peach           | `--peach` / `--peach-soft`             | `#ea580c` / `#ffedd5` | Bills and landlord actions       |
 | Sky             | `--sky` / `--sky-soft`                 | `#0369a1` / `#e0f2fe` | Informational/group accents      |
 | Positive        | `--positive` / `--positive-soft`       | `#15803d` / `#dcfce7` | Credit/success                   |
@@ -122,7 +123,7 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - `quiet`: text action; canonical desktop Cancel adds a soft neutral pill background.
 - `accent`: solid violet.
 - `pastel`: mint primary action.
-- `pastelAccent`: lavender/AI/settlement action.
+- `pastelAccent`: lavender AI/secondary action.
 - `pastelWarm`: peach bill action.
 - Canonical form submit buttons use `pastel`, a full pill radius, no visible border, and a soft teal shadow.
 - Mobile subpage Save is the icon-only shell action, not a duplicate fixed text button.
@@ -136,7 +137,7 @@ Canonical primitives: `Field`, `Input`, `Textarea`, and exported control classes
 - Standard input: 44px tall, 12px radius, white surface, subtle control border/shadow, 15px semibold text.
 - Hover strengthens the border; focus uses brand border plus a soft 2px ring; disabled uses `--control-disabled`.
 - `Field` owns the visible label and one short hint or error. Errors are 11px red text immediately below the control.
-- `Textarea` starts at 96px and may resize vertically. Notes fields on canonical bill forms use a lighter borderless white surface.
+- `Textarea` starts at 96px and may resize vertically. Transaction notes use it inside the focused note dialog rather than occupying permanent form space.
 - Main expense/bill title and amount are intentional exceptions: large borderless inputs on a 2px mint underline. They share the `expense-primary-input` class and turn red after submit when invalid.
 
 The duplicated primary title/amount markup in `ExpenseForm` and `BillConfirmation` is canonical visually but is not yet a shared component. See unresolved decisions.
@@ -157,6 +158,7 @@ Canonical form pattern: `InlineValue` and `ChoiceRow` from `src/components/expen
 - Tapping an inline value opens a focused dialog; edits are staged and committed on Done.
 - Required/invalid inline values use the negative soft background, negative text, and a red underline.
 - Dialog choices use `ChoiceRow`: a full-width 48px row, subtle hover, mint selected state, and radio/check semantics.
+- Unavailable member choices remain visible but disabled with reduced opacity; use this when a choice is invalid because that member is already selected in a mutually exclusive role.
 - Member choices include `MemberAvatar` rather than initials-only circles.
 
 `src/components/ui/select-input.tsx` is a capable full control/listbox primitive, but it is not used by the five completed reference pages. Do not treat it as the default visual pattern until a canonical page adopts it.
@@ -188,6 +190,15 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 - Empty controls open the file chooser. Attached controls open a compact popover containing View, Replace, and Remove.
 - Popovers use `controlPopoverClass` from `ui/field.tsx`, 14px radius, white background, subtle border/shadow, and 40px menu rows.
 - The Add and Edit version of an entity must share the same attachment component and interaction.
+
+### Transaction notes
+
+Canonical feature control: `src/components/expenses/transaction-note-action.tsx` (`TransactionNoteAction`).
+
+- Expense, utility-bill, and payment add/edit forms use the same message-and-text icon action and focused dialog for optional notes.
+- Match the date and attachment tools: a 56px action target containing a 48px tile. A non-empty note uses the lavender filled state so its presence is visible without exposing its contents.
+- Keep notes to 500 characters, trim them on confirmation, and hide empty notes on read-only pages.
+- On read-only transaction pages, place notes inside the main detail card after the people/share rows as compact inline copy in the form “Notes: …”. Do not create a separate notes card.
 
 ### Date-range calendars
 
@@ -221,9 +232,23 @@ Canonical route: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`.
 - The edit tool on a recurring occurrence opens the shared `ExpenseForm` in recurring-rule mode, so its calendar includes the Repeat frequency and end-date controls. Ordinary occurrence editing remains a separate domain operation and must not masquerade as schedule editing.
 - Utility totals show concise Fixed and Usage values directly beneath the total at the right of the hero. Do not restore a separate allocation strip or explanatory allocation paragraphs.
 - Use compact document/attachment, void, and edit icon tools below the card. Only render the left document tool when a file exists; ordinary expenses use a paperclip and utility bills use the bill-document icon. Keep authorized view routes.
-- Present optional notes as a small separate grouped card.
+- Present non-empty notes inside the main detail card after the share rows as compact inline copy in the form “Notes: …”.
 - Keep edit as the positive pastel action, away dates as a quiet utility action for bills, and void as the clearly destructive action. Voided records remain readable but cannot be edited or voided again.
 - The shared route sets the mobile shell title from the loaded record: `Expense` or `Utility bill`. Desktop shows the same specific record type through `PageHeader`.
+
+### Payment add, view, and edit
+
+Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`).
+
+- Add and edit use the same form component with initial state. The add flow selects the authenticated member as payer and the member they owe most as receiver, based on the existing per-currency ledger suggestions; when there is no debt suggestion, select any other active member.
+- Present payer and receiver as compact avatar-and-name actions with a single directional arrow between them. Tint each action from that member's avatar background. Do not repeat “Paid by” and “Paid to” as visible labels.
+- Each member action opens a `Dialog` of `ChoiceRow` items. Disable the person selected on the opposite side so a member cannot pay themselves.
+- Use the same oversized underlined amount entry and `CurrencyAction` as expense and bill forms.
+- Payment date defaults to the device's current local date and uses `ExpenseDateAction` without recurrence. Notes use the shared `TransactionNoteAction`; its filled lavender state indicates saved note content.
+- Place date and note actions in `ExpenseTools`, fixed above the safe area on mobile and static at the form edge on desktop. Desktop Cancel and Record/Save actions use the established pill treatment, with mint/teal for the primary payment action.
+- Opening a saved payment shows a read-only detail card, never the edit form. Match the transaction-detail composition: payment icon, visible formatted date, amount at the far right, then a divider and an avatar-colored payer-to-receiver row.
+- Show non-empty notes inside the main payment card, directly beneath the payer-to-receiver row, as compact inline copy in the form “Notes: …”. Date and note icon tools belong only to the form; do not use them to hide information on the view page.
+- Use compact void and edit icon actions below the view card. The edit action opens the dedicated edit route, which reuses `SettlementForm` with initial values and returns to the read-only detail after saving or cancelling.
 
 ### Tables
 
@@ -279,8 +304,10 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | Page/status helpers           | `src/components/ui/page.tsx`                                        | `PageHeader`/`StatusNote` canonical; `EmptyState` visual unresolved |
 | Inline selections/choice rows | `src/components/expenses/expense-sharing-controls.tsx`              | Canonical across expense and bill forms                             |
 | Date dialog/tool              | `src/components/expenses/expense-date-action.tsx`                   | Canonical for expense date/recurrence                               |
+| Transaction note tool         | `src/components/expenses/transaction-note-action.tsx`               | Canonical across expense, bill, and payment forms                   |
 | Away date-range calendar      | `src/components/calendar/away-calendar.tsx`                         | Canonical for member range selection                                |
 | Expense/bill detail view      | `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`             | Canonical shared detail composition                                 |
+| Payment form                  | `src/components/expenses/settlement-form.tsx`                       | Canonical add/edit payment composition                              |
 | Service period inputs         | `src/components/bills/bill-meta-controls.tsx` + `ui/date-input.tsx` | Canonical for bills                                                 |
 | Expense attachment            | `src/components/expenses/expense-attachment-action.tsx`             | Canonical                                                           |
 | Bill document upload          | `src/components/bills/bill-upload.tsx`                              | Canonical                                                           |
@@ -315,5 +342,5 @@ These are not defined by the completed pages and should be decided in a future t
 6. A branded destructive-confirmation dialog to replace `window.confirm`.
 7. Consolidation of the two attachment action/popover implementations.
 8. Token names for remaining literal hover, icon, backdrop, and focus colors.
-9. Canonical visual treatment for public/authentication, balance, activity, settlement, loading, error, and recurring-management pages.
+9. Canonical visual treatment for public/authentication, balance, activity, loading, error, and recurring-management pages.
 10. Whether internal `household` terminology should ever be migrated; no such migration is implied by the current UI language.

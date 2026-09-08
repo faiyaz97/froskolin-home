@@ -139,6 +139,7 @@ export default async function EditExpensePage({
           currency: expense.currency,
           payerMemberId: expense.paid_by_landlord ? "landlord" : expense.payer_member_id,
           expenseDate: expense.expense_date,
+          note: expense.note ?? undefined,
           splitConfig: splitConfig.data,
         }}
         cancelHref={`/h/${householdId}/expenses/${expenseId}`}
