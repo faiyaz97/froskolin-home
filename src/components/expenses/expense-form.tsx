@@ -447,11 +447,11 @@ export function ExpenseForm({
         </ExpenseTools>
       </section>
 
-      <div className="hidden items-center justify-end gap-2.5 md:mb-28 md:flex">
+      <div className="hidden items-center justify-end gap-2.5 md:flex">
         <Button
           type="button"
           tone="quiet"
-          className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
+          className="min-w-28 rounded-full px-5"
           onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
           disabled={pending}
         >

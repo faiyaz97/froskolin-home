@@ -42,7 +42,7 @@ export default async function ConfirmBillPage({
   }
   const extraction = extractedBillSchema.safeParse(documentResult.data?.extraction);
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="transaction-form-frame mx-auto flex max-w-2xl flex-col">
       <PageHeader
         eyebrow="Review extraction"
         title="Check this bill"

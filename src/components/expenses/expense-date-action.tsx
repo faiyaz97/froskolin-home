@@ -6,6 +6,7 @@ import { DayPicker } from "react-day-picker";
 
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
+import { iconActionClass } from "../ui/icon-action";
 import type { RecurrenceFrequency } from "@/lib/domain/recurrence";
 
 function fromDateOnly(value: string) {
@@ -111,16 +112,9 @@ export function ExpenseDateAction({
               : formatDate(value)
             : "Choose date"
         }
-        className="group grid size-14 shrink-0 place-items-center rounded-xl transition-colors hover:bg-[var(--soft-line)] disabled:opacity-50"
+        className={iconActionClass({ tone: "brand", active: hasDate, className: "group size-14" })}
       >
-        <span
-          className={cn(
-            "relative grid size-12 shrink-0 place-items-center rounded-xl border",
-            hasDate
-              ? "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)]"
-              : "border-[var(--control-line)] bg-white",
-          )}
-        >
+        <span className="relative grid size-12 shrink-0 place-items-center">
           <span className="grid h-9 w-8 overflow-hidden rounded-[9px] border border-[var(--soft-line)] bg-white text-center shadow-[var(--shadow-sm)]">
             <span
               className={cn(
@@ -175,7 +169,7 @@ export function ExpenseDateAction({
                   setYearPageStart((current) => current - 12);
                 }
               }}
-              className="grid size-9 place-items-center rounded-[10px] text-[var(--ink-soft)] hover:bg-[var(--soft-line)] focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] focus-visible:outline-none"
+              className={iconActionClass({ className: "size-9" })}
             >
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
@@ -232,7 +226,7 @@ export function ExpenseDateAction({
                   setYearPageStart((current) => current + 12);
                 }
               }}
-              className="grid size-9 place-items-center rounded-[10px] text-[var(--ink-soft)] hover:bg-[var(--soft-line)] focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] focus-visible:outline-none"
+              className={iconActionClass({ className: "size-9" })}
             >
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
@@ -436,7 +430,10 @@ export function ExpenseDateAction({
                           setMonth(draftSelectedDate);
                         }}
                         aria-label="Remove end date"
-                        className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[var(--muted)] hover:bg-white"
+                        className={iconActionClass({
+                          tone: "negative",
+                          className: "absolute top-1/2 right-1 size-8 -translate-y-1/2",
+                        })}
                       >
                         <X className="size-3.5" aria-hidden="true" />
                       </button>

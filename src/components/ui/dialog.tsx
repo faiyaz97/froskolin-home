@@ -3,6 +3,8 @@
 import { ArrowLeft, Check, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
+import { iconActionClass } from "./icon-action";
+
 /** Native modal provides focus containment, Escape and a full-screen backdrop. */
 export function Dialog({
   title,
@@ -61,7 +63,7 @@ export function Dialog({
               type="button"
               onClick={onClose}
               aria-label="Back"
-              className="grid size-11 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--soft-line)] disabled:invisible"
+              className={iconActionClass({ className: "size-11 disabled:invisible" })}
               disabled={!dismissible}
             >
               <ArrowLeft className="size-4" aria-hidden="true" />
@@ -74,7 +76,7 @@ export function Dialog({
               onClick={onDone}
               disabled={doneDisabled}
               aria-label="Done"
-              className="grid size-11 place-items-center rounded-xl text-[var(--brand)] hover:bg-[var(--pastel-mint)] disabled:cursor-not-allowed disabled:opacity-40"
+              className={iconActionClass({ tone: "brand", className: "size-11" })}
             >
               <Check className="size-4" strokeWidth={2.5} aria-hidden="true" />
             </button>
@@ -88,7 +90,7 @@ export function Dialog({
               type="button"
               onClick={onClose}
               aria-label="Close dialog"
-              className="grid size-11 place-items-center rounded-xl text-[var(--muted)] hover:bg-[var(--soft-line)]"
+              className={iconActionClass({ className: "size-11" })}
             >
               <X className="size-4" aria-hidden="true" />
             </button>

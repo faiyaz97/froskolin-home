@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { Dialog } from "@/components/ui/dialog";
+import { iconActionClass } from "@/components/ui/icon-action";
 import { replaceAbsencesAction } from "@/lib/actions";
 import { inclusiveDays, normalizeAbsenceRanges } from "@/lib/domain/occupancy";
 
@@ -276,7 +277,7 @@ export function AwayCalendar({
               }
               onClick={() => moveCalendar(-1)}
               disabled={pending}
-              className="grid size-10 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--canvas)] disabled:opacity-40"
+              className={iconActionClass({ className: "size-10" })}
             >
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
@@ -324,7 +325,7 @@ export function AwayCalendar({
               }
               onClick={() => moveCalendar(1)}
               disabled={pending}
-              className="grid size-10 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--canvas)] disabled:opacity-40"
+              className={iconActionClass({ className: "size-10" })}
             >
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
@@ -516,7 +517,7 @@ export function AwayCalendar({
                     onClick={() => beginEditing(original)}
                     disabled={pending}
                     aria-label={`Edit ${formatDate(original.start)} to ${formatDate(original.end)}`}
-                    className="grid size-10 shrink-0 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--canvas)] disabled:opacity-40"
+                    className={iconActionClass({ tone: "brand", className: "size-10" })}
                   >
                     <Pencil className="size-4" aria-hidden="true" />
                   </button>
@@ -525,7 +526,7 @@ export function AwayCalendar({
                     onClick={() => removeRange(original)}
                     disabled={pending}
                     aria-label={`Remove ${formatDate(original.start)} to ${formatDate(original.end)}`}
-                    className="grid size-10 shrink-0 place-items-center rounded-xl text-[var(--ink-soft)] hover:bg-[var(--negative-soft)] hover:text-[var(--negative)] disabled:opacity-40"
+                    className={iconActionClass({ tone: "negative", className: "size-10" })}
                   >
                     <Trash2 className="size-4" aria-hidden="true" />
                   </button>

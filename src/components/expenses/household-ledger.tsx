@@ -246,7 +246,7 @@ export function HouseholdLedger({
                       <Link
                         key={`settlement-${settlement.id}`}
                         href={`/h/${householdId}/settlements/${settlement.id}`}
-                        className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-4"
+                        className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
                       >
                         <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                           {date.month}
@@ -302,7 +302,7 @@ export function HouseholdLedger({
                     <Link
                       key={`expense-${expense.id}`}
                       href={`/h/${householdId}/expenses/${expense.id}`}
-                      className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-4"
+                      className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
                     >
                       <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                         {date.month}

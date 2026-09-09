@@ -11,6 +11,7 @@ export type LandlordBillBalance = {
   originalShareCents: number;
   paidCents: number;
   remainingCents: number;
+  utilityType: "electricity" | "gas" | "water" | "internet" | "other" | null;
   payments: Array<{ id: string; amountCents: number; paymentDate: string }>;
 };
 
@@ -18,7 +19,9 @@ export async function getLandlordBillBalances(householdId: string): Promise<Land
   const { supabase, membership } = await requireHouseholdMembership(householdId);
   const { data: expenses, error: expensesError } = await supabase
     .from("expenses")
-    .select("id, title, currency, expense_date, expense_shares!inner(member_id, share_cents)")
+    .select(
+      "id, title, currency, expense_date, expense_shares!inner(member_id, share_cents), utility_bills(utility_type)",
+    )
     .eq("household_id", householdId)
     .eq("paid_by_landlord", true)
     .eq("expense_shares.member_id", membership.id)
@@ -58,6 +61,8 @@ export async function getLandlordBillBalances(householdId: string): Promise<Land
     const share = Array.isArray(shareRelation) ? shareRelation[0] : shareRelation;
     const originalShareCents = Number(share?.share_cents ?? 0);
     const billPayments = paymentsByExpense.get(expense.id) ?? [];
+    const utilityRelation = expense.utility_bills;
+    const utility = Array.isArray(utilityRelation) ? utilityRelation[0] : utilityRelation;
     const paidCents = billPayments.reduce((total, payment) => total + payment.amountCents, 0);
     return {
       expenseId: expense.id,
@@ -66,6 +71,7 @@ export async function getLandlordBillBalances(householdId: string): Promise<Land
       expenseDate: expense.expense_date,
       originalShareCents,
       paidCents,
+      utilityType: utility?.utility_type ?? null,
       remainingCents: calculateLandlordRemainingCents(
         originalShareCents,
         billPayments.map((payment) => payment.amountCents),

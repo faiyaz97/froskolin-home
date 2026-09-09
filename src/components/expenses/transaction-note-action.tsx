@@ -3,9 +3,9 @@
 import { MessageSquareText } from "lucide-react";
 import { useId, useState } from "react";
 
-import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { Textarea } from "../ui/field";
+import { iconActionClass } from "../ui/icon-action";
 
 export function TransactionNoteAction({
   value,
@@ -37,23 +37,14 @@ export function TransactionNoteAction({
           setDraft(value);
           setOpen(true);
         }}
-        className="group grid size-14 shrink-0 place-items-center rounded-xl transition-colors hover:bg-[var(--soft-line)] disabled:opacity-50"
+        className={iconActionClass({ tone: "violet", active: hasNote, className: "size-14" })}
       >
-        <span
-          className={cn(
-            "grid size-12 place-items-center rounded-xl border transition-colors",
-            hasNote
-              ? "border-[var(--pastel-lavender-line)] bg-[var(--pastel-lavender)] text-[var(--violet-strong)]"
-              : "border-[var(--control-line)] bg-white text-[var(--muted)]",
-          )}
-        >
-          <MessageSquareText
-            className="size-6"
-            strokeWidth={2.2}
-            fill={hasNote ? "currentColor" : "none"}
-            aria-hidden="true"
-          />
-        </span>
+        <MessageSquareText
+          className="size-6"
+          strokeWidth={2.2}
+          fill={hasNote ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
       </button>
 
       {open && (

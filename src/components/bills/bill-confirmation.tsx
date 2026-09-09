@@ -279,7 +279,7 @@ export function BillConfirmation({
     <form
       id="bill-facts"
       data-mobile-submit
-      className="grid scroll-mt-24 gap-3 pb-24 md:pb-0"
+      className="flex flex-1 scroll-mt-24 flex-col gap-3 pb-24 md:pb-0"
       onSubmit={submit}
       aria-busy={pending}
       noValidate
@@ -477,11 +477,11 @@ export function BillConfirmation({
           placeholder="Add anything useful about this bill."
         />
       </ExpenseTools>
-      <div className="hidden items-center justify-end gap-2.5 md:mb-28 md:flex">
+      <div className="hidden items-center justify-end gap-2.5 md:flex">
         <Button
           type="button"
           tone="quiet"
-          className="min-w-28 rounded-full bg-[var(--soft-line)] px-5 text-[var(--ink-soft)] hover:bg-[var(--pastel-lavender)] hover:text-[var(--violet-strong)]"
+          className="min-w-28 rounded-full px-5"
           onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
           disabled={pending}
         >

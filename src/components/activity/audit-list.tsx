@@ -119,7 +119,7 @@ export function AuditList({
             <li key={event.id} className="border-b border-[var(--soft-line)] last:border-0">
               <Link
                 href={`/h/${householdId}/activity/${event.id}`}
-                className="group flex min-h-20 items-center gap-3 px-3.5 py-3 text-[var(--ink)] no-underline transition-colors hover:bg-[var(--canvas)] focus-visible:bg-[var(--canvas)] focus-visible:outline-none sm:px-5"
+                className="group flex min-h-20 items-center gap-3 px-3.5 py-3 text-[var(--ink)] no-underline transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-5"
               >
                 <span className="relative shrink-0">
                   <MemberAvatar

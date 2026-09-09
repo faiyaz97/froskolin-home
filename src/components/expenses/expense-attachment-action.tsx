@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { cn } from "../ui/cn";
 import { controlPopoverClass } from "../ui/field";
+import { iconActionClass } from "../ui/icon-action";
 
 const acceptedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
@@ -84,18 +85,9 @@ export function ExpenseAttachmentAction({
         aria-expanded={hasAttachment ? open : undefined}
         aria-label={hasAttachment ? `Attachment: ${fileName}` : "Add attachment"}
         title={hasAttachment ? fileName : "Add attachment"}
-        className="grid size-14 shrink-0 place-items-center rounded-xl transition-colors hover:bg-[var(--soft-line)] disabled:opacity-45"
+        className={iconActionClass({ tone: "brand", active: hasAttachment, className: "size-14" })}
       >
-        <span
-          className={cn(
-            "grid size-12 shrink-0 place-items-center rounded-xl border",
-            hasAttachment
-              ? "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand)]"
-              : "border-[var(--control-line)] bg-white text-[var(--muted)]",
-          )}
-        >
-          <Paperclip className="size-5" aria-hidden="true" />
-        </span>
+        <Paperclip className="size-6" aria-hidden="true" />
       </button>
 
       {open && hasAttachment && (

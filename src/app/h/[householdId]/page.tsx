@@ -12,6 +12,7 @@ import {
 import { HouseholdLedger } from "@/components/expenses/household-ledger";
 import { BottomMascotReveal } from "@/components/household/bottom-mascot-reveal";
 import { ButtonLink } from "@/components/ui/button";
+import { iconActionClass } from "@/components/ui/icon-action";
 import { PeekingFroskolin } from "@/components/ui/mascot";
 import { Surface } from "@/components/ui/surface";
 import { HomeSummaryMotion } from "@/components/household/home-summary-motion";
@@ -79,7 +80,11 @@ export default async function HouseholdHome({
             <PeekingFroskolin className="home-summary-mascot pointer-events-none absolute right-12 bottom-[-1px] h-auto sm:right-16" />
             <Link
               href={`/h/${householdId}/settings`}
-              className="relative z-10 grid size-9 shrink-0 place-items-center rounded-xl bg-white/85 text-[var(--ink-soft)] shadow-[var(--shadow-sm)] transition-colors hover:text-[var(--sky)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sky)]"
+              className={iconActionClass({
+                tone: "sky",
+                className:
+                  "relative z-10 size-9 !bg-white/80 shadow-[var(--shadow-sm)] hover:!bg-white",
+              })}
               aria-label="Group settings"
             >
               <Settings className="size-[17px]" aria-hidden="true" />
@@ -206,6 +211,7 @@ export default async function HouseholdHome({
             <ButtonLink
               href={`/h/${householdId}/add/settlement`}
               tone="pastelAccent"
+              appearance="floating"
               className="min-h-10 rounded-full border-0 px-3.5 py-2 text-xs"
             >
               <CircleDollarSign className="size-4" aria-hidden="true" /> Settle up
@@ -213,6 +219,7 @@ export default async function HouseholdHome({
             <ButtonLink
               href={`/h/${householdId}/add/bill`}
               tone="pastelWarm"
+              appearance="floating"
               className="min-h-10 rounded-full border-0 px-3.5 py-2 text-xs"
             >
               <ScanLine className="size-4" aria-hidden="true" /> Upload bill
@@ -220,6 +227,7 @@ export default async function HouseholdHome({
             <ButtonLink
               href={`/h/${householdId}/add/expense`}
               tone="pastel"
+              appearance="floating"
               className="min-h-11 rounded-full border-0 px-4 py-2 text-sm"
             >
               <Plus className="size-[18px]" aria-hidden="true" /> Add expense

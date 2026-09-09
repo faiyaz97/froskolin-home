@@ -15,6 +15,7 @@ import { notFound, redirect } from "next/navigation";
 import { UtilityTypeIcon } from "@/components/bills/bill-meta-controls";
 import { MobilePageTitle } from "@/components/household/app-shell";
 import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
+import { iconActionClass } from "@/components/ui/icon-action";
 import { PageHeader } from "@/components/ui/page";
 import { voidExpenseAction } from "@/lib/actions";
 import { formatMoney, timestampToDateOnly } from "@/lib/format";
@@ -257,13 +258,8 @@ export default async function ExpenseDetail({
                       />
                     )}
                     <span
-                      className="absolute top-0 left-[17px] h-1/2 w-5 rounded-bl-lg border-b-2 border-l-2"
+                      className="absolute top-0 left-[17px] h-1/2 w-[27px] rounded-bl-lg border-b-2 border-l-2"
                       style={{ borderColor: connectorColor }}
-                      aria-hidden="true"
-                    />
-                    <span
-                      className="absolute top-1/2 left-[35px] size-2 -translate-y-1/2 rounded-full"
-                      style={{ background: connectorColor }}
                       aria-hidden="true"
                     />
                     <div
@@ -339,7 +335,7 @@ export default async function ExpenseDetail({
                   : `View attachment: ${attachment!.original_file_name}`
               }
               title={utility ? "View bill document" : attachment!.original_file_name}
-              className="grid size-12 place-items-center rounded-xl bg-[var(--pastel-lavender)] text-[var(--violet)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--violet-soft)]"
+              className={iconActionClass({ tone: "violet", active: true, className: "size-12" })}
             >
               {utility ? (
                 <FileText className="size-5" aria-hidden="true" />
@@ -356,7 +352,7 @@ export default async function ExpenseDetail({
               disabled={Boolean(expense.voided_at)}
               aria-label={utility ? "Void bill" : "Void expense"}
               title={utility ? "Void bill" : "Void expense"}
-              className="grid size-12 place-items-center rounded-xl bg-[var(--negative-soft)] text-[var(--negative)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[#fecaca] disabled:cursor-not-allowed disabled:opacity-45"
+              className={iconActionClass({ tone: "negative", className: "size-12" })}
             >
               <Trash2 className="size-5" aria-hidden="true" />
             </button>
@@ -378,7 +374,7 @@ export default async function ExpenseDetail({
                     ? "Edit bill"
                     : "Edit expense"
               }
-              className="grid size-12 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--brand-soft)]"
+              className={iconActionClass({ tone: "brand", className: "size-12" })}
             >
               <Pencil className="size-5" aria-hidden="true" />
             </Link>

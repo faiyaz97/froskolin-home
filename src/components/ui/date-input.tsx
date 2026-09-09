@@ -7,6 +7,7 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "./cn";
 import { controlActiveClass, controlClass } from "./field";
 import { Dialog } from "./dialog";
+import { iconActionClass } from "./icon-action";
 
 function fromDateOnly(value: string) {
   return new Date(`${value}T00:00:00Z`);
@@ -112,10 +113,8 @@ export function DateInput({
               month_caption: "relative flex h-9 items-center justify-center px-10",
               caption_label: "text-sm font-black",
               nav: "absolute inset-x-0 top-0 flex h-9 items-center justify-between",
-              button_previous:
-                "grid size-9 place-items-center rounded-[10px] text-[var(--ink-soft)] outline-none hover:bg-[var(--soft-line)] focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] disabled:opacity-40",
-              button_next:
-                "grid size-9 place-items-center rounded-[10px] text-[var(--ink-soft)] outline-none hover:bg-[var(--soft-line)] focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] disabled:opacity-40",
+              button_previous: iconActionClass({ className: "size-9" }),
+              button_next: iconActionClass({ className: "size-9" }),
               chevron: "size-4 fill-current",
               month_grid: "mt-2 w-full table-fixed border-collapse",
               weekdays: "border-b border-[var(--soft-line)]",

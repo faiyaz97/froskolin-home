@@ -86,9 +86,14 @@ export function BillUpload({
           aria-label={
             hasDocument ? `Bill document: ${file?.name ?? initialFileName}` : "Choose a bill"
           }
-          className="flex min-h-12 w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-xl bg-white/85 px-2.5 text-left shadow-[var(--shadow-sm)] transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] focus-visible:outline-none"
+          className="group flex min-h-12 w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-xl bg-white/85 px-2.5 text-left shadow-[var(--shadow-sm)] transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-[var(--control-ring)] focus-visible:outline-none"
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--pastel-lavender)] text-[var(--violet)]">
+          <span
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-full text-[var(--violet)] transition-colors group-hover:bg-[var(--violet-soft)]",
+              hasDocument && "bg-[var(--pastel-lavender)]",
+            )}
+          >
             {file || initialFileName ? (
               <FileText className="size-4" aria-hidden="true" />
             ) : (

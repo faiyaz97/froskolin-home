@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
 import { ButtonLink } from "@/components/ui/button";
@@ -24,6 +24,21 @@ type Suggestion = {
   amountCents: number;
 };
 
+function balanceModeStorageKey(householdId: string, memberId: string) {
+  return `froskolin:balance-mode:${householdId}:${memberId}`;
+}
+
+const balanceModeEvent = "froskolin:balance-mode-change";
+
+function subscribeToBalanceMode(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(balanceModeEvent, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(balanceModeEvent, onStoreChange);
+  };
+}
+
 export function GroupBalancesView({
   householdId,
   currentMemberId,
@@ -39,7 +54,26 @@ export function GroupBalancesView({
   pairBalances: PairBalance[];
   locale: string;
 }) {
-  const [simplified, setSimplified] = useState(true);
+  const storageKey = balanceModeStorageKey(householdId, currentMemberId);
+  const getStoredMode = useCallback(() => {
+    try {
+      return window.localStorage.getItem(storageKey) === "actual" ? "actual" : "simplified";
+    } catch {
+      return "simplified";
+    }
+  }, [storageKey]);
+  const mode = useSyncExternalStore(subscribeToBalanceMode, getStoredMode, () => "simplified");
+  const simplified = mode === "simplified";
+
+  function toggleBalanceMode() {
+    try {
+      window.localStorage.setItem(storageKey, simplified ? "actual" : "simplified");
+      window.dispatchEvent(new Event(balanceModeEvent));
+    } catch {
+      // Keep the current selection when browser storage is unavailable.
+    }
+  }
+
   const names = useMemo(
     () => new Map(members.map((member) => [member.id, member.name])),
     [members],
@@ -75,7 +109,7 @@ export function GroupBalancesView({
             aria-checked={simplified}
             aria-label="Use simplified balances"
             className="group flex items-center gap-2 rounded-full px-1 py-1 text-xs font-bold text-[var(--ink-soft)] transition-colors outline-none hover:text-[var(--ink)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2"
-            onClick={() => setSimplified((value) => !value)}
+            onClick={toggleBalanceMode}
           >
             <span>{simplified ? "Simplified" : "Actual"}</span>
             <span
@@ -164,11 +198,7 @@ export function GroupBalancesView({
                                   />
                                 )}
                                 <span
-                                  className="absolute top-0 left-[19px] h-1/2 w-5 rounded-bl-lg border-b-2 border-l-2 border-[var(--pastel-mint-line)]"
-                                  aria-hidden="true"
-                                />
-                                <span
-                                  className="absolute top-1/2 left-[37px] size-2 -translate-y-1/2 rounded-full bg-[var(--pastel-mint-line)]"
+                                  className="absolute top-0 left-[19px] h-1/2 w-[29px] rounded-bl-lg border-b-2 border-l-2 border-[var(--pastel-mint-line)]"
                                   aria-hidden="true"
                                 />
                                 <span

@@ -50,7 +50,7 @@ export default async function EditRecurringRulePage({
     }));
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] w-full max-w-2xl min-w-0 flex-col md:min-h-[calc(100dvh-7rem)]">
+    <div className="transaction-form-frame mx-auto flex w-full max-w-2xl min-w-0 flex-col">
       <PageHeader title="Edit recurring expense" compact />
       <ExpenseForm
         householdId={householdId}

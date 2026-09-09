@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 import { cn } from "../ui/cn";
 import { CatMark } from "../ui/brand";
+import { iconActionClass } from "../ui/icon-action";
 import { AppNavigation } from "./app-navigation";
 
 const MobileTitleContext = createContext<((title: string | null) => void) | null>(null);
@@ -76,7 +77,7 @@ export function AppShell({
                 <button
                   type="button"
                   onClick={goBack}
-                  className="grid size-10 place-items-center rounded-xl text-[var(--ink)] transition-colors hover:bg-[var(--soft-line)]"
+                  className={iconActionClass({ className: "size-10" })}
                   aria-label="Go back"
                 >
                   <ArrowLeft className="size-5" strokeWidth={2.4} aria-hidden="true" />
@@ -88,7 +89,7 @@ export function AppShell({
                   <button
                     type="button"
                     onClick={submitCurrentForm}
-                    className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition-colors hover:bg-[var(--brand-soft)]"
+                    className={iconActionClass({ tone: "brand", className: "size-10" })}
                     aria-label="Save"
                   >
                     <Check className="size-5" strokeWidth={3} aria-hidden="true" />
@@ -102,9 +103,9 @@ export function AppShell({
 
           <main
             className={cn(
-              "mx-auto w-full max-w-[980px] md:px-6 md:py-7 lg:px-8 lg:py-8",
+              "mx-auto w-full max-w-[980px] md:px-6 md:pt-7 md:pb-20 lg:px-8 lg:pt-8 lg:pb-[6.25rem]",
               isHome ? "px-0 pt-0" : "px-3 pt-3",
-              isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6 md:pb-28",
+              isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6",
             )}
           >
             {children}

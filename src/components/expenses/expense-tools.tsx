@@ -32,7 +32,7 @@ export function ExpenseTools({
       role="group"
       aria-label={ariaLabel}
       style={{ "--keyboard-inset": `${keyboardInset}px` } as CSSProperties}
-      className="fixed inset-x-0 bottom-[var(--keyboard-inset)] z-30 flex justify-end gap-1 border-t border-[var(--soft-line)] bg-[var(--canvas)] px-3 pt-1 pb-[max(.5rem,env(safe-area-inset-bottom))] md:static md:mt-4 md:border-0 md:bg-transparent md:p-0"
+      className="fixed inset-x-0 bottom-[var(--keyboard-inset)] z-30 flex justify-end gap-1 border-t border-[var(--soft-line)] bg-[var(--canvas)] px-3 pt-1 pb-[max(.5rem,env(safe-area-inset-bottom))] md:static md:mt-auto md:border-0 md:bg-transparent md:p-0"
     >
       {children}
     </div>

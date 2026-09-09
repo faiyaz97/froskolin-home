@@ -5,6 +5,7 @@ import { Check, ChevronDown, Users } from "lucide-react";
 import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Dialog } from "../ui/dialog";
 import { Input } from "../ui/field";
+import { iconActionClass } from "../ui/icon-action";
 import { MoneyInput } from "../ui/money-input";
 import { cn } from "../ui/cn";
 
@@ -50,7 +51,7 @@ export function ChoiceRow({
         "flex min-h-12 w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
         selected
           ? "bg-[var(--pastel-mint)] text-[var(--brand-strong)]"
-          : "text-[var(--ink)] hover:bg-[var(--canvas)]",
+          : "text-[var(--ink)] hover:bg-[var(--row-hover)]",
         disabled && "cursor-not-allowed opacity-35 hover:bg-transparent",
       )}
     >
@@ -90,7 +91,7 @@ export function CurrencyAction({
         aria-expanded={draft !== null}
         disabled={disabled}
         onClick={() => setDraft(value)}
-        className="grid size-11 shrink-0 place-items-center self-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)] hover:bg-[var(--pastel-mint-line)] disabled:opacity-50"
+        className={iconActionClass({ tone: "brand", className: "size-11 self-center" })}
       >
         <span className="block text-2xl leading-none font-semibold" aria-hidden="true">
           {currencies.find((item) => item.code === value)?.symbol ?? value}

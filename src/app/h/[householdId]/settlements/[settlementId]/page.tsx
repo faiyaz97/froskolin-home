@@ -8,6 +8,7 @@ import {
   resolveAvatarColor,
   type AvatarColor,
 } from "@/components/household/member-avatar";
+import { iconActionClass } from "@/components/ui/icon-action";
 import { PageHeader, StatusNote } from "@/components/ui/page";
 import { voidSettlementAction } from "@/lib/actions";
 import { requireHouseholdMembership } from "@/lib/auth";
@@ -163,7 +164,7 @@ export default async function SettlementDetailPage({
               type="submit"
               aria-label="Void payment"
               title="Void payment"
-              className="grid size-12 place-items-center rounded-xl bg-[var(--negative-soft)] text-[var(--negative)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[#fecaca]"
+              className={iconActionClass({ tone: "negative", className: "size-12" })}
             >
               <Trash2 className="size-5" aria-hidden="true" />
             </button>
@@ -172,7 +173,7 @@ export default async function SettlementDetailPage({
             href={`/h/${householdId}/settlements/${settlementId}/edit`}
             aria-label="Edit payment"
             title="Edit payment"
-            className="grid size-12 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--brand-soft)]"
+            className={iconActionClass({ tone: "brand", className: "size-12" })}
           >
             <Pencil className="size-5" aria-hidden="true" />
           </Link>

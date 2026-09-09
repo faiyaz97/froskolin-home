@@ -34,28 +34,30 @@ Repeated patterns across these pages are canonical. Authentication/public, error
 
 Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 
-| Role            | Token                                  | Value                 | Typical use                      |
-| --------------- | -------------------------------------- | --------------------- | -------------------------------- |
-| Primary text    | `--ink`                                | `#172033`             | Headings, high-emphasis copy     |
-| Secondary text  | `--ink-soft`                           | `#334155`             | Labels and controls              |
-| Muted text      | `--muted`                              | `#64748b`             | Supporting metadata              |
-| Paper           | `--paper`                              | `#ffffff`             | Cards and dialogs                |
-| Canvas          | `--canvas`                             | `#f8fafc`             | App background and soft hover    |
-| Divider         | `--line`                               | `#e2e8f0`             | Structural separators            |
-| Soft divider    | `--soft-line`                          | `#f1f5f9`             | Rows and subtle boundaries       |
-| Brand           | `--brand`                              | `#0f766e`             | Primary action/accent            |
-| Brand strong    | `--brand-strong`                       | `#115e59`             | Strong brand text and hover      |
-| Brand soft      | `--brand-soft`                         | `#ccfbf1`             | Active and hover backgrounds     |
-| Violet          | `--violet` / `--violet-soft`           | `#7c3aed` / `#ede9fe` | AI, secondary cues, recurrence   |
-| Peach           | `--peach` / `--peach-soft`             | `#ea580c` / `#ffedd5` | Bills and landlord actions       |
-| Sky             | `--sky` / `--sky-soft`                 | `#0369a1` / `#e0f2fe` | Informational/group accents      |
-| Positive        | `--positive` / `--positive-soft`       | `#15803d` / `#dcfce7` | Credit/success                   |
-| Negative        | `--negative` / `--negative-soft`       | `#dc2626` / `#fee2e2` | Debt, destructive action, errors |
-| Warning         | `--warning` / `--warning-soft`         | `#a16207` / `#fef3c7` | Review-needed feedback           |
-| Pastel mint     | `--pastel-mint` / `--pastel-mint-line` | `#e3f5ef` / `#bce5d8` | Primary pastel surface           |
-| Pastel lavender | `--pastel-lavender` / line             | `#f0edff` / `#d9d1fa` | AI/secondary pastel surface      |
-| Pastel peach    | `--pastel-peach` / line                | `#fff0e7` / `#f7d4c0` | Warm action surface              |
-| Pastel sky      | `--pastel-sky` / line                  | `#eaf5ff` / `#c9e3f7` | Headers/informational surface    |
+| Role            | Token                                      | Value                 | Typical use                      |
+| --------------- | ------------------------------------------ | --------------------- | -------------------------------- |
+| Primary text    | `--ink`                                    | `#172033`             | Headings, high-emphasis copy     |
+| Secondary text  | `--ink-soft`                               | `#334155`             | Labels and controls              |
+| Muted text      | `--muted`                                  | `#64748b`             | Supporting metadata              |
+| Paper           | `--paper`                                  | `#ffffff`             | Cards and dialogs                |
+| Canvas          | `--canvas`                                 | `#f8fafc`             | App background and soft hover    |
+| Divider         | `--line`                                   | `#e2e8f0`             | Structural separators            |
+| Soft divider    | `--soft-line`                              | `#f1f5f9`             | Rows and subtle boundaries       |
+| Row hover       | `--row-hover`                              | `#f0fdfa`             | Shared interactive-row feedback  |
+| Brand           | `--brand`                                  | `#0f766e`             | Primary action/accent            |
+| Brand strong    | `--brand-strong`                           | `#115e59`             | Strong brand text and hover      |
+| Brand soft      | `--brand-soft`                             | `#ccfbf1`             | Active and hover backgrounds     |
+| Brand icon tint | `--brand-icon-soft` / `--brand-icon-hover` | `#ecf4f3` / `#dbeceb` | Teal-derived icon state/hover    |
+| Violet          | `--violet` / `--violet-soft`               | `#7c3aed` / `#ede9fe` | AI, secondary cues, recurrence   |
+| Peach           | `--peach` / `--peach-soft`                 | `#ea580c` / `#ffedd5` | Bills and landlord actions       |
+| Sky             | `--sky` / `--sky-soft`                     | `#0369a1` / `#e0f2fe` | Informational/group accents      |
+| Positive        | `--positive` / `--positive-soft`           | `#15803d` / `#dcfce7` | Credit/success                   |
+| Negative        | `--negative` / `--negative-soft`           | `#dc2626` / `#fee2e2` | Debt, destructive action, errors |
+| Warning         | `--warning` / `--warning-soft`             | `#a16207` / `#fef3c7` | Review-needed feedback           |
+| Pastel mint     | `--pastel-mint` / `--pastel-mint-line`     | `#e3f5ef` / `#bce5d8` | Primary pastel surface           |
+| Pastel lavender | `--pastel-lavender` / line                 | `#f0edff` / `#d9d1fa` | AI/secondary pastel surface      |
+| Pastel peach    | `--pastel-peach` / line                    | `#fff0e7` / `#f7d4c0` | Warm action surface              |
+| Pastel sky      | `--pastel-sky` / line                      | `#eaf5ff` / `#c9e3f7` | Headers/informational surface    |
 
 Avatar background colors are data, not general UI tokens; they live in `src/lib/avatar.ts` and drive the matching User Settings header glow.
 
@@ -81,7 +83,8 @@ Avoid long explanatory paragraphs on canonical settings and form pages. Prefer c
 - Desktop outer padding: 24px at `md`, 32px at `lg`; vertical page padding is 28–32px.
 - Common component gaps: 4/6/8px for compact controls, 12px within forms, 16px within sections, 20–24px between page sections.
 - Interactive rows are at least 64px tall; standard controls/buttons are at least 44px; icon tools are 48–56px targets.
-- Respect `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` in sticky/fixed mobile chrome.
+- Respect `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` in sticky/fixed mobile chrome. The shared app shell owns desktop bottom-navigation clearance for every signed-in route; pages must not add their own desktop bottom margins for it. On mobile, only primary routes reserve bottom-navigation space. Non-primary routes use normal page padding, with local clearance only when they render a fixed mobile tool strip.
+- Transaction add/edit pages use the shared `.transaction-form-frame` viewport calculation. On short desktop forms it keeps icon tools and text actions about 8px above the navigation; long forms expand and scroll normally. Do not reintroduce route-local viewport-height calculations.
 - Reserve a stable root scrollbar gutter so centered layouts do not shift when dialogs lock background scrolling.
 
 ### Radius and elevation
@@ -120,17 +123,19 @@ Reduced-motion users receive near-zero transitions through the global `prefers-r
 Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 
 - Base: minimum 44px, 14px radius, horizontal padding 16px, 14px black-weight label, optional leading icon.
-- `primary`: solid teal, white text.
+- `primary`: solid teal, white text, restrained teal shadow, and a darker teal hover.
 - `secondary`: white bordered utility action. Use sparingly on canonical pages.
-- `quiet`: text action; canonical desktop Cancel adds a soft neutral pill background.
+- `quiet`: soft neutral surface and dark text, with a slightly stronger grey hover. Cancel is neutral—not violet or destructive.
 - `accent`: solid violet.
-- `pastel`: mint primary action.
-- `pastelAccent`: lavender AI/secondary action.
-- `pastelWarm`: peach bill action.
-- Canonical form submit buttons use `pastel`, a full pill radius, no visible border, and a soft teal shadow.
+- `pastel`, `pastelAccent`, and `pastelWarm` retain their names for compatibility, but standard in-page actions render as solid teal, violet, and orange controls with darker same-hue hover feedback. A colored button must never hover to mint.
+- Canonical form submit buttons use `pastel`, a full pill radius, white text, and a restrained teal shadow.
+- The three fixed Home actions deliberately pass `appearance="floating"` to preserve their lighter pastel surfaces. Do not use the floating appearance for ordinary form or page buttons.
 - Mobile subpage Save is the icon-only shell action, not a duplicate fixed text button.
-- Icon-only buttons need a minimum 40–44px hit area and an `aria-label`.
-- Hover changes the surface softly; active state moves down 1px; disabled state reduces opacity and blocks interaction.
+- Canonical icon-only styling is `iconActionClass` from `src/components/ui/icon-action.ts`. Icon controls have a transparent resting surface, a semantic icon color, a circular same-family hover tint, and no resting border or shadow. Destructive icons are red; standard edit/save actions are teal and use the teal-derived `--brand-icon-*` fills rather than the mint surface palette; document/note actions may use violet.
+- Icon-only buttons need a minimum 40–44px hit area and an `aria-label`; compact inline edit controls may use a 28px target when attached directly to a heading.
+- A control that represents present content, such as a saved note, attachment, bill document, or selected date, keeps a very light circular tint at rest. Its hover tint must be visibly stronger than its persistent content tint. The icon itself may fill to reinforce the content-present state.
+- The Home header settings control is a deliberate visibility exception: it keeps a translucent white circular surface over the sky header and becomes solid white on hover.
+- Hover changes the surface softly; active state moves down 1px; disabled state reduces opacity and blocks interaction. Semantic display icons and record-type tiles are not icon controls and may retain their pastel tile backgrounds.
 
 ### Inputs and textareas
 
@@ -199,7 +204,7 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 Canonical feature control: `src/components/expenses/transaction-note-action.tsx` (`TransactionNoteAction`).
 
 - Expense, utility-bill, and payment add/edit forms use the same message-and-text icon action and focused dialog for optional notes.
-- Match the date and attachment tools: a 56px action target containing a 48px tile. A non-empty note uses the lavender filled state so its presence is visible without exposing its contents.
+- Match the date and attachment tools: a 56px circular action target with no nested tile. A non-empty note uses the lighter persistent lavender state and a filled icon so its presence is visible without exposing its contents; hover uses the stronger lavender tint.
 - Keep notes to 500 characters, trim them on confirmation, and hide empty notes on read-only pages.
 - On read-only transaction pages, place notes inside the main detail card after the people/share rows as compact inline copy in the form “Notes: …”. Do not create a separate notes card.
 
@@ -220,7 +225,7 @@ Canonical feature component: `src/components/calendar/away-calendar.tsx` (`AwayC
 - Canonical settings/list card: borderless `bg-white/85`, 22px radius, `--shadow-sm`, `overflow-hidden`.
 - Rows are at least 64px and separated by inset 1px `--soft-line` dividers (`mx-4`).
 - Leading icons sit in 40px pastel tiles with 12px radius. The label owns the flexible center; optional value/switch/chevron sits at the end.
-- Hover/focus uses a subtle canvas-colored row background. Icon tiles may scale very slightly; chevrons may translate 2px. Do not recolor chevrons per row.
+- Hover/focus uses the shared soft-mint `--row-hover` background so feedback stays visible against both white cards and the canvas. Do not use the page canvas itself as a grouped-row hover color. Icon tiles may scale very slightly; chevrons may translate 2px. Do not recolor chevrons per row.
 - Home balance cards use mint/peach semantic surfaces and collapse into a borderless divided strip during the mobile scroll morph.
 - `src/components/ui/surface.tsx` is useful for semantic pastel surfaces, but its default visible border is not the default for completed-page cards. Override deliberately or use the grouped-card pattern.
 
@@ -230,7 +235,7 @@ Canonical route: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`.
 
 - Expense and utility-bill records share one responsive detail route while using purpose-built breakdowns for their different data.
 - Use a `max-w-2xl` column and a borderless 24px white transaction hero. The hero starts with the canonical icon, title and date, with the total aligned at the far right. Do not repeat the record or utility type as an eyebrow beside the icon; the icon already provides that cue.
-- Both record types continue below the hero divider with a compact payer summary and connected avatar share rows. The payer row ends with participant count; ordinary expenses also show the split method. Every known member uses `MemberAvatar`, with the share total right aligned. Bill rows add one compact line for days at home and the fixed-plus-usage share breakdown.
+- Both record types continue below the hero divider with a compact payer summary and connected avatar share rows. Connector elbows run directly into each child avatar without a terminal dot. The payer row ends with participant count; ordinary expenses also show the split method. Every known member uses `MemberAvatar`, with the share total right aligned. Bill rows add one compact line for days at home and the fixed-plus-usage share breakdown.
 - Active recurring expense occurrences show the rule's authoritative next due date directly below the occurrence date with a compact violet recurrence cue. Hide the cue when the rule is paused, archived, or has reached its end date.
 - The edit tool on a recurring occurrence opens the shared `ExpenseForm` in recurring-rule mode, so its calendar includes the Repeat frequency and end-date controls. Ordinary occurrence editing remains a separate domain operation and must not masquerade as schedule editing.
 - Utility totals show concise Fixed and Usage values directly beneath the total at the right of the hero. Do not restore a separate allocation strip or explanatory allocation paragraphs.
@@ -267,11 +272,11 @@ Canonical list: `src/components/activity/audit-list.tsx`; canonical presentation
 ### Group and landlord balances
 
 - Both balance routes use a centered `max-w-2xl` column, the standard desktop `PageHeader`, short section labels, and borderless 22px grouped cards with soft full-width row dividers.
-- The first Group Balances section is “Members”; do not add a currency label beside its title because each formatted amount already communicates currency. Each member row shows the avatar, name, and absolute balance, followed by smaller counterpart rows that explain the balance. Reuse the utility-detail breakdown structure: connect child rows beneath the parent avatar on the left, keep each counterpart avatar and name together, and align every amount at the right edge. Breakdown amounts repeat the parent total's positive-green or negative-red meaning at lower opacity.
+- The first Group Balances section is “Members”; do not add a currency label beside its title because each formatted amount already communicates currency. Each member row shows the avatar, name, and absolute balance, followed by smaller counterpart rows that explain the balance. Reuse the utility-detail breakdown structure: connect child rows beneath the parent avatar on the left with a clean elbow that meets the avatar directly and has no terminal dot, keep each counterpart avatar and name together, and align every amount at the right edge. Breakdown amounts repeat the parent total's positive-green or negative-red meaning at lower opacity.
 - Place the compact `Simplified`/`Actual` switch at the right edge of the Members heading. Simplified is the default and shows the minimum-payment projection; Actual preserves the remaining original payer-to-participant relationships. Switching modes must update the connected member breakdowns and Settle up rows together.
 - Settlement suggestions use avatar → avatar rows, member names, and one right-aligned amount. When the authenticated member is the payer, place a compact text-only mint `Settle up` action immediately before the amount and prefill the existing payment form with that exact payer, recipient, currency, and amount. Do not show a generic page-level settlement action.
-- Landlord balances lead with one restrained pastel-peach outstanding summary. Outstanding bill rows show title, date, amount left, compact paid-versus-total copy, and a small mint `Mark paid` action.
-- Paid landlord bills use compact grouped history rows and an icon-only reopen action with an explicit accessible label. Empty states are short borderless cards or one line of muted copy; do not restore dashed panels or explanatory paragraphs.
+- Landlord balances lead with one compact white Outstanding summary row: peach icon tile, short label, and the total aligned right. Outstanding rows show the canonical expense or utility-type icon, title, date, amount, then a small text-only mint `Mark paid` action. Do not add redundant “left” or paid-versus-total copy when only full payment is supported.
+- Payment history shows at most the five most recently paid bills. Reuse the expense or utility-type icon rather than a completion tick, show the payment date and paid amount, and retain the icon-only reopen action with an explicit accessible label. Empty states are short borderless cards or one line of muted copy; do not restore dashed panels or explanatory paragraphs.
 
 ### Tables
 
@@ -323,6 +328,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | App shell/mobile header       | `src/components/household/app-shell.tsx`                            | Canonical                                                           |
 | Primary navigation            | `src/components/household/app-navigation.tsx`                       | Canonical                                                           |
 | Buttons/links                 | `src/components/ui/button.tsx`                                      | Canonical; form actions add pill overrides                          |
+| Icon-only actions             | `src/components/ui/icon-action.ts`                                  | Canonical semantic tones, circular hover, and content-present state |
 | Standard field/input/textarea | `src/components/ui/field.tsx`                                       | Canonical                                                           |
 | Money input                   | `src/components/ui/money-input.tsx`                                 | Canonical                                                           |
 | Dialog                        | `src/components/ui/dialog.tsx`                                      | Canonical                                                           |

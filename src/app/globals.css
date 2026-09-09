@@ -8,9 +8,12 @@
   --canvas: #f8fafc;
   --line: #e2e8f0;
   --soft-line: #f1f5f9;
+  --row-hover: #fef7ed;
   --brand: #0f766e;
   --brand-strong: #115e59;
   --brand-soft: #ccfbf1;
+  --brand-icon-soft: #ecf4f3;
+  --brand-icon-hover: #dbeceb;
   --violet: #7c3aed;
   --violet-strong: #6d28d9;
   --violet-soft: #ede9fe;
@@ -115,8 +118,8 @@ a {
   border: 0;
 }
 
-.app-safe-bottom {
-  padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom)));
+.transaction-form-frame {
+  min-height: calc(100dvh - 5.5rem);
 }
 
 .home-summary-sticky-frame {
@@ -214,6 +217,10 @@ a {
 }
 
 @media (min-width: 768px) {
+  .transaction-form-frame {
+    min-height: calc(100dvh - 10.5625rem);
+  }
+
   .bottom-mascot-image {
     bottom: 87px;
     left: 50%;
@@ -230,15 +237,19 @@ a {
   }
 }
 
-@media (max-width: 767px) {
-  .mobile-subpage .page-header {
-    display: none;
+@media (min-width: 1024px) {
+  .transaction-form-frame {
+    min-height: calc(100dvh - 12.0625rem);
   }
 }
 
-@media (min-width: 1024px) {
+@media (max-width: 767px) {
   .app-safe-bottom {
-    padding-bottom: 7rem;
+    padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom)));
+  }
+
+  .mobile-subpage .page-header {
+    display: none;
   }
 }
 

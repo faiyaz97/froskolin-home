@@ -9,6 +9,7 @@ import { avatars, resolveAvatarId } from "@/lib/avatar";
 import { updateRememberedMemberName } from "@/lib/device-memory";
 import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
+import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
@@ -114,7 +115,7 @@ export function PersonalSettingsPanel({
     /^(?:\d{4}|\d{6})$/.test(currentPin) && /^\d{6}$/.test(newPin) && /^\d{6}$/.test(confirmation);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 pb-24 md:pb-28">
+    <div className="mx-auto max-w-2xl space-y-5">
       <header className="sticky top-0 z-20 -mx-3 -mt-3 overflow-hidden rounded-b-[28px] bg-[linear-gradient(135deg,var(--pastel-sky),var(--pastel-mint))] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 shadow-[var(--shadow-sm)] md:relative md:mx-0 md:mt-0 md:rounded-[28px] md:p-7">
         <div
           className="pointer-events-none absolute -top-16 -right-14 size-52 rounded-full opacity-45 blur-2xl"
@@ -146,7 +147,7 @@ export function PersonalSettingsPanel({
               <button
                 type="button"
                 aria-label="Edit display name"
-                className="grid size-7 shrink-0 place-items-center rounded-full text-[var(--brand)] transition hover:text-[var(--brand-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                className={iconActionClass({ tone: "brand", className: "size-7" })}
                 disabled={!hydrated || pending}
                 onClick={openNameDialog}
               >
@@ -160,7 +161,7 @@ export function PersonalSettingsPanel({
       <section className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
         <button
           type="button"
-          className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!hydrated || pending}
           onClick={openPinDialog}
         >
@@ -176,7 +177,7 @@ export function PersonalSettingsPanel({
         <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
         <button
           type="button"
-          className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!hydrated || pending}
           onClick={() => startTransition(async () => void (await signOutAction()))}
         >

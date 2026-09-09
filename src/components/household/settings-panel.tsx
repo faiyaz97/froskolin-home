@@ -31,6 +31,7 @@ import { Button, ButtonLink } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
+import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
@@ -162,7 +163,7 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-28">
+    <div className="mx-auto max-w-3xl space-y-6">
       <header className="relative -mx-3 -mt-3 overflow-hidden rounded-b-[28px] bg-[linear-gradient(135deg,var(--pastel-sky),var(--pastel-mint))] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 shadow-[var(--shadow-sm)] md:mx-0 md:mt-0 md:rounded-[28px] md:p-7">
         <div className="flex items-center gap-4">
           <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white/75 text-[var(--brand)] shadow-[var(--shadow-sm)] sm:size-20">
@@ -180,7 +181,7 @@ export function SettingsPanel({
                 <button
                   type="button"
                   aria-label="Edit group name"
-                  className="grid size-7 shrink-0 place-items-center rounded-full text-[var(--brand)] transition hover:text-[var(--brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                  className={iconActionClass({ tone: "brand", className: "size-7" })}
                   disabled={pending}
                   onClick={() => {
                     setDraftName(name);
@@ -225,7 +226,7 @@ export function SettingsPanel({
                     setMessage("");
                     setAccessDialogOpen(true);
                   }}
-                  className="grid size-10 shrink-0 place-items-center rounded-xl text-[var(--brand)] transition-colors hover:bg-white/80 hover:text-[var(--brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-40"
+                  className={iconActionClass({ tone: "brand", className: "size-10" })}
                 >
                   <Pencil className="size-3.5" aria-hidden="true" />
                 </button>
@@ -247,7 +248,7 @@ export function SettingsPanel({
         <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
           <button
             type="button"
-            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
             disabled={!isOwner || pending}
             onClick={() => {
               setDraftCurrency(defaultCurrency);
@@ -272,7 +273,7 @@ export function SettingsPanel({
             type="button"
             role="switch"
             aria-checked={joiningEnabled}
-            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
             disabled={!isOwner || pending}
             onClick={() => saveGroup({ joiningEnabled: !joiningEnabled })}
           >
@@ -287,7 +288,7 @@ export function SettingsPanel({
             type="button"
             role="switch"
             aria-checked={landlordEnabled}
-            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[#f8fafc] focus-visible:bg-[#f8fafc] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
             disabled={!isOwner || pending}
             onClick={() => saveGroup({ landlordEnabled: !landlordEnabled })}
           >
@@ -329,7 +330,7 @@ export function SettingsPanel({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition hover:bg-[var(--pastel-mint)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                      className={iconActionClass({ tone: "brand", className: "size-10" })}
                       aria-label={`Reset PIN for ${member.name}`}
                       disabled={pending}
                       onClick={() =>
@@ -346,7 +347,7 @@ export function SettingsPanel({
                     </button>
                     <button
                       type="button"
-                      className="grid size-10 place-items-center rounded-xl text-[var(--negative)] transition hover:bg-[var(--negative-soft)] focus-visible:ring-2 focus-visible:ring-[var(--negative)] focus-visible:outline-none"
+                      className={iconActionClass({ tone: "negative", className: "size-10" })}
                       aria-label={`Remove ${member.name}`}
                       disabled={pending}
                       onClick={() => {
@@ -430,7 +431,7 @@ export function SettingsPanel({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    className="grid size-10 place-items-center rounded-xl text-[var(--brand)] transition hover:bg-[var(--pastel-mint)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                    className={iconActionClass({ tone: "brand", className: "size-10" })}
                     aria-label={rule.active ? `Pause ${rule.title}` : `Resume ${rule.title}`}
                     disabled={pending}
                     onClick={() =>
@@ -464,7 +465,7 @@ export function SettingsPanel({
                   </ButtonLink>
                   <button
                     type="button"
-                    className="grid size-10 place-items-center rounded-xl text-[var(--negative)] transition hover:bg-[var(--negative-soft)] focus-visible:ring-2 focus-visible:ring-[var(--negative)] focus-visible:outline-none"
+                    className={iconActionClass({ tone: "negative", className: "size-10" })}
                     aria-label={`Archive ${rule.title}`}
                     disabled={pending}
                     onClick={() => {
