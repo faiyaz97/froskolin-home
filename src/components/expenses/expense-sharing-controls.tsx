@@ -91,7 +91,11 @@ export function CurrencyAction({
         aria-expanded={draft !== null}
         disabled={disabled}
         onClick={() => setDraft(value)}
-        className={iconActionClass({ tone: "brand", className: "size-11 self-center" })}
+        className={iconActionClass({
+          tone: "brand",
+          active: true,
+          className: "size-11 self-center rounded-xl",
+        })}
       >
         <span className="block text-2xl leading-none font-semibold" aria-hidden="true">
           {currencies.find((item) => item.code === value)?.symbol ?? value}

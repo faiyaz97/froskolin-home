@@ -13,9 +13,9 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     await expect(page.getByRole("listbox", { name: "Household currency" })).toBeVisible();
   }).toPass({ timeout: 15000 });
   await page.getByRole("option", { name: "EUR · Euro", exact: true }).click();
-  await page.getByLabel("Household name").fill(`Expense UI test ${suffix}`);
-  await page.getByLabel("Owner name").fill(owner);
-  await page.getByLabel("House Join PIN").fill("654321");
+  await page.getByLabel("Group name").fill(`Expense UI test ${suffix}`);
+  await page.getByLabel("Your name").fill(owner);
+  await page.getByLabel("Group PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20000 });

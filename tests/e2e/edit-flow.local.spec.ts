@@ -7,9 +7,9 @@ test("expense editing reuses the add form and only persists on save", async ({ p
   const updatedTitle = `Updated expense ${suffix}`;
 
   await page.goto(`${origin}/?mode=create`);
-  await page.getByLabel("Household name").fill(`Edit flow ${suffix}`);
-  await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
-  await page.getByLabel("House Join PIN").fill("654321");
+  await page.getByLabel("Group name").fill(`Edit flow ${suffix}`);
+  await page.getByLabel("Your name").fill(`Owner ${suffix}`);
+  await page.getByLabel("Group PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });
@@ -59,9 +59,9 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
   const suffix = Date.now().toString().slice(-7);
 
   await page.goto(`${origin}/?mode=create`);
-  await page.getByLabel("Household name").fill(`Bill edit ${suffix}`);
-  await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
-  await page.getByLabel("House Join PIN").fill("654321");
+  await page.getByLabel("Group name").fill(`Bill edit ${suffix}`);
+  await page.getByLabel("Your name").fill(`Owner ${suffix}`);
+  await page.getByLabel("Group PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });
@@ -146,9 +146,9 @@ test("recurring rule editing uses the expense form", async ({ page }) => {
   const updatedTitle = `Updated recurring ${suffix}`;
 
   await page.goto(`${origin}/?mode=create`);
-  await page.getByLabel("Household name").fill(`Recurring edit ${suffix}`);
-  await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
-  await page.getByLabel("House Join PIN").fill("654321");
+  await page.getByLabel("Group name").fill(`Recurring edit ${suffix}`);
+  await page.getByLabel("Your name").fill(`Owner ${suffix}`);
+  await page.getByLabel("Group PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });

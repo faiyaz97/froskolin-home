@@ -43,9 +43,7 @@ export const houseCodeSchema = z
       .string()
       .regex(/^[A-Z0-9](?:[A-Z0-9-]{4,22})[A-Z0-9]$/, "Use 6–24 letters, numbers, or hyphens."),
   );
-export const joinPinSchema = z
-  .string()
-  .regex(/^\d{6}$/, "House Join PIN must be exactly six digits.");
+export const joinPinSchema = z.string().regex(/^\d{6}$/, "Group PIN must be exactly six digits.");
 
 export const createHouseholdSchema = z.object({
   householdName: nonEmptyTextSchema.max(80),

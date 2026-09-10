@@ -8,12 +8,12 @@ test("create, remembered login, access rotation, failed login, and join", async 
 }, testInfo) => {
   const suffix = Date.now().toString().slice(-7);
   const ownerName = `Owner ${suffix}`;
-  const memberName = `Roommate ${suffix}`;
+  const memberName = `Member ${suffix}`;
 
   await page.goto("/?mode=create");
-  await page.getByLabel("Household name").fill(`Auth test ${suffix}`);
-  await page.getByLabel("Owner name").fill(ownerName);
-  await page.getByLabel("House Join PIN").fill("654321");
+  await page.getByLabel("Group name").fill(`Auth test ${suffix}`);
+  await page.getByLabel("Your name").fill(ownerName);
+  await page.getByLabel("Group PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
   await page.getByRole("button", { name: "Create", exact: true }).click();
 
@@ -263,7 +263,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
   await expect(page.getByText(ownerName)).toBeVisible();
   await expect(page.getByRole("button", { name: "Forget this device" })).toHaveCount(0);
-  await expect(page.getByLabel("House Code")).toHaveCount(0);
+  await expect(page.getByLabel("Group code")).toHaveCount(0);
   await page.getByLabel("Personal PIN").fill("234567");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
@@ -289,16 +289,16 @@ test("create, remembered login, access rotation, failed login, and join", async 
   const secondContext = await browser.newContext();
   const secondPage = await secondContext.newPage();
   await secondPage.goto("/login");
-  await secondPage.getByLabel("House Code").fill(changedCode!);
+  await secondPage.getByLabel("Group code").fill(changedCode!);
   await secondPage.getByLabel("Member name").fill(memberName);
   await secondPage.getByLabel("Personal PIN").fill("222222");
   await secondPage.getByRole("button", { name: "Sign in" }).click();
   await expect(secondPage.getByText("We couldn't sign you in with those details.")).toBeVisible();
 
   await secondPage.goto("/?mode=join");
-  await secondPage.getByLabel("House Code").fill(changedCode!);
+  await secondPage.getByLabel("Group code").fill(changedCode!);
   await secondPage.getByLabel("Your name").fill(memberName);
-  await secondPage.getByLabel("House Join PIN").fill("777777");
+  await secondPage.getByLabel("Group PIN").fill("777777");
   await secondPage.getByLabel("Personal PIN").fill("222222");
   await secondPage.getByRole("button", { name: "Join", exact: true }).click();
   await expect(secondPage).toHaveURL(/\/h\/[0-9a-f-]+$/);
@@ -327,7 +327,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   const temporaryPin = temporaryPinText?.match(/(\d{4}|\d{6})$/)?.[1];
   expect(temporaryPin).toBeTruthy();
   await secondPage.goto("/login");
-  await secondPage.getByLabel("House Code").fill(changedCode);
+  await secondPage.getByLabel("Group code").fill(changedCode);
   await secondPage.getByLabel("Member name").fill(memberName);
   await secondPage.getByLabel("Personal PIN").fill(temporaryPin!);
   await secondPage.getByRole("button", { name: "Sign in" }).click();

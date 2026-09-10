@@ -64,10 +64,10 @@ export default async function HouseholdHome({
       <HomeSummaryMotion>
         <Surface
           tone="plain"
-          className="home-summary-surface mb-4 overflow-hidden rounded-none border-0 shadow-none md:mb-5 md:rounded-[var(--radius-surface)] md:shadow-[var(--shadow-sm)]"
+          className="home-summary-surface mb-4 overflow-hidden rounded-none border-0 shadow-none md:mb-5 md:rounded-[var(--radius-surface)] md:bg-[var(--home-header-blue)] md:shadow-[var(--shadow-sm)]"
           aria-label={`${home?.name ?? "Household"} summary`}
         >
-          <header className="home-summary-header relative flex items-center justify-between gap-4 bg-[var(--pastel-sky)] px-3.5 pt-[max(.875rem,env(safe-area-inset-top))] pb-3.5 sm:px-5">
+          <header className="home-summary-header relative flex items-center justify-between gap-4 bg-[var(--pastel-sky)] px-3.5 pt-[max(.875rem,env(safe-area-inset-top))] pb-3.5 sm:px-5 md:bg-[var(--home-header-blue)]">
             <div className="max-w-[calc(100%-7rem)] min-w-0 sm:flex sm:max-w-[calc(100%-10rem)] sm:items-center sm:gap-3">
               <h1 className="home-summary-title truncate leading-tight font-black tracking-[-0.04em] text-[var(--ink)]">
                 {home?.name ?? "Home"}
@@ -92,7 +92,7 @@ export default async function HouseholdHome({
           </header>
 
           <div
-            className={`home-summary-balances grid items-center bg-white ${home?.landlord_enabled ? "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "grid-cols-1"}`}
+            className={`home-summary-balances grid items-center bg-white md:mx-2 md:mb-2 md:rounded-[14px] ${home?.landlord_enabled ? "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "grid-cols-1"}`}
             aria-label="Your balances"
           >
             <Link

@@ -17,7 +17,7 @@ Canonical reference pages:
 9. Activity List and Detail: `src/app/h/[householdId]/activity/page.tsx` and `src/app/h/[householdId]/activity/[eventId]/page.tsx`
 10. Group and Landlord Balances: `src/app/h/[householdId]/balances/page.tsx` and `src/app/h/[householdId]/landlord/page.tsx`
 
-Repeated patterns across these pages are canonical. Authentication/public, error/loading, and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the ten page groups above.
+Repeated patterns across these pages are canonical. The public authentication flow is also canonical for sign-in, create-group, and join-group screens. Error/loading and recurring-edit pages are not design-system references yet. Their styling may be retained for behavior, but should not be copied into new work without comparison to the canonical pages above.
 
 ## Design principles
 
@@ -58,6 +58,7 @@ Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 | Pastel lavender | `--pastel-lavender` / line                 | `#f0edff` / `#d9d1fa` | AI/secondary pastel surface      |
 | Pastel peach    | `--pastel-peach` / line                    | `#fff0e7` / `#f7d4c0` | Warm action surface              |
 | Pastel sky      | `--pastel-sky` / line                      | `#eaf5ff` / `#c9e3f7` | Headers/informational surface    |
+| Home header     | `--home-header-blue`                       | `#dceeff`             | Desktop Home summary surface     |
 
 Avatar background colors are data, not general UI tokens; they live in `src/lib/avatar.ts` and drive the matching User Settings header glow.
 
@@ -115,6 +116,20 @@ Special page behavior:
 
 Reduced-motion users receive near-zero transitions through the global `prefers-reduced-motion` rule.
 
+### Public authentication shell
+
+Canonical components: `src/components/public/auth-shell.tsx` and `src/components/public/auth-form.tsx`.
+
+- Sign in, Create group, and Join group share one compact card centered vertically and horizontally on the canvas.
+- Keep the page background plain. Do not add decorative gradients, blurred color blobs, illustrations, marketing copy, or secondary panels around the form.
+- Center the Froskolin mark and app name above the form at every viewport size.
+- Use one three-option segmented control for changing authentication mode. The active option uses the standard white selected surface; inactive options remain muted with a simple text hover.
+- Keep fields in one flat stack. Do not divide credentials into nested cards or add explanatory descriptions.
+- User-facing copy uses `group` and `member`: Group name, Group code, Group PIN, Your name, and Personal PIN. Compatibility identifiers such as `householdName` and `houseCode` remain internal.
+- Creating a group does not expose currency or locale controls. Infer the supported currency from the device locale, fall back to EUR, and allow later changes in Group Settings. Use the device timezone without asking for it.
+- A remembered sign-in may replace the code and name inputs with one compact neutral identity row. `Use another` returns to the full sign-in fields.
+- The card must fit narrow screens without horizontal overflow and may scroll vertically on unusually short viewports.
+
 ## Components and patterns
 
 ### Buttons and links
@@ -135,6 +150,7 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - Icon-only buttons need a minimum 40–44px hit area and an `aria-label`; compact inline edit controls may use a 28px target when attached directly to a heading.
 - A control that represents present content, such as a saved note, attachment, bill document, or selected date, keeps a very light circular tint at rest. Its hover tint must be visibly stronger than its persistent content tint. The icon itself may fill to reinforce the content-present state.
 - The Home header settings control is a deliberate visibility exception: it keeps a translucent white circular surface over the sky header and becomes solid white on hover.
+- `CurrencyAction` is a deliberate form-control exception: keep its persistent light teal surface and 12px rounded-square shape so the currency symbol remains visually attached to the amount input.
 - Hover changes the surface softly; active state moves down 1px; disabled state reduces opacity and blocks interaction. Semantic display icons and record-type tiles are not icon controls and may retain their pastel tile backgrounds.
 
 ### Inputs and textareas
@@ -296,7 +312,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - Mobile subpage title/back/save: `AppShell`; do not render a competing sticky header.
 - User and Group Settings use feature headers with a sky→mint gradient, 28px lower/outer radius, compact uppercase eyebrow, bold name, and a minimal pencil edit affordance.
 - Group credentials are selectable plain text. Only the dedicated pencil button opens the Group Access dialog; the surrounding credential surface is never clickable.
-- Home uses a sky header and its own responsive summary system rather than the generic `PageHeader`.
+- Home uses a sky header and its own responsive summary system rather than the generic `PageHeader`. On desktop, use the stronger `--home-header-blue` surface with the balance cards grouped inside one inset white rounded panel; mobile retains the edge-to-edge scroll/morph composition.
 - Home transaction history uses Activity’s grouped-list shell: a borderless 22px white card, clipped outer corners, rectangular middle rows, and soft dividers. Preserve Home’s existing row content and month labels outside each card.
 - Home transaction history is progressive: render the latest 10 combined expense/payment rows, then reveal batches of 10 with the shared `LoadMoreAction`. On Home and Activity, place this centered text-only action outside the grouped card and label it “Load more,” which works for pointer and touch input.
 - Expense/Utility type switch: `src/components/expenses/expense-type-nav.tsx`; show only in add mode, not edit mode.
@@ -328,6 +344,8 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | App shell/mobile header       | `src/components/household/app-shell.tsx`                            | Canonical                                                           |
 | Primary navigation            | `src/components/household/app-navigation.tsx`                       | Canonical                                                           |
+| Public authentication shell   | `src/components/public/auth-shell.tsx`                              | Canonical centered public-page frame                                |
+| Public authentication form    | `src/components/public/auth-form.tsx`                               | Canonical sign-in/create/join composition                           |
 | Buttons/links                 | `src/components/ui/button.tsx`                                      | Canonical; form actions add pill overrides                          |
 | Icon-only actions             | `src/components/ui/icon-action.ts`                                  | Canonical semantic tones, circular hover, and content-present state |
 | Standard field/input/textarea | `src/components/ui/field.tsx`                                       | Canonical                                                           |
@@ -375,8 +393,7 @@ These are not defined by the completed pages and should be decided in a future t
 3. Whether to revise `Surface`, `EmptyState`, and `formSectionClass` defaults or retain them for legacy contexts.
 4. Whether full `SelectInput` should adopt the sentence/dialog model or remain a distinct pattern for dense forms.
 5. A true responsive data-table pattern.
-6. A branded destructive-confirmation dialog to replace `window.confirm`.
-7. Consolidation of the two attachment action/popover implementations.
-8. Token names for remaining literal hover, icon, backdrop, and focus colors.
-9. Canonical visual treatment for public/authentication, balance, activity, loading, error, and recurring-management pages.
-10. Whether internal `household` terminology should ever be migrated; no such migration is implied by the current UI language.
+6. Consolidation of the two attachment action/popover implementations.
+7. Token names for remaining literal hover, icon, backdrop, and focus colors.
+8. Canonical visual treatment for loading, error, and recurring-management pages.
+9. Whether internal `household` terminology should ever be migrated; no such migration is implied by the current UI language.

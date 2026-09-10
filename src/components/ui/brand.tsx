@@ -38,7 +38,7 @@ export function CatMark({ compact = false }: { compact?: boolean }) {
     <Link
       href="/"
       className="group inline-flex items-center gap-2.5 text-[var(--ink)] no-underline"
-      aria-label="Froskolin Home"
+      aria-label="Froskolin"
     >
       <CatBadge />
       {!compact && (

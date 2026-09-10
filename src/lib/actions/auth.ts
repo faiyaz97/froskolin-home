@@ -83,7 +83,7 @@ async function createUniqueHouseCode(): Promise<string> {
     if (error) throw error;
     if (!data) return houseCode;
   }
-  throw new Error("Unable to allocate a unique House Code.");
+  throw new Error("Unable to allocate a unique Group Code.");
 }
 
 function chooseAvatar(selected: Iterable<string | null>): AvatarColor {

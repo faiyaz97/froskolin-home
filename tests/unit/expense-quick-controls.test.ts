@@ -48,8 +48,11 @@ describe("expense quick controls", () => {
     const onChange = vi.fn();
     render(React.createElement(CurrencyAction, { value: "EUR", onChange }));
 
-    expect(screen.getByRole("button", { name: "Currency" }).textContent).toBe("€");
-    fireEvent.click(screen.getByRole("button", { name: "Currency" }));
+    const currencyButton = screen.getByRole("button", { name: "Currency" });
+    expect(currencyButton.textContent).toBe("€");
+    expect(currencyButton.className).toContain("rounded-xl");
+    expect(currencyButton.className).toContain("bg-[var(--brand-icon-soft)]");
+    fireEvent.click(currencyButton);
     const dialog = screen.getByRole("dialog", { name: "Currency" });
     expect(dialog.querySelector('[aria-label="Back"]')).toBeTruthy();
     expect(dialog.querySelector('[aria-label="Done"]')).toBeTruthy();

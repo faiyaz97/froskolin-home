@@ -35,6 +35,7 @@
   --pastel-peach-line: #f7d4c0;
   --pastel-sky: #eaf5ff;
   --pastel-sky-line: #c9e3f7;
+  --home-header-blue: #dceeff;
   --control-line: #d5e0e7;
   --control-line-hover: #b8c8d2;
   --control-ring: rgb(15 118 110 / 0.14);
@@ -224,7 +225,8 @@ a {
   }
 
   .home-summary-motion {
-    --home-head-height: 126px;
+    --home-head-height: 104px;
+    --home-balance-height: 58px;
     will-change: auto;
   }
 }
