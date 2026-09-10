@@ -45,7 +45,7 @@ export default async function EditSettlementPage({
   const viewHref = `/h/${householdId}/settlements/${settlementId}`;
 
   return (
-    <div className="transaction-form-frame mx-auto flex max-w-2xl flex-col">
+    <div className="mx-auto max-w-2xl">
       <Link
         href={viewHref}
         className="mb-5 hidden min-h-10 items-center gap-2 rounded-xl px-2 text-sm font-bold text-[var(--muted)] no-underline hover:bg-white hover:text-[var(--ink)] md:inline-flex"

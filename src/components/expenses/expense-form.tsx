@@ -398,8 +398,9 @@ export function ExpenseForm({
             }
           />
         </div>
+      </section>
 
-        <div className="h-24 md:hidden" aria-hidden="true" />
+      <div className="md:mt-2 md:flex md:items-center md:justify-between md:gap-4">
         <ExpenseTools>
           <ExpenseDateAction
             value={expenseDate}
@@ -445,37 +446,36 @@ export function ExpenseForm({
             />
           )}
         </ExpenseTools>
-      </section>
-
-      <div className="hidden items-center justify-end gap-2.5 md:flex">
-        <Button
-          type="button"
-          tone="quiet"
-          className="min-w-28 rounded-full px-5"
-          onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
-          disabled={pending}
-        >
-          <X className="size-4" aria-hidden="true" /> Cancel
-        </Button>
-        <Button
-          type="submit"
-          tone="pastel"
-          className="min-w-40 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
-          disabled={pending}
-        >
-          {initial || initialRecurring ? (
-            <Check className="size-4" aria-hidden="true" />
-          ) : (
-            <Plus className="size-[18px]" aria-hidden="true" />
-          )}
-          {pending
-            ? "Saving…"
-            : initial || initialRecurring
-              ? "Save changes"
-              : recurring
-                ? "Add recurring expense"
-                : "Add expense"}
-        </Button>
+        <div className="hidden items-center justify-end gap-2.5 md:flex">
+          <Button
+            type="button"
+            tone="quiet"
+            className="min-w-28 rounded-full px-5"
+            onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
+            disabled={pending}
+          >
+            <X className="size-4" aria-hidden="true" /> Cancel
+          </Button>
+          <Button
+            type="submit"
+            tone="pastel"
+            className="min-w-40 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+            disabled={pending}
+          >
+            {initial || initialRecurring ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <Plus className="size-[18px]" aria-hidden="true" />
+            )}
+            {pending
+              ? "Saving…"
+              : initial || initialRecurring
+                ? "Save changes"
+                : recurring
+                  ? "Add recurring expense"
+                  : "Add expense"}
+          </Button>
+        </div>
       </div>
     </form>
   );

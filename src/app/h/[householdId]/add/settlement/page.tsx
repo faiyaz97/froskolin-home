@@ -72,7 +72,7 @@ export default async function SettlementPage({
     activeMembers.find((member) => member.id !== membership.id)?.id;
 
   return (
-    <div className="transaction-form-frame mx-auto flex max-w-2xl flex-col">
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Record a payment" />
       <SettlementForm
         householdId={householdId}

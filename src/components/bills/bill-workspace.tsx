@@ -119,7 +119,7 @@ export function BillWorkspace({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-3">
+    <div className="grid gap-3">
       <BillUpload
         onPrepared={prepareDraft}
         onAutofill={selectedFile ? autofill : undefined}

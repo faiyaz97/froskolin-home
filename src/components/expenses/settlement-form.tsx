@@ -227,8 +227,9 @@ export function SettlementForm({
         <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="settlementDate" value={paymentDate} />
         <input type="hidden" name="note" value={note} />
+      </section>
 
-        <div className="h-24 md:hidden" aria-hidden="true" />
+      <div className="md:mt-2 md:flex md:items-center md:justify-between md:gap-4">
         <ExpenseTools ariaLabel="Payment tools">
           <ExpenseDateAction
             value={paymentDate}
@@ -250,31 +251,30 @@ export function SettlementForm({
             placeholder="Bank transfer, cash, etc."
           />
         </ExpenseTools>
-      </section>
-
-      <div className="hidden items-center justify-end gap-2.5 md:flex">
-        <Button
-          type="button"
-          tone="quiet"
-          className="min-w-28 rounded-full px-5"
-          onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
-          disabled={pending}
-        >
-          <X className="size-4" aria-hidden="true" /> Cancel
-        </Button>
-        <Button
-          type="submit"
-          tone="pastel"
-          className="min-w-40 rounded-full px-5"
-          disabled={pending}
-        >
-          {initial ? (
-            <Check className="size-4" aria-hidden="true" />
-          ) : (
-            <Plus className="size-[18px]" aria-hidden="true" />
-          )}
-          {pending ? "Saving…" : initial ? "Save changes" : "Record payment"}
-        </Button>
+        <div className="hidden items-center justify-end gap-2.5 md:flex">
+          <Button
+            type="button"
+            tone="quiet"
+            className="min-w-28 rounded-full px-5"
+            onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
+            disabled={pending}
+          >
+            <X className="size-4" aria-hidden="true" /> Cancel
+          </Button>
+          <Button
+            type="submit"
+            tone="pastel"
+            className="min-w-40 rounded-full px-5"
+            disabled={pending}
+          >
+            {initial ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <Plus className="size-[18px]" aria-hidden="true" />
+            )}
+            {pending ? "Saving…" : initial ? "Save changes" : "Record payment"}
+          </Button>
+        </div>
       </div>
 
       {dialog && (

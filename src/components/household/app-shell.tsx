@@ -103,7 +103,7 @@ export function AppShell({
 
           <main
             className={cn(
-              "mx-auto w-full max-w-[980px] md:px-6 md:pt-7 md:pb-20 lg:px-8 lg:pt-8 lg:pb-[6.25rem]",
+              "mx-auto w-full max-w-[980px] md:px-6 md:pt-7 md:pb-36 lg:px-8 lg:pt-8",
               isHome ? "px-0 pt-0" : "px-3 pt-3",
               isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6",
             )}

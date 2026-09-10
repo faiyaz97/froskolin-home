@@ -160,25 +160,12 @@ describe("expense quick controls", () => {
     expect(screen.getByRole("button", { name: "Paid by" }).textContent).toBe("You");
   });
 
-  it("moves the utility actions above the keyboard's visual viewport", () => {
-    const viewport = Object.assign(new EventTarget(), {
-      height: window.innerHeight - 280,
-      offsetTop: 20,
-    });
-    const previous = Object.getOwnPropertyDescriptor(window, "visualViewport");
-    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
-    try {
-      render(React.createElement(ExpenseTools, null, "Tools"));
-      expect(
-        screen
-          .getByRole("group", { name: "Expense tools" })
-          .style.getPropertyValue("--keyboard-inset"),
-      ).toBe("260px");
-    } finally {
-      cleanup();
-      if (previous) Object.defineProperty(window, "visualViewport", previous);
-      else Reflect.deleteProperty(window, "visualViewport");
-    }
+  it("keeps utility actions in normal flow and right aligned on mobile", () => {
+    render(React.createElement(ExpenseTools, null, "Tools"));
+    const tools = screen.getByRole("group", { name: "Expense tools" });
+    expect(tools.className).toContain("justify-end");
+    expect(tools.className).toContain("md:justify-start");
+    expect(tools.className).not.toContain("fixed");
   });
 
   it("commits a transaction note from the shared dialog and shows its filled state", () => {

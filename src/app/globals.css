@@ -118,10 +118,6 @@ a {
   border: 0;
 }
 
-.transaction-form-frame {
-  min-height: calc(100dvh - 5.5rem);
-}
-
 .home-summary-sticky-frame {
   height: 226px;
 }
@@ -217,10 +213,6 @@ a {
 }
 
 @media (min-width: 768px) {
-  .transaction-form-frame {
-    min-height: calc(100dvh - 10.5625rem);
-  }
-
   .bottom-mascot-image {
     bottom: 87px;
     left: 50%;
@@ -234,12 +226,6 @@ a {
   .home-summary-motion {
     --home-head-height: 126px;
     will-change: auto;
-  }
-}
-
-@media (min-width: 1024px) {
-  .transaction-form-frame {
-    min-height: calc(100dvh - 12.0625rem);
   }
 }
 

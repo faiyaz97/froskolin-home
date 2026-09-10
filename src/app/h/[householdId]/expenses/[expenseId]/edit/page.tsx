@@ -50,7 +50,7 @@ export default async function EditExpensePage({
     if (error) throw error;
 
     return (
-      <div className="transaction-form-frame mx-auto flex w-full max-w-2xl min-w-0 flex-col">
+      <div className="mx-auto w-full max-w-2xl min-w-0">
         <PageHeader title="Edit utility bill" compact />
         <BillWorkspace
           householdId={householdId}
@@ -116,7 +116,7 @@ export default async function EditExpensePage({
   if (attachmentError) throw attachmentError;
 
   return (
-    <div className="transaction-form-frame mx-auto flex w-full max-w-2xl min-w-0 flex-col">
+    <div className="mx-auto w-full max-w-2xl min-w-0">
       <PageHeader title="Edit expense" compact />
       <ExpenseForm
         householdId={householdId}

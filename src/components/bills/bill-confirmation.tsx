@@ -279,7 +279,7 @@ export function BillConfirmation({
     <form
       id="bill-facts"
       data-mobile-submit
-      className="flex flex-1 scroll-mt-24 flex-col gap-3 pb-24 md:pb-0"
+      className="grid scroll-mt-24 gap-3"
       onSubmit={submit}
       aria-busy={pending}
       noValidate
@@ -468,38 +468,40 @@ export function BillConfirmation({
           </div>
         </section>
       )}
-      <ExpenseTools ariaLabel="Bill tools">
-        <TransactionNoteAction
-          value={note}
-          onChange={setNote}
-          disabled={pending}
-          title="Bill notes"
-          placeholder="Add anything useful about this bill."
-        />
-      </ExpenseTools>
-      <div className="hidden items-center justify-end gap-2.5 md:flex">
-        <Button
-          type="button"
-          tone="quiet"
-          className="min-w-28 rounded-full px-5"
-          onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
-          disabled={pending}
-        >
-          <X className="size-4" aria-hidden="true" /> Cancel
-        </Button>
-        <Button
-          type="submit"
-          tone="pastel"
-          disabled={pending}
-          className="min-w-48 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
-        >
-          {existing ? (
-            <Check className="size-4" aria-hidden="true" />
-          ) : (
-            <Plus className="size-[18px]" aria-hidden="true" />
-          )}
-          {pending ? "Saving bill…" : existing ? "Save bill changes" : "Add bill"}
-        </Button>
+      <div className="md:mt-2 md:flex md:items-center md:justify-between md:gap-4">
+        <ExpenseTools ariaLabel="Bill tools">
+          <TransactionNoteAction
+            value={note}
+            onChange={setNote}
+            disabled={pending}
+            title="Bill notes"
+            placeholder="Add anything useful about this bill."
+          />
+        </ExpenseTools>
+        <div className="hidden items-center justify-end gap-2.5 md:flex">
+          <Button
+            type="button"
+            tone="quiet"
+            className="min-w-28 rounded-full px-5"
+            onClick={() => (cancelHref ? router.replace(cancelHref) : router.back())}
+            disabled={pending}
+          >
+            <X className="size-4" aria-hidden="true" /> Cancel
+          </Button>
+          <Button
+            type="submit"
+            tone="pastel"
+            disabled={pending}
+            className="min-w-48 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+          >
+            {existing ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <Plus className="size-[18px]" aria-hidden="true" />
+            )}
+            {pending ? "Saving bill…" : existing ? "Save bill changes" : "Add bill"}
+          </Button>
+        </div>
       </div>
     </form>
   );

@@ -31,7 +31,7 @@ export default async function NewBillPage({
     }));
 
   return (
-    <div className="transaction-form-frame mx-auto flex w-full max-w-2xl min-w-0 flex-col">
+    <div className="mx-auto w-full max-w-2xl min-w-0">
       <PageHeader title="Add utility bill" compact />
       <ExpenseTypeNav householdId={householdId} active="bill" />
       <BillWorkspace

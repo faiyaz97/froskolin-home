@@ -84,7 +84,6 @@ Avoid long explanatory paragraphs on canonical settings and form pages. Prefer c
 - Common component gaps: 4/6/8px for compact controls, 12px within forms, 16px within sections, 20–24px between page sections.
 - Interactive rows are at least 64px tall; standard controls/buttons are at least 44px; icon tools are 48–56px targets.
 - Respect `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` in sticky/fixed mobile chrome. The shared app shell owns desktop bottom-navigation clearance for every signed-in route; pages must not add their own desktop bottom margins for it. On mobile, only primary routes reserve bottom-navigation space. Non-primary routes use normal page padding, with local clearance only when they render a fixed mobile tool strip.
-- Transaction add/edit pages use the shared `.transaction-form-frame` viewport calculation. On short desktop forms it keeps icon tools and text actions about 8px above the navigation; long forms expand and scroll normally. Do not reintroduce route-local viewport-height calculations.
 - Reserve a stable root scrollbar gutter so centered layouts do not shift when dialogs lock background scrolling.
 
 ### Radius and elevation
@@ -253,7 +252,7 @@ Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`)
 - Each member action opens a `Dialog` of `ChoiceRow` items. Disable the person selected on the opposite side so a member cannot pay themselves.
 - Use the same oversized underlined amount entry and `CurrencyAction` as expense and bill forms.
 - Payment date defaults to the device's current local date and uses `ExpenseDateAction` without recurrence. Notes use the shared `TransactionNoteAction`; its filled lavender state indicates saved note content.
-- Place date and note actions in `ExpenseTools`, fixed above the safe area on mobile and static at the form edge on desktop. Desktop Cancel and Record/Save actions use the established pill treatment, with mint/teal for the primary payment action.
+- Place date and note actions in `ExpenseTools` directly after the form content. Align them right on mobile; on desktop, use a single normal-flow action row with icon tools aligned left and Cancel plus Record/Save aligned right. Do not fix this row to the viewport, position it relative to the floating navigation, or stretch short forms to the viewport height.
 - Opening a saved payment shows a read-only detail card, never the edit form. Match the transaction-detail composition: payment icon, visible formatted date, amount at the far right, then a divider and an avatar-colored payer-to-receiver row.
 - Show non-empty notes inside the main payment card, directly beneath the payer-to-receiver row, as compact inline copy in the form “Notes: …”. Date and note icon tools belong only to the form; do not use them to hide information on the view page.
 - Use compact void and edit icon actions below the view card. The edit action opens the dedicated edit route, which reuses `SettlementForm` with initial values and returns to the read-only detail after saving or cancelling.
