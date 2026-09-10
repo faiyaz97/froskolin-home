@@ -34,31 +34,31 @@ Repeated patterns across these pages are canonical. The public authentication fl
 
 Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 
-| Role            | Token                                      | Value                 | Typical use                      |
-| --------------- | ------------------------------------------ | --------------------- | -------------------------------- |
-| Primary text    | `--ink`                                    | `#172033`             | Headings, high-emphasis copy     |
-| Secondary text  | `--ink-soft`                               | `#334155`             | Labels and controls              |
-| Muted text      | `--muted`                                  | `#64748b`             | Supporting metadata              |
-| Paper           | `--paper`                                  | `#ffffff`             | Cards and dialogs                |
-| Canvas          | `--canvas`                                 | `#f8fafc`             | App background and soft hover    |
-| Divider         | `--line`                                   | `#e2e8f0`             | Structural separators            |
-| Soft divider    | `--soft-line`                              | `#f1f5f9`             | Rows and subtle boundaries       |
-| Row hover       | `--row-hover`                              | `#f5f6f7`             | Shared interactive-row feedback  |
-| Brand           | `--brand`                                  | `#0f766e`             | Primary action/accent            |
-| Brand strong    | `--brand-strong`                           | `#115e59`             | Strong brand text and hover      |
-| Brand soft      | `--brand-soft`                             | `#ccfbf1`             | Active and hover backgrounds     |
-| Brand icon tint | `--brand-icon-soft` / `--brand-icon-hover` | `#ecf4f3` / `#dbeceb` | Teal-derived icon state/hover    |
-| Violet          | `--violet` / `--violet-soft`               | `#7c3aed` / `#ede9fe` | AI, secondary cues, recurrence   |
-| Peach           | `--peach` / `--peach-soft`                 | `#ea580c` / `#ffedd5` | Bills and landlord actions       |
-| Sky             | `--sky` / `--sky-soft`                     | `#0369a1` / `#e0f2fe` | Informational/group accents      |
-| Positive        | `--positive` / `--positive-soft`           | `#15803d` / `#dcfce7` | Credit/success                   |
-| Negative        | `--negative` / `--negative-soft`           | `#dc2626` / `#fee2e2` | Debt, destructive action, errors |
-| Warning         | `--warning` / `--warning-soft`             | `#a16207` / `#fef3c7` | Review-needed feedback           |
-| Pastel mint     | `--pastel-mint` / `--pastel-mint-line`     | `#e3f5ef` / `#bce5d8` | Primary pastel surface           |
-| Pastel lavender | `--pastel-lavender` / line                 | `#f0edff` / `#d9d1fa` | AI/secondary pastel surface      |
-| Pastel peach    | `--pastel-peach` / line                    | `#fff0e7` / `#f7d4c0` | Warm action surface              |
-| Pastel sky      | `--pastel-sky` / line                      | `#eaf5ff` / `#c9e3f7` | Headers/informational surface    |
-| Home header     | `--home-header-blue`                       | `#dceeff`             | Desktop Home summary surface     |
+| Role            | Token                                      | Value                             | Typical use                      |
+| --------------- | ------------------------------------------ | --------------------------------- | -------------------------------- |
+| Primary text    | `--ink`                                    | `#172033`                         | Headings, high-emphasis copy     |
+| Secondary text  | `--ink-soft`                               | `#334155`                         | Labels and controls              |
+| Muted text      | `--muted`                                  | `#64748b`                         | Supporting metadata              |
+| Paper           | `--paper`                                  | `#ffffff`                         | Cards and dialogs                |
+| Canvas          | `--canvas`                                 | `#f8fafc`                         | App background and soft hover    |
+| Divider         | `--line`                                   | `#e2e8f0`                         | Structural separators            |
+| Soft divider    | `--soft-line`                              | `#f1f5f9`                         | Rows and subtle boundaries       |
+| Row hover       | `--row-hover`                              | `#f5f6f7`                         | Shared interactive-row feedback  |
+| Brand           | `--brand`                                  | `#0f766e`                         | Primary action/accent            |
+| Brand strong    | `--brand-strong`                           | `#115e59`                         | Strong brand text and hover      |
+| Brand soft      | `--brand-soft`                             | `#ccfbf1`                         | Active and hover backgrounds     |
+| Brand icon tint | `--brand-icon-soft` / `--brand-icon-hover` | `#ecf4f3` / `#dbeceb`             | Teal-derived icon state/hover    |
+| Violet          | `--violet` / `--violet-soft`               | `#7c3aed` / `#ede9fe`             | AI, secondary cues, recurrence   |
+| Peach           | `--peach` / `--peach-soft`                 | `#ea580c` / `#ffedd5`             | Bills and landlord actions       |
+| Sky             | `--sky` / `--sky-soft`                     | `#0369a1` / `#e0f2fe`             | Informational/group accents      |
+| Positive        | `--positive` / `--positive-soft`           | `#15803d` / `#dcfce7`             | Credit/success                   |
+| Negative        | `--negative` / `--negative-soft`           | `#dc2626` / `#fee2e2`             | Debt, destructive action, errors |
+| Warning         | `--warning` / `--warning-soft`             | `#a16207` / `#fef3c7`             | Review-needed feedback           |
+| Pastel mint     | `--pastel-mint` / line / hover             | `#e3f5ef` / `#bce5d8` / `#d4ede5` | Primary pastel surface           |
+| Pastel lavender | `--pastel-lavender` / line                 | `#f0edff` / `#d9d1fa`             | AI/secondary pastel surface      |
+| Pastel peach    | `--pastel-peach` / line / hover            | `#fff0e7` / `#f7d4c0` / `#fbe2d3` | Warm action surface              |
+| Pastel sky      | `--pastel-sky` / line / hover              | `#eaf5ff` / `#c9e3f7` / `#dcecf8` | Headers/informational            |
+| Home header     | `--home-header-blue`                       | `#dceeff`                         | Desktop Home summary surface     |
 
 Avatar background colors are data, not general UI tokens; they live in `src/lib/avatar.ts` and drive the matching User Settings header glow.
 
@@ -143,7 +143,7 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - `accent`: solid violet.
 - `pastel`, `pastelAccent`, and `pastelWarm` retain their names for compatibility, but standard in-page actions render as solid teal, violet, and orange controls with darker same-hue hover feedback. A colored button must never hover to mint.
 - Canonical form submit buttons use `pastel`, a full pill radius, white text, and a restrained teal shadow.
-- The three fixed Home actions deliberately pass `appearance="floating"` to preserve their lighter pastel surfaces. They use equal 48px heights and stepped widths from the smallest top action to the largest bottom action. Hover uses slight darkening and a stronger same-hue shadow without moving or resizing the control. Do not use the floating appearance for ordinary form or page buttons.
+- The three fixed Home actions deliberately pass `appearance="floating"` to preserve their lighter pastel surfaces. Settle up is soft sky blue, Add bill is soft peach, and Add expense is soft mint/teal. Add expense remains the strongest and largest primary action. They use equal 48px heights and stepped widths from the smallest top action to the largest bottom action. Hover uses a slightly darker shade and stronger shadow from the same color family without moving or resizing the control. Do not use the floating appearance for ordinary form or page buttons.
 - Keep visible action labels concise without losing context. Forms whose page title already names the object use `Add`, `Save`, or `Record`; context-free shortcuts retain the object, such as `Add expense`, `Add bill`, and `Record payment`. Keep destructive and irreversible labels explicit.
 - The mobile subpage submit control is an icon-only shell action with a descriptive accessible name, not a duplicate fixed text button.
 - Canonical icon-only styling is `iconActionClass` from `src/components/ui/icon-action.ts`. Icon controls have a transparent resting surface, a semantic icon color, a circular same-family hover tint, and no resting border or shadow. Destructive icons are red; standard edit/save actions are teal and use the teal-derived `--brand-icon-*` fills rather than the mint surface palette; document/note actions may use violet.

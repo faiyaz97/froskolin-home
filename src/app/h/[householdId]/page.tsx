@@ -210,7 +210,7 @@ export default async function HouseholdHome({
           <div className="pointer-events-auto flex flex-col items-end gap-2.5">
             <ButtonLink
               href={`/h/${householdId}/add/settlement`}
-              tone="pastelAccent"
+              tone="pastelSky"
               appearance="floating"
               className="min-h-12 w-32 rounded-full border-0 px-4 py-2.5 text-sm"
             >

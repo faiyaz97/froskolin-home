@@ -9,7 +9,8 @@ type Tone =
   | "danger"
   | "pastel"
   | "pastelAccent"
-  | "pastelWarm";
+  | "pastelWarm"
+  | "pastelSky";
 type Appearance = "standard" | "floating";
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: Tone;
@@ -35,6 +36,8 @@ const tones: Record<Tone, string> = {
     "bg-[var(--violet)] text-white shadow-[0_6px_16px_rgb(124_58_237/0.16)] hover:bg-[var(--violet-strong)]",
   pastelWarm:
     "bg-[var(--peach)] text-white shadow-[0_6px_16px_rgb(234_88_12/0.16)] hover:bg-[#c2410c]",
+  pastelSky:
+    "bg-[var(--sky)] text-white shadow-[0_6px_16px_rgb(3_105_161/0.16)] hover:bg-[#075985]",
 };
 
 const floatingTones: Record<Tone, string> = {
@@ -47,11 +50,13 @@ const floatingTones: Record<Tone, string> = {
     "bg-[var(--violet)] text-white shadow-[0_8px_18px_rgb(124_58_237/0.18)] hover:bg-[var(--violet-strong)]",
   danger: "border-[#fecaca] bg-white text-[var(--negative)] hover:bg-[var(--negative-soft)]",
   pastel:
-    "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand-strong)] shadow-[0_8px_18px_rgb(15_118_110/0.1)] hover:brightness-[0.97] hover:shadow-[0_12px_24px_rgb(15_118_110/0.2)]",
+    "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand-strong)] shadow-[0_8px_18px_rgb(15_118_110/0.14)] hover:bg-[var(--pastel-mint-hover)] hover:shadow-[0_12px_24px_rgb(15_118_110/0.22)]",
   pastelAccent:
     "border-[var(--pastel-lavender-line)] bg-[var(--pastel-lavender)] text-[var(--violet-strong)] shadow-[0_8px_18px_rgb(124_58_237/0.1)] hover:brightness-[0.97] hover:shadow-[0_12px_24px_rgb(124_58_237/0.2)]",
   pastelWarm:
-    "border-[var(--pastel-peach-line)] bg-[var(--pastel-peach)] text-[var(--peach)] shadow-[0_8px_18px_rgb(234_88_12/0.1)] hover:brightness-[0.97] hover:shadow-[0_12px_24px_rgb(234_88_12/0.2)]",
+    "border-[var(--pastel-peach-line)] bg-[var(--pastel-peach)] text-[var(--peach)] shadow-[0_8px_18px_rgb(234_88_12/0.1)] hover:bg-[var(--pastel-peach-hover)] hover:shadow-[0_12px_24px_rgb(234_88_12/0.2)]",
+  pastelSky:
+    "border-[var(--pastel-sky-line)] bg-[var(--pastel-sky)] text-[var(--sky)] shadow-[0_8px_18px_rgb(3_105_161/0.1)] hover:bg-[var(--pastel-sky-hover)] hover:shadow-[0_12px_24px_rgb(3_105_161/0.2)]",
 };
 
 export function Button({
