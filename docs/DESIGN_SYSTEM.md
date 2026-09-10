@@ -43,7 +43,7 @@ Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 | Canvas          | `--canvas`                                 | `#f8fafc`             | App background and soft hover    |
 | Divider         | `--line`                                   | `#e2e8f0`             | Structural separators            |
 | Soft divider    | `--soft-line`                              | `#f1f5f9`             | Rows and subtle boundaries       |
-| Row hover       | `--row-hover`                              | `#f0fdfa`             | Shared interactive-row feedback  |
+| Row hover       | `--row-hover`                              | `#f5f6f7`             | Shared interactive-row feedback  |
 | Brand           | `--brand`                                  | `#0f766e`             | Primary action/accent            |
 | Brand strong    | `--brand-strong`                           | `#115e59`             | Strong brand text and hover      |
 | Brand soft      | `--brand-soft`                             | `#ccfbf1`             | Active and hover backgrounds     |
