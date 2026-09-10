@@ -11,14 +11,14 @@ test("expense editing reuses the add form and only persists on save", async ({ p
   await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });
   const homeUrl = page.url();
 
   await page.goto(`${homeUrl}/add/expense`);
   await page.getByLabel("Description", { exact: true }).fill(originalTitle);
   await page.getByLabel("Amount", { exact: true }).fill("24.50");
-  await page.getByRole("button", { name: "Add expense", exact: true }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page).toHaveURL(homeUrl);
 
   const expenseHref = await page
@@ -46,7 +46,7 @@ test("expense editing reuses the add form and only persists on save", async ({ p
 
   await page.getByRole("link", { name: "Edit expense", exact: true }).click();
   await page.getByLabel("Description", { exact: true }).fill(updatedTitle);
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page).toHaveURL(detailUrl);
   await expect(page.getByRole("heading", { name: updatedTitle, exact: true })).toBeVisible();
 });
@@ -63,7 +63,7 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
   await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });
   const homeUrl = page.url();
 
@@ -86,7 +86,7 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
     .click();
   await serviceDialog.getByRole("button", { name: "Done", exact: true }).click();
   const billTitle = await billForm.getByLabel("Title").inputValue();
-  await billForm.getByRole("button", { name: "Add bill", exact: true }).click();
+  await billForm.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page).toHaveURL(homeUrl);
 
   const billHref = await page
@@ -123,7 +123,7 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
     ),
   });
   await expect(page.getByText("replacement.png", { exact: true })).toBeVisible();
-  await billForm.getByRole("button", { name: "Save bill changes", exact: true }).click();
+  await billForm.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page).toHaveURL(detailUrl, { timeout: 20_000 });
   await expect(page.getByText("Bill document", { exact: true })).toBeVisible();
   await page.goto(billEditHref!);
@@ -150,14 +150,14 @@ test("recurring rule editing uses the expense form", async ({ page }) => {
   await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20_000 });
   const homeUrl = page.url();
 
   await page.goto(`${homeUrl}/add/expense?recurring=1`);
   await page.getByLabel("Description", { exact: true }).fill(originalTitle);
   await page.getByLabel("Amount", { exact: true }).fill("18.00");
-  await page.getByRole("button", { name: "Add recurring expense", exact: true }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page).toHaveURL(homeUrl);
 
   await page.goto(`${homeUrl}/settings`);
@@ -175,7 +175,7 @@ test("recurring rule editing uses the expense form", async ({ page }) => {
   await expect(page.getByLabel("Amount", { exact: true })).toHaveValue("18.00");
 
   await page.getByLabel("Description", { exact: true }).fill(updatedTitle);
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page).toHaveURL(`${homeUrl}/settings`);
   await expect(recurringSection.getByText(new RegExp(`^${updatedTitle}`))).toBeVisible();
 });

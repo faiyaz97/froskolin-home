@@ -9,6 +9,7 @@ import {
   type AvatarColor,
 } from "@/components/household/member-avatar";
 import { iconActionClass } from "@/components/ui/icon-action";
+import { ConfirmationButton } from "@/components/ui/confirmation-button";
 import { PageHeader, StatusNote } from "@/components/ui/page";
 import { voidSettlementAction } from "@/lib/actions";
 import { requireHouseholdMembership } from "@/lib/auth";
@@ -159,16 +160,17 @@ export default async function SettlementDetailPage({
 
       {!settlement.voided_at && (
         <div className="mt-4 mb-6 flex items-center justify-end gap-2 px-1">
-          <form action={voidSettlement}>
-            <button
-              type="submit"
-              aria-label="Void payment"
-              title="Void payment"
-              className={iconActionClass({ tone: "negative", className: "size-12" })}
-            >
-              <Trash2 className="size-5" aria-hidden="true" />
-            </button>
-          </form>
+          <ConfirmationButton
+            triggerLabel="Void payment"
+            title="Void this payment?"
+            description="This will remove it from balances. It will remain visible in Activity."
+            confirmLabel="Void"
+            pendingLabel="Voiding…"
+            onConfirmAction={voidSettlement}
+            triggerClassName={iconActionClass({ tone: "negative", className: "size-12" })}
+          >
+            <Trash2 className="size-5" aria-hidden="true" />
+          </ConfirmationButton>
           <Link
             href={`/h/${householdId}/settlements/${settlementId}/edit`}
             aria-label="Edit payment"

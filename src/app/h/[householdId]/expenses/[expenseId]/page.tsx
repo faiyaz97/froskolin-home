@@ -14,6 +14,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { UtilityTypeIcon } from "@/components/bills/bill-meta-controls";
 import { MobilePageTitle } from "@/components/household/app-shell";
+import { ConfirmationButton } from "@/components/ui/confirmation-button";
 import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { PageHeader } from "@/components/ui/page";
@@ -346,17 +347,18 @@ export default async function ExpenseDetail({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <form action={voidExpense}>
-            <button
-              type="submit"
-              disabled={Boolean(expense.voided_at)}
-              aria-label={utility ? "Void bill" : "Void expense"}
-              title={utility ? "Void bill" : "Void expense"}
-              className={iconActionClass({ tone: "negative", className: "size-12" })}
-            >
-              <Trash2 className="size-5" aria-hidden="true" />
-            </button>
-          </form>
+          <ConfirmationButton
+            triggerLabel={utility ? "Void bill" : "Void expense"}
+            title={utility ? "Void this bill?" : "Void this expense?"}
+            description="This will remove it from balances. It will remain visible in Activity."
+            confirmLabel="Void"
+            pendingLabel="Voiding…"
+            disabled={Boolean(expense.voided_at)}
+            onConfirmAction={voidExpense}
+            triggerClassName={iconActionClass({ tone: "negative", className: "size-12" })}
+          >
+            <Trash2 className="size-5" aria-hidden="true" />
+          </ConfirmationButton>
           {!expense.voided_at && (
             <Link
               href={editHref}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { ConfirmationButton } from "../ui/confirmation-button";
 import { controlPopoverClass } from "../ui/field";
 
 const acceptedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -147,17 +148,21 @@ export function BillUpload({
             >
               <RefreshCw className="size-4 text-[var(--violet)]" aria-hidden="true" /> Replace
             </button>
-            <button
-              type="button"
-              onClick={() => {
+            <ConfirmationButton
+              triggerLabel="Remove bill document"
+              title="Remove this bill document?"
+              description={`${file?.name ?? initialFileName ?? "This document"} will be removed from this bill.`}
+              confirmLabel="Remove"
+              pendingLabel="Removing…"
+              onConfirmAction={() => {
                 setFile(null);
                 onRemove();
                 setOpen(false);
               }}
-              className="flex min-h-10 w-full items-center gap-2 rounded-[10px] px-3 text-left text-sm font-bold text-[var(--negative)] hover:bg-[var(--negative-soft)]"
+              triggerClassName="flex min-h-10 w-full items-center gap-2 rounded-[10px] px-3 text-left text-sm font-bold text-[var(--negative)] hover:bg-[var(--negative-soft)]"
             >
               <Trash2 className="size-4" aria-hidden="true" /> Remove
-            </button>
+            </ConfirmationButton>
           </div>
         )}
       </div>
@@ -174,7 +179,7 @@ export function BillUpload({
           className="min-h-12 shrink-0 rounded-xl border-0 px-3 text-xs shadow-none"
         >
           <Sparkles className="size-4" aria-hidden="true" />
-          {autofillPending ? "Filling…" : "Autofill with AI"}
+          {autofillPending ? "Filling…" : "Autofill"}
         </Button>
       ) : (
         <span className="rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold whitespace-nowrap text-[var(--brand-strong)]">

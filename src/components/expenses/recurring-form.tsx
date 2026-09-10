@@ -294,7 +294,7 @@ export function RecurringForm({
       </div>
       <div className="hidden justify-end md:flex">
         <Button type="submit" disabled={pending || selected.size === 0}>
-          {pending ? "Saving…" : initial ? "Save future occurrences" : "Create recurring rule"}
+          {pending ? "Saving…" : initial ? "Save" : "Add"}
         </Button>
       </div>
     </form>

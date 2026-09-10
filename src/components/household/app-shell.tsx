@@ -43,7 +43,7 @@ export function AppShell({
   const isPrimaryPage = primaryPaths.includes(pathname);
   const isHome = pathname === root;
   const mobileTitle = mobileTitleOverride ?? getMobileTitle(pathname, root);
-  const canSubmit = hasMobileSubmit(pathname, root);
+  const mobileSubmitLabel = getMobileSubmitLabel(pathname, root);
 
   useEffect(() => {
     if (mustChangePin && pathname !== `${root}/account`) router.replace(`${root}/account`);
@@ -85,12 +85,12 @@ export function AppShell({
                 <h1 className="truncate text-center text-[15px] font-black tracking-[-0.02em]">
                   {mobileTitle}
                 </h1>
-                {canSubmit ? (
+                {mobileSubmitLabel ? (
                   <button
                     type="button"
                     onClick={submitCurrentForm}
                     className={iconActionClass({ tone: "brand", className: "size-10" })}
-                    aria-label="Save"
+                    aria-label={mobileSubmitLabel}
                   >
                     <Check className="size-5" strokeWidth={3} aria-hidden="true" />
                   </button>
@@ -123,16 +123,19 @@ export function AppShell({
   );
 }
 
-function hasMobileSubmit(pathname: string, root: string) {
-  return (
-    pathname === `${root}/add/expense` ||
-    pathname === `${root}/add/bill` ||
-    pathname === `${root}/add/settlement` ||
+function getMobileSubmitLabel(pathname: string, root: string) {
+  if (pathname === `${root}/add/expense`) return "Add expense";
+  if (pathname === `${root}/add/bill`) return "Add bill";
+  if (pathname === `${root}/add/settlement`) return "Record payment";
+  if (/^\/h\/[^/]+\/bills\/[^/]+\/confirm$/.test(pathname)) return "Add bill";
+  if (
     /^\/h\/[^/]+\/expenses\/[^/]+\/edit$/.test(pathname) ||
-    /^\/h\/[^/]+\/bills\/[^/]+\/confirm$/.test(pathname) ||
     /^\/h\/[^/]+\/settlements\/[^/]+\/edit$/.test(pathname) ||
     /^\/h\/[^/]+\/settings\/recurring\/[^/]+\/edit$/.test(pathname)
-  );
+  ) {
+    return "Save";
+  }
+  return null;
 }
 
 function getMobileTitle(pathname: string, root: string) {

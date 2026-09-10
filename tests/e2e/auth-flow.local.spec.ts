@@ -15,14 +15,15 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await page.getByLabel("Owner name").fill(ownerName);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
   const homeUrl = page.url();
   await expect(page.getByRole("link", { name: "Group settings" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Notifications/ })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Upload bill" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Add bill" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Add expense" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settle up" })).toBeVisible();
   const primaryNavigation = page.getByRole("navigation", { name: "Primary" });
   await expect(primaryNavigation).toBeVisible();
   const appBrand = page.getByRole("link", { name: "Froskolin Home" });
@@ -41,7 +42,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   if ((page.viewportSize()?.width ?? 0) < 768) {
     await expect(primaryNavigation).toBeHidden();
     await expect(page.getByRole("button", { name: "Go back" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add expense" })).toBeVisible();
   }
   await expect(expenseTypeNavigation.getByRole("link", { name: "Expense" })).toHaveAttribute(
     "aria-current",
@@ -127,7 +128,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   expect(fixedFeesBox!.width).toBeCloseTo(usageCostsBox!.width, 0);
   await page.setViewportSize({ width: 1280, height: 720 });
   const createBillButton = billForm.getByRole("button", {
-    name: "Add bill",
+    name: "Add",
     exact: true,
   });
   await expect(createBillButton).toBeEnabled();
@@ -170,7 +171,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   });
   expect(persistentUploadRequests).toBe(0);
   await expect(page.getByText(/tap to change/i)).toBeVisible();
-  await page.getByRole("button", { name: "Autofill with AI" }).click();
+  await page.getByRole("button", { name: "Autofill", exact: true }).click();
   await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   expect(persistentUploadRequests).toBe(0);
   await expect(billForm.getByRole("button", { name: "Service period" })).toContainText("Aug 26");
@@ -178,7 +179,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await billForm.getByLabel("Title").fill("Edited electricity bill");
   await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   await billForm.getByLabel("Total due").fill("101.00");
-  await expect(page.getByRole("button", { name: "Autofill with AI", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Autofill", exact: true })).toBeVisible();
   await billForm.getByLabel("Total due").fill("100.00");
   await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   await page.unrouteAll({ behavior: "ignoreErrors" });
@@ -299,7 +300,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await secondPage.getByLabel("Your name").fill(memberName);
   await secondPage.getByLabel("House Join PIN").fill("777777");
   await secondPage.getByLabel("Personal PIN").fill("222222");
-  await secondPage.getByRole("button", { name: "Join roommates" }).click();
+  await secondPage.getByRole("button", { name: "Join", exact: true }).click();
   await expect(secondPage).toHaveURL(/\/h\/[0-9a-f-]+$/);
   const secondHomeUrl = secondPage.url();
   await secondPage.goto(`${secondHomeUrl}/account`);
@@ -348,8 +349,8 @@ test("create, remembered login, access rotation, failed login, and join", async 
   const monthPrefix = new Date().toISOString().slice(0, 7);
   await page.locator(`[data-day="${monthPrefix}-10"] button`).click();
   await page.locator(`[data-day="${monthPrefix}-12"] button`).click();
-  await page.getByRole("button", { name: "Add period" }).click();
-  await expect(page.getByRole("button", { name: "Add period" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Add", exact: true })).toHaveCount(0);
 
   await page
     .getByRole("button", { name: new RegExp(`Choose member, currently ${ownerName}`) })

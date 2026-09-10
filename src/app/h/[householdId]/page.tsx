@@ -207,28 +207,28 @@ export default async function HouseholdHome({
 
       <div className="pointer-events-none fixed inset-x-0 bottom-[88px] z-20 lg:bottom-28">
         <div className="mx-auto flex w-full max-w-[980px] justify-end px-3 sm:px-6 lg:px-8">
-          <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+          <div className="pointer-events-auto flex flex-col items-end gap-2.5">
             <ButtonLink
               href={`/h/${householdId}/add/settlement`}
               tone="pastelAccent"
               appearance="floating"
-              className="min-h-10 rounded-full border-0 px-3.5 py-2 text-xs"
+              className="min-h-12 w-32 rounded-full border-0 px-4 py-2.5 text-sm"
             >
-              <CircleDollarSign className="size-4" aria-hidden="true" /> Settle up
+              <CircleDollarSign className="size-[18px]" aria-hidden="true" /> Settle up
             </ButtonLink>
             <ButtonLink
               href={`/h/${householdId}/add/bill`}
               tone="pastelWarm"
               appearance="floating"
-              className="min-h-10 rounded-full border-0 px-3.5 py-2 text-xs"
+              className="min-h-12 w-36 rounded-full border-0 px-4 py-2.5 text-sm"
             >
-              <ScanLine className="size-4" aria-hidden="true" /> Upload bill
+              <ScanLine className="size-[18px]" aria-hidden="true" /> Add bill
             </ButtonLink>
             <ButtonLink
               href={`/h/${householdId}/add/expense`}
               tone="pastel"
               appearance="floating"
-              className="min-h-11 rounded-full border-0 px-4 py-2 text-sm"
+              className="min-h-12 w-40 rounded-full border-0 px-4 py-2.5 text-sm"
             >
               <Plus className="size-[18px]" aria-hidden="true" /> Add expense
             </ButtonLink>

@@ -492,14 +492,14 @@ export function BillConfirmation({
             type="submit"
             tone="pastel"
             disabled={pending}
-            className="min-w-48 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+            className="min-w-32 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
           >
             {existing ? (
               <Check className="size-4" aria-hidden="true" />
             ) : (
               <Plus className="size-[18px]" aria-hidden="true" />
             )}
-            {pending ? "Saving bill…" : existing ? "Save bill changes" : "Add bill"}
+            {pending ? "Saving…" : existing ? "Save" : "Add"}
           </Button>
         </div>
       </div>

@@ -459,7 +459,7 @@ export function ExpenseForm({
           <Button
             type="submit"
             tone="pastel"
-            className="min-w-40 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+            className="min-w-32 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
             disabled={pending}
           >
             {initial || initialRecurring ? (
@@ -467,13 +467,7 @@ export function ExpenseForm({
             ) : (
               <Plus className="size-[18px]" aria-hidden="true" />
             )}
-            {pending
-              ? "Saving…"
-              : initial || initialRecurring
-                ? "Save changes"
-                : recurring
-                  ? "Add recurring expense"
-                  : "Add expense"}
+            {pending ? "Saving…" : initial || initialRecurring ? "Save" : "Add"}
           </Button>
         </div>
       </div>

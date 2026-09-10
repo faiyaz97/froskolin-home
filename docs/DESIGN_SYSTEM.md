@@ -100,7 +100,7 @@ Avoid long explanatory paragraphs on canonical settings and form pages. Prefer c
 
 Canonical shell: `src/components/household/app-shell.tsx`.
 
-- `<768px`: non-primary subpages receive a sticky compact header with Back, centered title, and optional Save. Their desktop `PageHeader` is hidden by `.mobile-subpage .page-header`.
+- `<768px`: non-primary subpages receive a sticky compact header with Back, centered title, and an optional context-specific submit action. Their desktop `PageHeader` is hidden by `.mobile-subpage .page-header`.
 - Primary mobile pages (Home, Calendar, Activity, Account) show the fixed four-item bottom navigation.
 - `>=768px`: a sticky white brand header appears; page content gains desktop padding. Forms expose their desktop Cancel/Save buttons.
 - `>=1024px`: the primary navigation becomes a centered floating rounded bar near the bottom.
@@ -128,8 +128,9 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - `accent`: solid violet.
 - `pastel`, `pastelAccent`, and `pastelWarm` retain their names for compatibility, but standard in-page actions render as solid teal, violet, and orange controls with darker same-hue hover feedback. A colored button must never hover to mint.
 - Canonical form submit buttons use `pastel`, a full pill radius, white text, and a restrained teal shadow.
-- The three fixed Home actions deliberately pass `appearance="floating"` to preserve their lighter pastel surfaces. Do not use the floating appearance for ordinary form or page buttons.
-- Mobile subpage Save is the icon-only shell action, not a duplicate fixed text button.
+- The three fixed Home actions deliberately pass `appearance="floating"` to preserve their lighter pastel surfaces. They use equal 48px heights and stepped widths from the smallest top action to the largest bottom action. Hover uses slight darkening and a stronger same-hue shadow without moving or resizing the control. Do not use the floating appearance for ordinary form or page buttons.
+- Keep visible action labels concise without losing context. Forms whose page title already names the object use `Add`, `Save`, or `Record`; context-free shortcuts retain the object, such as `Add expense`, `Add bill`, and `Record payment`. Keep destructive and irreversible labels explicit.
+- The mobile subpage submit control is an icon-only shell action with a descriptive accessible name, not a duplicate fixed text button.
 - Canonical icon-only styling is `iconActionClass` from `src/components/ui/icon-action.ts`. Icon controls have a transparent resting surface, a semantic icon color, a circular same-family hover tint, and no resting border or shadow. Destructive icons are red; standard edit/save actions are teal and use the teal-derived `--brand-icon-*` fills rather than the mint surface palette; document/note actions may use violet.
 - Icon-only buttons need a minimum 40–44px hit area and an `aria-label`; compact inline edit controls may use a 28px target when attached directly to a heading.
 - A control that represents present content, such as a saved note, attachment, bill document, or selected date, keeps a very light circular tint at rest. Its hover tint must be visibly stronger than its persistent content tint. The icon itself may fill to reinforce the content-present state.
@@ -187,7 +188,8 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 - Informational dialogs without Done use title plus Close.
 - Enter submits from a focused text input when Done is available and enabled.
 - Keep dialog bodies concise; use standard `Field` controls or `ChoiceRow` lists.
-- Destructive confirmation currently uses browser `window.confirm` in Group Settings. It is not a canonical dialog pattern and remains unresolved.
+- Sensitive actions use `ConfirmationButton` from `src/components/ui/confirmation-button.tsx`; never use browser `window.confirm`. Confirm void, remove, delete, archive, credential reset, and similar balance- or access-changing actions before running them.
+- Confirmation copy states the direct consequence in one short sentence. Use neutral `Cancel` and an explicit destructive verb such as `Void`, `Remove`, or `Archive`; keep the dialog open and nondismissible while the action is pending.
 
 ### Upload and attachment controls
 
@@ -215,7 +217,7 @@ Canonical feature component: `src/components/calendar/away-calendar.tsx` (`AwayC
 - Month and year labels are direct controls. They open compact month and year grids, matching the date selector used by expense forms.
 - Calendar cells are wide, inset canvas tiles with consistent white gutters on every side. The active range is one uniform mint sequence with clearly rounded first and last days and square middle days; do not darken the endpoints. A start-only selection must still have an obvious mint fill and outline. Saved ranges use a light pastel tint derived from the selected member's avatar color with the same rounded-end/square-middle shape; the period-list dot uses the exact avatar color. Never expose other members' saved dates as dots or markers.
 - After a complete range is selected, show a compact summary row directly below the grid with the formatted dates and day count on one line, plus a right-aligned `Add period` action.
-- Save additions, edits, and removals at the point of action. Do not add a second page-level confirmation step.
+- Save additions and edits at the point of action. Removing a saved period uses the shared sensitive-action confirmation dialog before persisting.
 - The section below the calendar lists only the selected member's periods that intersect the displayed month. Clip the displayed dates and day count to that month while editing or removing the underlying complete period, and place the day count immediately after its period.
 - Keep calendar cards borderless with 22px radii and `--shadow-sm`, and keep empty copy to one short line.
 
@@ -331,6 +333,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 | Standard field/input/textarea | `src/components/ui/field.tsx`                                       | Canonical                                                           |
 | Money input                   | `src/components/ui/money-input.tsx`                                 | Canonical                                                           |
 | Dialog                        | `src/components/ui/dialog.tsx`                                      | Canonical                                                           |
+| Sensitive-action confirmation | `src/components/ui/confirmation-button.tsx`                         | Canonical for void/remove/delete/archive and credential reset       |
 | Page/status helpers           | `src/components/ui/page.tsx`                                        | `PageHeader`/`StatusNote` canonical; `EmptyState` visual unresolved |
 | Inline selections/choice rows | `src/components/expenses/expense-sharing-controls.tsx`              | Canonical across expense and bill forms                             |
 | Date dialog/tool              | `src/components/expenses/expense-date-action.tsx`                   | Canonical for expense date/recurrence                               |

@@ -43,8 +43,8 @@ export function PublicForm({ kind }: { kind: "create" | "join" | "login" }) {
   const [rememberedDevice, setRememberedDevice] = useState<RememberedDevice | null>(null);
   const [useRememberedDevice, setUseRememberedDevice] = useState(true);
   const content = {
-    create: { title: "Create household", action: "Create household" },
-    join: { title: "Join roommates", action: "Join roommates" },
+    create: { title: "Create household", action: "Create" },
+    join: { title: "Join roommates", action: "Join" },
     login: { title: "Sign in", action: "Sign in" },
   }[kind];
 

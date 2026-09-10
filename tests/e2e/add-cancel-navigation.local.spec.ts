@@ -8,7 +8,7 @@ test("add expense and utility bill cancel back to group home", async ({ page }) 
   await page.getByLabel("Owner name").fill(`Owner ${suffix}`);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
   const homeUrl = page.url();

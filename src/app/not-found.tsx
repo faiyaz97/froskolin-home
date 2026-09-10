@@ -16,7 +16,7 @@ export default function GlobalNotFound() {
         The page may have moved, or this household isn’t yours.
       </p>
       <ButtonLink href="/" className="mt-7">
-        Return to safety
+        Go home
       </ButtonLink>
     </main>
   );

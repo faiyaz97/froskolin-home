@@ -264,7 +264,7 @@ export function SettlementForm({
           <Button
             type="submit"
             tone="pastel"
-            className="min-w-40 rounded-full px-5"
+            className="min-w-32 rounded-full px-5"
             disabled={pending}
           >
             {initial ? (
@@ -272,7 +272,7 @@ export function SettlementForm({
             ) : (
               <Plus className="size-[18px]" aria-hidden="true" />
             )}
-            {pending ? "Saving…" : initial ? "Save changes" : "Record payment"}
+            {pending ? "Saving…" : initial ? "Save" : "Record"}
           </Button>
         </div>
       </div>

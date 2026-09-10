@@ -4,6 +4,7 @@ import { Eye, Paperclip, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "../ui/cn";
+import { ConfirmationButton } from "../ui/confirmation-button";
 import { controlPopoverClass } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
 
@@ -111,16 +112,20 @@ export function ExpenseAttachmentAction({
           >
             <RefreshCw className="size-4 text-[var(--violet)]" aria-hidden="true" /> Replace
           </button>
-          <button
-            type="button"
-            onClick={() => {
+          <ConfirmationButton
+            triggerLabel="Remove attachment"
+            title="Remove this attachment?"
+            description={`${fileName} will be removed from this expense.`}
+            confirmLabel="Remove"
+            pendingLabel="Removing…"
+            onConfirmAction={() => {
               onRemove();
               setOpen(false);
             }}
-            className="flex min-h-10 w-full items-center gap-2 rounded-[10px] px-3 text-left text-sm font-bold text-[var(--negative)] hover:bg-[var(--negative-soft)]"
+            triggerClassName="flex min-h-10 w-full items-center gap-2 rounded-[10px] px-3 text-left text-sm font-bold text-[var(--negative)] hover:bg-[var(--negative-soft)]"
           >
             <Trash2 className="size-4" aria-hidden="true" /> Remove
-          </button>
+          </ConfirmationButton>
         </div>
       )}
     </div>

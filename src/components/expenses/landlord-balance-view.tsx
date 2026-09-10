@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/format";
 import type { LandlordBillBalance } from "@/lib/queries";
 import { UtilityTypeIcon } from "../bills/bill-meta-controls";
 import { Button } from "../ui/button";
+import { ConfirmationButton } from "../ui/confirmation-button";
 import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
 
@@ -191,15 +192,18 @@ export function LandlordBalanceView({
                 <p className="shrink-0 text-sm font-black text-[var(--positive)] tabular-nums">
                   {formatMoney(row.paidCents, row.currency, locale)}
                 </p>
-                <button
-                  type="button"
+                <ConfirmationButton
+                  triggerLabel={`Reopen ${row.title}`}
+                  title="Reopen this bill?"
+                  description="Its landlord balance will become outstanding again."
+                  confirmLabel="Reopen"
+                  pendingLabel="Reopening…"
+                  onConfirmAction={() => reopenBill(row)}
                   disabled={pending}
-                  onClick={() => reopenBill(row)}
-                  className={iconActionClass({ tone: "brand", className: "size-10" })}
-                  aria-label={`Reopen ${row.title}`}
+                  triggerClassName={iconActionClass({ tone: "brand", className: "size-10" })}
                 >
                   <RotateCcw className="size-4" aria-hidden="true" />
-                </button>
+                </ConfirmationButton>
               </div>
             ))}
           </div>

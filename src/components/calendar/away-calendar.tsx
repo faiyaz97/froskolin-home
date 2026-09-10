@@ -13,6 +13,7 @@ import {
 } from "@/components/household/member-avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
+import { ConfirmationButton } from "@/components/ui/confirmation-button";
 import { Dialog } from "@/components/ui/dialog";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { replaceAbsencesAction } from "@/lib/actions";
@@ -466,7 +467,7 @@ export function AwayCalendar({
                 disabled={pending || !completeSelection}
                 className="shrink-0 rounded-full px-3 sm:px-4"
               >
-                {pending ? "Saving…" : editingKey ? "Update" : "Add period"}
+                {pending ? "Saving…" : editingKey ? "Save" : "Add"}
               </Button>
             </div>
           )}
@@ -521,15 +522,21 @@ export function AwayCalendar({
                   >
                     <Pencil className="size-4" aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => removeRange(original)}
+                  <ConfirmationButton
+                    triggerLabel={`Remove ${formatDate(original.start)} to ${formatDate(original.end)}`}
+                    title="Remove this away period?"
+                    description={`${formatDate(original.start)} – ${formatDate(original.end)} will be removed from the calendar.`}
+                    confirmLabel="Remove"
+                    pendingLabel="Removing…"
+                    onConfirmAction={() => removeRange(original)}
                     disabled={pending}
-                    aria-label={`Remove ${formatDate(original.start)} to ${formatDate(original.end)}`}
-                    className={iconActionClass({ tone: "negative", className: "size-10" })}
+                    triggerClassName={iconActionClass({
+                      tone: "negative",
+                      className: "size-10",
+                    })}
                   >
                     <Trash2 className="size-4" aria-hidden="true" />
-                  </button>
+                  </ConfirmationButton>
                 </div>
               </li>
             ))}

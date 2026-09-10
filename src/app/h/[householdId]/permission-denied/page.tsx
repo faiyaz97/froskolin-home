@@ -17,7 +17,7 @@ export default async function PermissionDenied({
         a member.
       </p>
       <ButtonLink href={`/h/${householdId}`} className="mt-6">
-        Return home
+        Go home
       </ButtonLink>
     </div>
   );

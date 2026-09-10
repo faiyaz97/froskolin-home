@@ -29,6 +29,7 @@ import { updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
 import { Button, ButtonLink } from "../ui/button";
 import { cn } from "../ui/cn";
+import { ConfirmationButton } from "../ui/confirmation-button";
 import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
@@ -328,42 +329,49 @@ export function SettingsPanel({
                 </p>
                 {isOwner && !member.removed && member.userId !== currentUserId && (
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className={iconActionClass({ tone: "brand", className: "size-10" })}
-                      aria-label={`Reset PIN for ${member.name}`}
+                    <ConfirmationButton
+                      triggerLabel={`Reset PIN for ${member.name}`}
+                      title={`Reset ${member.name}'s PIN?`}
+                      description="Their current PIN will stop working and a new temporary PIN will be generated."
+                      confirmLabel="Reset PIN"
+                      pendingLabel="Resetting…"
                       disabled={pending}
-                      onClick={() =>
-                        startTransition(async () => {
-                          const result = await resetMemberPinAction(householdId, member.id);
-                          if (result.ok) {
-                            setTemporaryPin(`${member.name}: ${result.data.temporaryPin}`);
-                            setMessage(result.message ?? "");
-                          } else setMessage(result.error);
-                        })
-                      }
+                      triggerClassName={iconActionClass({
+                        tone: "brand",
+                        className: "size-10",
+                      })}
+                      onConfirmAction={async () => {
+                        const result = await resetMemberPinAction(householdId, member.id);
+                        if (result.ok) {
+                          setTemporaryPin(`${member.name}: ${result.data.temporaryPin}`);
+                          setMessage(result.message ?? "");
+                        } else setMessage(result.error);
+                      }}
                     >
                       <KeyRound className="size-4" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className={iconActionClass({ tone: "negative", className: "size-10" })}
-                      aria-label={`Remove ${member.name}`}
+                    </ConfirmationButton>
+                    <ConfirmationButton
+                      triggerLabel={`Remove ${member.name}`}
+                      title={`Remove ${member.name}?`}
+                      description="They will lose access to this group. Their existing transactions will remain."
+                      confirmLabel="Remove"
+                      pendingLabel="Removing…"
                       disabled={pending}
-                      onClick={() => {
-                        if (!window.confirm(`Remove ${member.name}?`)) return;
-                        startTransition(async () => {
-                          const result = await removeMemberAction({
-                            householdId,
-                            memberId: member.id,
-                          });
-                          setMessage(result.ok ? `${member.name} was removed.` : result.error);
-                          if (result.ok) router.refresh();
+                      triggerClassName={iconActionClass({
+                        tone: "negative",
+                        className: "size-10",
+                      })}
+                      onConfirmAction={async () => {
+                        const result = await removeMemberAction({
+                          householdId,
+                          memberId: member.id,
                         });
+                        setMessage(result.ok ? `${member.name} was removed.` : result.error);
+                        if (result.ok) router.refresh();
                       }}
                     >
                       <UserMinus className="size-4" aria-hidden="true" />
-                    </button>
+                    </ConfirmationButton>
                   </div>
                 )}
               </div>
@@ -404,7 +412,7 @@ export function SettingsPanel({
               })
             }
           >
-            <RefreshCcw className="size-4" aria-hidden="true" /> Generate due
+            <RefreshCcw className="size-4" aria-hidden="true" /> Run now
           </Button>
         </div>
         <div className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
@@ -463,25 +471,28 @@ export function SettingsPanel({
                   >
                     <Pencil className="size-4" aria-hidden="true" /> Edit
                   </ButtonLink>
-                  <button
-                    type="button"
-                    className={iconActionClass({ tone: "negative", className: "size-10" })}
-                    aria-label={`Archive ${rule.title}`}
+                  <ConfirmationButton
+                    triggerLabel={`Archive ${rule.title}`}
+                    title={`Archive ${rule.title}?`}
+                    description="Future occurrences will stop. Existing expenses will remain."
+                    confirmLabel="Archive"
+                    pendingLabel="Archiving…"
                     disabled={pending}
-                    onClick={() => {
-                      if (!window.confirm(`Archive ${rule.title}?`)) return;
-                      startTransition(async () => {
-                        const result = await archiveRecurringExpenseRuleAction({
-                          householdId,
-                          ruleId: rule.id,
-                        });
-                        setMessage(result.ok ? `${rule.title} archived.` : result.error);
-                        if (result.ok) router.refresh();
+                    triggerClassName={iconActionClass({
+                      tone: "negative",
+                      className: "size-10",
+                    })}
+                    onConfirmAction={async () => {
+                      const result = await archiveRecurringExpenseRuleAction({
+                        householdId,
+                        ruleId: rule.id,
                       });
+                      setMessage(result.ok ? `${rule.title} archived.` : result.error);
+                      if (result.ok) router.refresh();
                     }}
                   >
                     <Archive className="size-4" aria-hidden="true" />
-                  </button>
+                  </ConfirmationButton>
                 </div>
               </div>
             </div>

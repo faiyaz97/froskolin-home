@@ -107,7 +107,7 @@ test("create-home submission is hydrated on the 127.0.0.1 development origin", a
   await page.getByLabel("Personal PIN").fill("482615");
 
   const submission = page.waitForRequest((request) => new URL(request.url()).pathname === "/");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
   expect((await submission).method()).toBe("POST");
 });

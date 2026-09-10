@@ -17,7 +17,7 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   await page.getByLabel("Owner name").fill(owner);
   await page.getByLabel("House Join PIN").fill("654321");
   await page.getByLabel("Personal PIN").fill("123456");
-  await page.getByRole("button", { name: "Create household" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 20000 });
   const home = page.url();
   await page.goto(`${home}/add/expense`);
@@ -34,9 +34,9 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     .getByRole("button", { name: "Back", exact: true })
     .click();
   if (testInfo.project.use.viewport!.width < 768) {
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Add expense", exact: true }).click();
   } else {
-    await expenseForm.getByRole("button", { name: "Add expense", exact: true }).click();
+    await expenseForm.getByRole("button", { name: "Add", exact: true }).click();
   }
   await expect(expenseForm.getByLabel("Description", { exact: true })).toHaveAttribute(
     "aria-invalid",
@@ -155,11 +155,18 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     }
     await page.getByLabel("Description", { exact: true }).fill(`${frequency} UI test`);
     await page.getByLabel("Amount", { exact: true }).fill("12.34");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    if (testInfo.project.use.viewport!.width < 768) {
+      await page.getByRole("button", { name: "Add expense", exact: true }).click();
+    } else {
+      await page
+        .locator("form[data-mobile-submit]")
+        .getByRole("button", { name: "Add", exact: true })
+        .click();
+    }
     await expect(page).toHaveURL(home);
     await page.goto(`${home}/settings`);
     await expect(page.getByText(new RegExp(`^${frequency} ·`, "i"))).toBeVisible();
-    await page.getByRole("button", { name: "Generate due", exact: true }).click();
+    await page.getByRole("button", { name: "Run now", exact: true }).click();
     await expect(page.getByText(/1 due recurring expense generated/)).toBeVisible();
   }
 
