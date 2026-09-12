@@ -90,7 +90,8 @@ export function Dialog({
               type="button"
               onClick={onClose}
               aria-label="Close dialog"
-              className={iconActionClass({ className: "size-11" })}
+              disabled={!dismissible}
+              className={iconActionClass({ className: "size-11 disabled:invisible" })}
             >
               <X className="size-4" aria-hidden="true" />
             </button>

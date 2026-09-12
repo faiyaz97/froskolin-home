@@ -81,15 +81,19 @@ export function BillConfirmation({
         : "",
   );
   const [fixed, setFixed] = useState(
-    initial?.charges.fixedCents != null
-      ? (initial.charges.fixedCents / 100).toFixed(2)
+    initial
+      ? initial.charges.fixedCents != null
+        ? (initial.charges.fixedCents / 100).toFixed(2)
+        : ""
       : existing
         ? (existing.fixedCents / 100).toFixed(2)
         : "",
   );
   const [variable, setVariable] = useState(
-    initial?.charges.consumptionCents != null
-      ? (initial.charges.consumptionCents / 100).toFixed(2)
+    initial
+      ? initial.charges.consumptionCents != null
+        ? (initial.charges.consumptionCents / 100).toFixed(2)
+        : ""
       : existing
         ? (existing.variableCents / 100).toFixed(2)
         : "",
@@ -175,11 +179,9 @@ export function BillConfirmation({
         : undefined
     : undefined;
   const missingClassification =
-    !existing &&
     initial != null &&
     (initial.charges.fixedCents == null || initial.charges.consumptionCents == null);
   const lowConfidence =
-    !existing &&
     initial != null &&
     !missingClassification &&
     Object.values(initial.extractionConfidence).some((value) => value < 0.8);
@@ -285,13 +287,9 @@ export function BillConfirmation({
       noValidate
     >
       {missingClassification && (
-        <StatusNote tone="warning" title="Complete the missing bill facts">
-          <span className="inline-flex items-center gap-1">
-            <AlertTriangle className="size-3.5" />
-            AI could not confidently classify every cent. Check the bill and enter the missing
-            values before confirming.
-          </span>
-        </StatusNote>
+        <p role="status" className="px-1 text-xs text-[var(--muted)] sm:px-4">
+          Autofill couldn’t complete. Please try again.
+        </p>
       )}
       {lowConfidence && (
         <StatusNote tone="warning" title="Double-check the AI-filled details">

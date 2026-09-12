@@ -7,6 +7,7 @@ import type { AvatarColor } from "../household/member-avatar";
 import { StatusNote } from "../ui/page";
 import { BillConfirmation, type ExistingUtility } from "./bill-confirmation";
 import { BillUpload, type PreparedBillDraft } from "./bill-upload";
+import { BillAutofillLoadingDialog } from "./bill-autofill-loading-dialog";
 
 type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
 type Absence = { memberId: string; startDate: string; endDate: string };
@@ -120,6 +121,7 @@ export function BillWorkspace({
 
   return (
     <div className="grid gap-3">
+      {autofillPending && <BillAutofillLoadingDialog />}
       <BillUpload
         onPrepared={prepareDraft}
         onAutofill={selectedFile ? autofill : undefined}

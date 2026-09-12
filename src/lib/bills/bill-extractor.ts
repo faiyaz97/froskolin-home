@@ -1,4 +1,4 @@
-import type { ExtractedBill } from "@/lib/validation";
+import type { StructuredBillExtraction } from "@/lib/validation";
 
 export type PreparedBillDocument = {
   mimeType: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
@@ -12,7 +12,7 @@ export type PreparedBillDocument = {
 };
 
 export interface BillExtractor {
-  extract(document: PreparedBillDocument): Promise<ExtractedBill>;
+  extract(document: PreparedBillDocument): Promise<StructuredBillExtraction>;
 }
 
 export class BillExtractionError extends Error {

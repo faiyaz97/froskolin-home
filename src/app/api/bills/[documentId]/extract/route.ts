@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { requireHouseholdMutation } from "@/lib/auth";
-import { GeminiBillExtractor, prepareBillUpload, sanitizeBillError } from "@/lib/bills";
+import {
+  GeminiBillExtractor,
+  analyzeBill,
+  prepareBillUpload,
+  sanitizeBillError,
+} from "@/lib/bills";
 
 export const runtime = "nodejs";
 
@@ -37,7 +42,7 @@ export async function POST(request: Request, { params }: Context) {
         gemini_consent_at: consentAt,
         provider: "gemini",
         model: "gemini-3.1-flash-lite",
-        extraction_schema_version: "1",
+        extraction_schema_version: "2",
         sanitized_error: null,
       })
       .eq("id", documentId)
@@ -54,7 +59,7 @@ export async function POST(request: Request, { params }: Context) {
         type: document.detected_mime,
       });
       const prepared = await prepareBillUpload(file);
-      const extracted = await new GeminiBillExtractor().extract(prepared);
+      const extracted = await analyzeBill(prepared, new GeminiBillExtractor());
       const { error: updateError } = await supabase
         .from("bill_documents")
         .update({

@@ -20,7 +20,13 @@ export function determineBillEntryMode(
   values: BillFinancialValues,
   aiBaseline?: BillFinancialBaseline,
 ): "ai" | "manual" {
-  if (!aiBaseline) return "manual";
+  if (
+    !aiBaseline ||
+    aiBaseline.totalCents == null ||
+    aiBaseline.fixedCents == null ||
+    aiBaseline.variableCents == null
+  )
+    return "manual";
   return inputCents(values.total) === aiBaseline.totalCents &&
     inputCents(values.fixed) === aiBaseline.fixedCents &&
     inputCents(values.variable) === aiBaseline.variableCents

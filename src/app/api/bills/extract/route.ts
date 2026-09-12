@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { requireHouseholdMutation } from "@/lib/auth";
-import { GeminiBillExtractor, prepareBillUpload, sanitizeBillError } from "@/lib/bills";
+import {
+  GeminiBillExtractor,
+  analyzeBill,
+  prepareBillUpload,
+  sanitizeBillError,
+} from "@/lib/bills";
 
 export const runtime = "nodejs";
 
@@ -20,7 +25,7 @@ export async function POST(request: Request) {
 
     await requireHouseholdMutation(householdId);
     const prepared = await prepareBillUpload(file);
-    const extraction = await new GeminiBillExtractor().extract(prepared);
+    const extraction = await analyzeBill(prepared, new GeminiBillExtractor());
     return NextResponse.json({ extraction, pageCount: prepared.pageCount });
   } catch (error) {
     const message = sanitizeBillError(error);

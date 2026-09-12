@@ -202,6 +202,7 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 - Width: `min(22rem, viewport - 24px)`; maximum height leaves 16px top and bottom; 24px radius; white surface; subdued navy backdrop.
 - Edit/selection dialogs use a sticky three-column header: Back, centered title, Done check.
 - Informational dialogs without Done use title plus Close.
+- Non-dismissible pending dialogs hide and disable Close; Escape and backdrop clicks must not dismiss them. AI bill autofill uses `src/components/bills/bill-autofill-loading-dialog.tsx`: supplied reading-cat artwork, a subtle pulse and loading spinner, and concise status text. Reduced-motion mode stops the cat pulse and slows the spinner to a three-second rotation rather than stopping the loading indicator. The shared bill workspace mounts it only during extraction and closes it on success or failure.
 - Enter submits from a focused text input when Done is available and enabled.
 - Keep dialog bodies concise; use standard `Field` controls or `ChoiceRow` lists.
 - Sensitive actions use `ConfirmationButton` from `src/components/ui/confirmation-button.tsx`; never use browser `window.confirm`. Confirm void, remove, delete, archive, credential reset, and similar balance- or access-changing actions before running them.
@@ -212,6 +213,7 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 
 - Expense attachment: `src/components/expenses/expense-attachment-action.tsx`.
 - Bill upload: `src/components/bills/bill-upload.tsx`.
+- AI autofill remains a draft. If deterministic analysis cannot reconcile extracted charges, show a small muted status line: “Autofill couldn’t complete. Please try again.” Keep Autofill available and leave unresolved fixed/usage inputs blank; do not label an incomplete result AI-filled. Detailed validation reasons stay out of the normal form. Use the same behavior in add and edit workspaces.
 - Display the supported file types and 4 MiB limit in the empty-state helper copy.
 - Empty controls open the file chooser. Attached controls open a compact popover containing View, Replace, and Remove.
 - Popovers use `controlPopoverClass` from `ui/field.tsx`, 14px radius, white background, subtle border/shadow, and 40px menu rows.
