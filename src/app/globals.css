@@ -164,6 +164,10 @@ a {
   font-size: var(--home-title-size);
 }
 
+.home-header-pattern {
+  opacity: var(--home-detail-opacity);
+}
+
 .home-summary-members {
   max-height: var(--home-member-height);
   opacity: var(--home-detail-opacity);

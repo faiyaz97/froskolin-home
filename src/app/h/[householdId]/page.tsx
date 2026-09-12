@@ -3,6 +3,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   House,
+  PawPrint,
   Plus,
   ScanLine,
   Settings,
@@ -68,11 +69,24 @@ export default async function HouseholdHome({
           aria-label={`${home?.name ?? "Household"} summary`}
         >
           <header className="home-summary-header relative flex items-center justify-between gap-4 bg-[var(--pastel-sky)] px-3.5 pt-[max(.875rem,env(safe-area-inset-top))] pb-3.5 sm:px-5 md:bg-[var(--home-header-blue)]">
-            <div className="max-w-[calc(100%-7rem)] min-w-0 sm:flex sm:max-w-[calc(100%-10rem)] sm:items-center sm:gap-3">
+            <div
+              aria-hidden="true"
+              className="home-header-pattern pointer-events-none absolute inset-0 overflow-hidden text-[var(--sky)]"
+            >
+              <PawPrint className="absolute top-2 left-[3%] size-5 -rotate-[25deg] opacity-[0.05]" />
+              <PawPrint className="absolute bottom-2 left-[15%] size-6 rotate-[15deg] opacity-[0.05]" />
+              <PawPrint className="absolute top-3 left-[28%] size-7 -rotate-[20deg] opacity-[0.06]" />
+              <PawPrint className="absolute bottom-3 left-[38%] size-5 rotate-[25deg] opacity-[0.06]" />
+              <PawPrint className="absolute right-[42%] bottom-4 size-7 -rotate-[25deg] opacity-[0.07]" />
+              <PawPrint className="absolute top-5 right-[32%] size-8 rotate-[15deg] opacity-[0.09]" />
+              <PawPrint className="absolute right-[22%] bottom-4 size-9 -rotate-[20deg] opacity-[0.08]" />
+              <PawPrint className="absolute top-3 right-[13%] size-6 rotate-[20deg] opacity-[0.07]" />
+            </div>
+            <div className="relative z-10 max-w-[calc(100%-7rem)] min-w-0 sm:max-w-[calc(100%-10rem)]">
               <h1 className="home-summary-title truncate leading-tight font-black tracking-[-0.04em] text-[var(--ink)]">
                 {home?.name ?? "Home"}
               </h1>
-              <p className="home-summary-members mt-0.5 flex shrink-0 items-center gap-1.5 overflow-hidden text-[11px] font-bold text-[var(--ink-soft)] sm:mt-0">
+              <p className="home-summary-members mt-1 flex shrink-0 items-center gap-1.5 overflow-hidden text-[11px] font-medium text-[var(--ink-soft)]">
                 <Users className="size-3.5 text-[var(--sky)]" aria-hidden="true" />
                 {activeMembers.length} {activeMembers.length === 1 ? "person" : "people"}
               </p>
