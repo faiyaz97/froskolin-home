@@ -308,6 +308,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - Use the selected avatar’s own background color. User Settings echoes that color as a restrained blurred glow inside the header only.
 - Member rows and participant choices use the avatar image, generally 36–40px with no extra border/shadow.
 - Home mascot components/assets are intentional brand elements: `PeekingFroskolin`, `BottomMascotReveal`, and `public/assets/froskolin-*.png`.
+- `CatMark` in `src/components/ui/brand.tsx` uses the supplied combined cat-and-text artwork `public/assets/froskolin-header-logo.png`, preserving its aspect ratio without a separate text wordmark. `CatBadge` uses `froskolin-tab-logo.png`. The smiley cat with bandana also supplies the browser tab, Apple touch icon, and 192/512px installation icons referenced by `src/app/manifest.ts`.
 - Peeking and sleeping mascots use the supplied blue-and-white cat artwork with transparent backgrounds. Preserve their natural aspect ratios and use static image imports for intrinsic dimensions and asset cache invalidation.
 
 ### Navigation, headers, and actions
