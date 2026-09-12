@@ -77,7 +77,7 @@ export default async function HouseholdHome({
                 {activeMembers.length} {activeMembers.length === 1 ? "person" : "people"}
               </p>
             </div>
-            <PeekingFroskolin className="home-summary-mascot pointer-events-none absolute right-12 bottom-[-1px] h-auto sm:right-16" />
+            <PeekingFroskolin className="home-summary-mascot pointer-events-none absolute right-12 bottom-[-5px] h-auto sm:right-16" />
             <Link
               href={`/h/${householdId}/settings`}
               className={iconActionClass({

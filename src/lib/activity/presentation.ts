@@ -292,7 +292,9 @@ export function activityChanges(
     add("Name", before.display_name, after.display_name);
     if (!sameValue(before.avatar_color, after.avatar_color))
       changes.push({ label: "Avatar", after: "Changed" });
-    add("Role", before.role, after.role);
+    add("Role", before.role, after.role, (value) =>
+      value === "owner" ? "Admin" : value === "member" ? "Member" : (text(value) ?? "—"),
+    );
     add(
       "Status",
       before.removed_at ? "Removed" : "Active",

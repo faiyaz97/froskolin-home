@@ -157,12 +157,12 @@ select lives_ok(
 
 reset role;
 select is(
-  (select count(*) from public.audit_events where summary = 'The owner changed the House Code.'),
+  (select count(*) from public.audit_events where summary = 'The owner changed the House Code.' and household_id = '00000000-0000-4000-8000-00000000b001'),
   1::bigint,
   'changing the House Code creates a clear audit event'
 );
 select is(
-  (select count(*) from public.audit_events where summary = 'The owner changed the House Join PIN.'),
+  (select count(*) from public.audit_events where summary = 'The owner changed the House Join PIN.' and household_id = '00000000-0000-4000-8000-00000000b001'),
   1::bigint,
   'changing the Join PIN creates a clear audit event'
 );

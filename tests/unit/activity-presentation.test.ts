@@ -23,6 +23,18 @@ function event(overrides: Partial<ActivityEvent>): ActivityEvent {
 }
 
 describe("activity presentation", () => {
+  it("describes admin promotion using user-facing role names", () => {
+    const changes = activityChanges(
+      event({
+        entity_type: "household_member",
+        previous_values: { role: "member" },
+        new_values: { role: "owner" },
+      }),
+      members,
+      "en-GB",
+    );
+    expect(changes).toContainEqual({ label: "Role", before: "Member", after: "Admin" });
+  });
   it("shows only changed expense values and resolves member ids to names", () => {
     const changes = activityChanges(
       event({

@@ -88,6 +88,8 @@ export const updateHouseholdSchema = z.object({
 });
 
 export const removeMemberSchema = z.object({ householdId: uuidSchema, memberId: uuidSchema });
+export const promoteMemberSchema = z.object({ householdId: uuidSchema, memberId: uuidSchema });
+export const demoteAdminSchema = promoteMemberSchema;
 
 export const updatePersonalSettingsSchema = z.object({
   householdId: uuidSchema,

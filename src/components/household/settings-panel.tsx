@@ -10,6 +10,7 @@ import {
   Pencil,
   Play,
   RefreshCcw,
+  ShieldUser,
   UserMinus,
   UsersRound,
 } from "lucide-react";
@@ -20,6 +21,8 @@ import {
   archiveRecurringExpenseRuleAction,
   generateDueRecurringExpensesAction,
   removeMemberAction,
+  promoteMemberAction,
+  demoteAdminAction,
   resetMemberPinAction,
   setRecurringExpenseRuleActiveAction,
   updateHouseholdAccessAction,
@@ -99,6 +102,7 @@ export function SettingsPanel({
   const [temporaryPin, setTemporaryPin] = useState("");
   const currentMemberName = members.find((member) => member.userId === currentUserId)?.name ?? "";
   const activeMembers = members.filter((member) => !member.removed);
+  const activeAdminCount = activeMembers.filter((member) => member.role === "owner").length;
   const messageIsSuccess = [
     "saved.",
     "generated.",
@@ -108,6 +112,8 @@ export function SettingsPanel({
     "archived.",
     "removed.",
     "changed.",
+    "admin.",
+    "revoked.",
   ].some((ending) => message.endsWith(ending));
 
   function saveGroup(
@@ -323,12 +329,62 @@ export function SettingsPanel({
                 <p className="min-w-0 flex-1 text-sm">
                   <strong className="block truncate">{member.name}</strong>
                   <span className="text-xs text-[var(--muted)] capitalize">
-                    {member.removed ? "Removed" : member.role}
+                    {member.removed ? "Removed" : member.role === "owner" ? "Admin" : "Member"}
                     {member.userId === currentUserId ? " · you" : ""}
                   </span>
                 </p>
+                {isOwner && !member.removed && member.role === "owner" && activeAdminCount > 1 && (
+                  <ConfirmationButton
+                    triggerLabel={`Remove admin access for ${member.name}`}
+                    title={
+                      member.userId === currentUserId
+                        ? "Step down as admin?"
+                        : `Remove ${member.name}'s admin access?`
+                    }
+                    description={
+                      member.userId === currentUserId
+                        ? "You will remain a member but will no longer manage group settings or members."
+                        : "They will remain a member but will no longer manage group settings or members."
+                    }
+                    confirmLabel="Remove admin"
+                    pendingLabel="Saving…"
+                    disabled={pending}
+                    triggerClassName={iconActionClass({ tone: "negative", className: "size-10" })}
+                    onConfirmAction={async () => {
+                      const result = await demoteAdminAction({ householdId, memberId: member.id });
+                      setMessage(
+                        result.ok ? `${member.name}'s admin access was revoked.` : result.error,
+                      );
+                      if (result.ok) router.refresh();
+                    }}
+                  >
+                    <ShieldUser className="size-4" aria-hidden="true" />
+                  </ConfirmationButton>
+                )}
                 {isOwner && !member.removed && member.userId !== currentUserId && (
                   <div className="flex items-center gap-1">
+                    {member.role === "member" && (
+                      <ConfirmationButton
+                        triggerLabel={`Make ${member.name} admin`}
+                        title={`Make ${member.name} admin?`}
+                        tone="primary"
+                        description="They will be able to manage group settings and members. You will remain an admin."
+                        confirmLabel="Make admin"
+                        pendingLabel="Promoting…"
+                        disabled={pending}
+                        triggerClassName={iconActionClass({ tone: "brand", className: "size-10" })}
+                        onConfirmAction={async () => {
+                          const result = await promoteMemberAction({
+                            householdId,
+                            memberId: member.id,
+                          });
+                          setMessage(result.ok ? `${member.name} is now an admin.` : result.error);
+                          if (result.ok) router.refresh();
+                        }}
+                      >
+                        <ShieldUser className="size-4" aria-hidden="true" />
+                      </ConfirmationButton>
+                    )}
                     <ConfirmationButton
                       triggerLabel={`Reset PIN for ${member.name}`}
                       title={`Reset ${member.name}'s PIN?`}
@@ -350,28 +406,30 @@ export function SettingsPanel({
                     >
                       <KeyRound className="size-4" aria-hidden="true" />
                     </ConfirmationButton>
-                    <ConfirmationButton
-                      triggerLabel={`Remove ${member.name}`}
-                      title={`Remove ${member.name}?`}
-                      description="They will lose access to this group. Their existing transactions will remain."
-                      confirmLabel="Remove"
-                      pendingLabel="Removing…"
-                      disabled={pending}
-                      triggerClassName={iconActionClass({
-                        tone: "negative",
-                        className: "size-10",
-                      })}
-                      onConfirmAction={async () => {
-                        const result = await removeMemberAction({
-                          householdId,
-                          memberId: member.id,
-                        });
-                        setMessage(result.ok ? `${member.name} was removed.` : result.error);
-                        if (result.ok) router.refresh();
-                      }}
-                    >
-                      <UserMinus className="size-4" aria-hidden="true" />
-                    </ConfirmationButton>
+                    {member.role === "member" && (
+                      <ConfirmationButton
+                        triggerLabel={`Remove ${member.name}`}
+                        title={`Remove ${member.name}?`}
+                        description="They will lose access to this group. Their existing transactions will remain."
+                        confirmLabel="Remove"
+                        pendingLabel="Removing…"
+                        disabled={pending}
+                        triggerClassName={iconActionClass({
+                          tone: "negative",
+                          className: "size-10",
+                        })}
+                        onConfirmAction={async () => {
+                          const result = await removeMemberAction({
+                            householdId,
+                            memberId: member.id,
+                          });
+                          setMessage(result.ok ? `${member.name} was removed.` : result.error);
+                          if (result.ok) router.refresh();
+                        }}
+                      >
+                        <UserMinus className="size-4" aria-hidden="true" />
+                      </ConfirmationButton>
+                    )}
                   </div>
                 )}
               </div>

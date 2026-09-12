@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
+import sleepingCat from "../../../public/assets/froskolin-sleeping.png";
 
 export function BottomMascotReveal() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,13 +55,11 @@ export function BottomMascotReveal() {
     >
       <Image
         ref={imageRef}
-        src="/assets/froskolin-sleeping.png"
-        width={2172}
-        height={724}
-        sizes="(max-width: 767px) 210px, 240px"
+        src={sleepingCat}
+        sizes="(max-width: 767px) 108px, 120px"
         alt=""
         aria-hidden="true"
-        className="bottom-mascot-image pointer-events-none h-auto w-[210px] opacity-0 will-change-transform md:mb-1 md:w-60"
+        className="bottom-mascot-image pointer-events-none h-auto w-[108px] opacity-0 will-change-transform md:mb-1 md:w-30"
       />
     </div>
   );

@@ -56,7 +56,7 @@ export async function requireHouseholdMembership(householdId: string) {
 export async function requireHouseholdOwner(householdId: string) {
   const result = await requireHouseholdMembership(householdId);
   if (result.membership.role !== "owner") {
-    throw new AuthorizationError("Only the household owner can do that.");
+    throw new AuthorizationError("Only a group admin can do that.");
   }
   return result;
 }
@@ -70,7 +70,7 @@ export async function requireHouseholdMutation(householdId: string) {
 export async function requireHouseholdOwnerMutation(householdId: string) {
   const result = await requireHouseholdMutation(householdId);
   if (result.membership.role !== "owner") {
-    throw new AuthorizationError("Only the household owner can do that.");
+    throw new AuthorizationError("Only a group admin can do that.");
   }
   return result;
 }

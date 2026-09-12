@@ -72,6 +72,8 @@ The application assumes one active group membership per Auth account. A forced P
 
 ### Authorization helpers
 
+Groups support multiple admins. The compatibility database role `owner` means admin; all active members with that role share the existing administrative permissions. `promote_group_member` and `demote_group_admin` use public invoker wrappers around private, checked definer functions. The caller must be an active admin with no pending PIN change, and the target must be an active member of the same group. Role changes are audited by the membership update trigger and are idempotent. Demotion leaves the target in the group as a member. Admins may demote another admin or themselves only while another active admin remains. Both RPCs lock the group row and recheck authorization after acquiring it, serializing concurrent role changes and protecting the last admin. The deferred at-least-one-active-admin invariant remains; the former single-owner unique index is removed. Role updates remain unavailable through ordinary authenticated table writes. Removing an admin from the group requires demoting them first.
+
 Use the helpers in `src/lib/auth/authorization.ts`:
 
 - `requireAuthenticatedUser` for an authenticated read.

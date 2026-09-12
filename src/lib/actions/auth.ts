@@ -32,6 +32,8 @@ import {
   joinHouseholdSchema,
   loginSchema,
   removeMemberSchema,
+  promoteMemberSchema,
+  demoteAdminSchema,
   updateHouseholdSchema,
   updateHouseholdAccessSchema,
   updatePersonalSettingsSchema,
@@ -320,6 +322,43 @@ export async function updatePersonalSettingsAction(input: unknown): Promise<Acti
   }
 }
 
+export async function promoteMemberAction(input: unknown): Promise<ActionResult> {
+  const parsed = promoteMemberSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase } = await requireHouseholdOwnerMutation(parsed.data.householdId);
+    const { error } = await supabase.rpc("promote_group_member", {
+      p_household_id: parsed.data.householdId,
+      p_member_id: parsed.data.memberId,
+    });
+    if (error) throw error;
+    revalidatePath(`/h/${parsed.data.householdId}`, "layout");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+export async function demoteAdminAction(input: unknown): Promise<ActionResult> {
+  const parsed = demoteAdminSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase } = await requireHouseholdOwnerMutation(parsed.data.householdId);
+    const { error } = await supabase.rpc("demote_group_admin", {
+      p_household_id: parsed.data.householdId,
+      p_member_id: parsed.data.memberId,
+    });
+    if (error?.code === "23514" && error.message === "group requires at least one admin") {
+      return { ok: false, error: "The group must have at least one admin." };
+    }
+    if (error) throw error;
+    revalidatePath(`/h/${parsed.data.householdId}`, "layout");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
 export async function removeMemberAction(input: unknown): Promise<ActionResult> {
   const parsed = removeMemberSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
@@ -334,7 +373,7 @@ export async function removeMemberAction(input: unknown): Promise<ActionResult> 
       .maybeSingle();
     if (targetError || !target) throw targetError ?? new AuthorizationError("Member not found.");
     if (target.user_id === user.id || target.role === "owner") {
-      return { ok: false, error: "Transfer ownership before removing the owner." };
+      return { ok: false, error: "Admins cannot be removed from the group." };
     }
     const { error } = await supabase
       .from("household_members")

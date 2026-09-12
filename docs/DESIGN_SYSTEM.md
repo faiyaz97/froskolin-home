@@ -205,6 +205,7 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 - Enter submits from a focused text input when Done is available and enabled.
 - Keep dialog bodies concise; use standard `Field` controls or `ChoiceRow` lists.
 - Sensitive actions use `ConfirmationButton` from `src/components/ui/confirmation-button.tsx`; never use browser `window.confirm`. Confirm void, remove, delete, archive, credential reset, and similar balance- or access-changing actions before running them.
+- `ConfirmationButton` defaults to danger styling. Use `tone="primary"` for admin promotion: teal confirmation and shield feedback, not destructive red styling.
 - Confirmation copy states the direct consequence in one short sentence. Use neutral `Cancel` and an explicit destructive verb such as `Void`, `Remove`, or `Archive`; keep the dialog open and nondismissible while the action is pending.
 
 ### Upload and attachment controls
@@ -305,6 +306,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - Use the selected avatar’s own background color. User Settings echoes that color as a restrained blurred glow inside the header only.
 - Member rows and participant choices use the avatar image, generally 36–40px with no extra border/shadow.
 - Home mascot components/assets are intentional brand elements: `PeekingFroskolin`, `BottomMascotReveal`, and `public/assets/froskolin-*.png`.
+- Peeking and sleeping mascots use the supplied blue-and-white cat artwork with transparent backgrounds. Preserve their natural aspect ratios and use static image imports for intrinsic dimensions and asset cache invalidation.
 
 ### Navigation, headers, and actions
 
@@ -312,6 +314,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - Mobile subpage title/back/save: `AppShell`; do not render a competing sticky header.
 - User and Group Settings use feature headers with a sky→mint gradient, 28px lower/outer radius, compact uppercase eyebrow, bold name, and a minimal pencil edit affordance.
 - Group credentials are selectable plain text. Only the dedicated pencil button opens the Group Access dialog; the surrounding credential surface is never clickable.
+- Group Settings member rows show `Admin` or `Member`. Active admins use the teal user-shield (`ShieldUser`) action to confirm promotion of another active member. Admin rows use the same icon in destructive red to confirm removing admin access, including stepping down oneself. Hide demotion when only one active admin remains. Demotion leaves the person as a member; removing them from the group is a separate action. Role administration follows the existing compact icon-tool pattern.
 - Home uses a sky header and its own responsive summary system rather than the generic `PageHeader`. On desktop, use the stronger `--home-header-blue` surface with the balance cards grouped inside one inset white rounded panel; mobile retains the edge-to-edge scroll/morph composition.
 - Home transaction history uses Activity’s grouped-list shell: a borderless 22px white card, clipped outer corners, rectangular middle rows, and soft dividers. Preserve Home’s existing row content and month labels outside each card.
 - Home transaction history is progressive: render the latest 10 combined expense/payment rows, then reveal batches of 10 with the shared `LoadMoreAction`. On Home and Activity, place this centered text-only action outside the grouped card and label it “Load more,” which works for pointer and touch input.

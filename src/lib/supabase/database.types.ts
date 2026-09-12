@@ -1025,9 +1025,17 @@ export type Database = {
         };
         Returns: string;
       };
+      demote_group_admin: {
+        Args: { p_household_id: string; p_member_id: string };
+        Returns: undefined;
+      };
       get_household_join_pin_secret: {
         Args: { p_household_id: string };
         Returns: string;
+      };
+      promote_group_member: {
+        Args: { p_household_id: string; p_member_id: string };
+        Returns: undefined;
       };
       record_landlord_payment: {
         Args: {
