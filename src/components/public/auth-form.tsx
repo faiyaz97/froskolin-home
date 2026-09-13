@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
 import { UserRound } from "lucide-react";
 
+import { parseGroupInvitationHash } from "@/lib/group-invitation";
 import { createHouseholdAction, joinHouseholdAction, loginAction } from "@/lib/actions";
 import { currencyFromLocale } from "@/lib/device-currency";
 import { readRememberedDevice, rememberDevice, type RememberedDevice } from "@/lib/device-memory";
@@ -27,7 +28,17 @@ const content = {
   login: { title: "Sign in", action: "Sign in" },
 } satisfies Record<AuthKind, { title: string; action: string }>;
 
-function GroupCodeField({ error, disabled }: { error?: string; disabled: boolean }) {
+function GroupCodeField({
+  error,
+  disabled,
+  value,
+  onChange,
+}: {
+  error?: string;
+  disabled: boolean;
+  value?: string;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
   return (
     <Field label="Group code" error={error}>
       <Input
@@ -37,6 +48,8 @@ function GroupCodeField({ error, disabled }: { error?: string; disabled: boolean
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
+        value={value}
+        onChange={onChange}
         pattern="[A-Za-z0-9][A-Za-z0-9-]{4,22}[A-Za-z0-9]"
         minLength={6}
         maxLength={24}
@@ -54,6 +67,8 @@ function PinField({
   disabled,
   allowLegacy = false,
   current = false,
+  value,
+  onChange,
 }: {
   name: "joinPin" | "pin";
   label: string;
@@ -61,6 +76,8 @@ function PinField({
   disabled: boolean;
   allowLegacy?: boolean;
   current?: boolean;
+  value?: string;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <Field label={label} error={error}>
@@ -74,6 +91,8 @@ function PinField({
         type="password"
         autoComplete={current ? "current-password" : "new-password"}
         placeholder="••••••"
+        value={value}
+        onChange={onChange}
         required
         disabled={disabled}
       />
@@ -88,6 +107,22 @@ export function PublicForm({ kind }: { kind: AuthKind }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [rememberedDevice, setRememberedDevice] = useState<RememberedDevice | null>(null);
   const [useRememberedDevice, setUseRememberedDevice] = useState(true);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinPin, setJoinPin] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (kind !== "join") {
+        setJoinCode("");
+        setJoinPin("");
+        return;
+      }
+      const invitation = parseGroupInvitationHash(window.location.hash);
+      setJoinCode(invitation?.code ?? "");
+      setJoinPin(invitation?.pin ?? "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [kind]);
 
   useEffect(() => {
     if (kind !== "login") return;
@@ -210,12 +245,19 @@ export function PublicForm({ kind }: { kind: AuthKind }) {
 
         {kind === "join" && (
           <>
-            <GroupCodeField error={fieldErrors.houseCode?.[0]} disabled={pending} />
+            <GroupCodeField
+              error={fieldErrors.houseCode?.[0]}
+              disabled={pending}
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value)}
+            />
             <PinField
               name="joinPin"
               label="Group PIN"
               error={fieldErrors.joinPin?.[0]}
               disabled={pending}
+              value={joinPin}
+              onChange={(event) => setJoinPin(event.target.value)}
             />
             <Field label="Your name" error={fieldErrors.displayName?.[0]}>
               <Input

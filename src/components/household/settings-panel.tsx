@@ -37,6 +37,7 @@ import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
+import { GroupInvitationAction } from "./group-invitation-action";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
 type Currency = "EUR" | "GBP" | "USD";
@@ -201,6 +202,15 @@ export function SettingsPanel({
               )}
             </div>
           </div>
+          {isOwner && (
+            <GroupInvitationAction
+              groupName={name}
+              houseCode={houseCode}
+              joinPin={joinPin}
+              joiningEnabled={joiningEnabled}
+              disabled={pending}
+            />
+          )}
         </div>
 
         <div className="mt-5 grid w-full grid-cols-2 rounded-2xl bg-white/65 text-left">
