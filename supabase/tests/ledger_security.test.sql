@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(46);
 
 select set_config('app.suppress_audit', 'true', true);
 
@@ -183,8 +183,8 @@ select is(
 );
 select is(
   (select count(*) from public.notifications where audit_event_id = '00000000-0000-4000-8000-00000000f001' and recipient_user_id = '00000000-0000-4000-8000-00000000a002'),
-  1::bigint,
-  'another active roommate receives one notification'
+  0::bigint,
+  'audit events no longer create notification history'
 );
 
 set local role authenticated;
@@ -220,9 +220,18 @@ select lives_ok(
   'the server can add an Auth-provisioned roommate to a household'
 );
 select is(
-  (select count(*) from public.recurring_expense_rules where active and archived_at is null),
+  (select count(*) from public.recurring_expense_rules where active and archived_at is null and household_id = '00000000-0000-4000-8000-00000000b001'),
   1::bigint,
   'the recurring server job can read due rules'
+);
+select lives_ok(
+  $test$
+  select id, household_id, currency, payer_member_id, amount_cents, split_config,
+    anchor_date, end_date, next_due_date, frequency
+  from public.recurring_expense_rules
+  where active and archived_at is null
+  $test$,
+  'the recurring server job can read its complete rule payload'
 );
 select lives_ok(
   $test$
@@ -390,8 +399,8 @@ select is(
     where a.entity_type = 'landlord_payment'
       and n.recipient_user_id = '00000000-0000-4000-8000-00000000a002'
   ),
-  2::bigint,
-  'another active member is notified about each Landlord payment'
+  0::bigint,
+  'Landlord payments do not create notification history'
 );
 select lives_ok(
   $test$

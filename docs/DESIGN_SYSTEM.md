@@ -63,6 +63,7 @@ Tokens live in `src/app/globals.css`; use them instead of new literal colors.
 | Home header     | `--home-header-blue`                       | `#dceeff`                         | Desktop Home summary surface     |
 
 Avatar background colors are data, not general UI tokens; they live in `src/lib/avatar.ts` and drive the matching User Settings header glow.
+The landlord is a system identity rather than a member avatar. Always represent it with `LandlordAvatar`: an orange house in a pastel-peach rounded tile, including payer choices and the Group Settings landlord row.
 
 ### Typography
 
@@ -408,3 +409,9 @@ These are not defined by the completed pages and should be decided in a future t
 7. Token names for remaining literal hover, icon, backdrop, and focus colors.
 8. Canonical visual treatment for loading, error, and recurring-management pages.
 9. Whether internal `household` terminology should ever be migrated; no such migration is implied by the current UI language.
+
+### Push notification preference
+
+Personal Settings contains a per-device notification section with an explicit Turn on/Turn off action, current status, and concise platform/setup feedback. Request browser permission only after the enable click. Do not add a notification inbox, unread badge, or notification history page; Activity remains the history view. Lock-screen notification copy stays generic and opens the related record.
+
+On the first eligible signed-in launch in standalone mode, show a small “Enable notifications?” dialog with one sentence, Enable, and Not now. Remember presentation per account/device locally. Skip unsupported, blocked, enabled, and unconfigured states, and never interrupt a required PIN change or another open dialog. Reuse the Personal Settings subscription flow.

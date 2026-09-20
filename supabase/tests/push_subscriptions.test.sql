@@ -1,0 +1,16 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(9);
+select ok((select relrowsecurity from pg_class where oid = 'public.push_subscriptions'::regclass), 'device secrets have RLS');
+select ok(not has_table_privilege('anon', 'public.push_subscriptions', 'SELECT'), 'anonymous cannot read devices');
+select ok(not has_table_privilege('authenticated', 'public.push_subscriptions', 'SELECT'), 'members cannot enumerate device secrets');
+select ok(not has_table_privilege('authenticated', 'public.push_subscriptions', 'INSERT'), 'members cannot bypass validated registration');
+select ok(not has_table_privilege('authenticated', 'public.push_subscriptions', 'UPDATE'), 'members cannot take over devices directly');
+select ok(not has_table_privilege('authenticated', 'public.push_subscriptions', 'DELETE'), 'members cannot remove devices directly');
+select ok(has_table_privilege('service_role', 'public.push_subscriptions', 'SELECT, INSERT, UPDATE, DELETE'), 'server can manage delivery registrations');
+select is((select count(*) from pg_trigger where tgname = 'notifications_from_audit' and tgrelid = 'public.audit_events'::regclass), 0::bigint, 'no notification history fanout trigger');
+set local role authenticated;
+select throws_ok('select * from public.push_subscriptions', '42501', 'permission denied for table push_subscriptions', 'authenticated direct access denied');
+reset role;
+select * from finish();
+rollback;

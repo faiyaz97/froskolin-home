@@ -12,6 +12,10 @@ import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
+import {
+  PushNotificationSettings,
+  unregisterCurrentDevicePushSubscription,
+} from "./push-notification-settings";
 
 const avatarChoices: AvatarColor[] = ["orange", "rose", "blue", "indigo", "teal", "violet"];
 const subscribeToHydration = () => () => undefined;
@@ -159,6 +163,8 @@ export function PersonalSettingsPanel({
       </header>
 
       <section className="overflow-hidden rounded-[22px] bg-white/85 shadow-[var(--shadow-sm)]">
+        <PushNotificationSettings embedded />
+        <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
         <button
           type="button"
           className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -179,7 +185,12 @@ export function PersonalSettingsPanel({
           type="button"
           className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!hydrated || pending}
-          onClick={() => startTransition(async () => void (await signOutAction()))}
+          onClick={() =>
+            startTransition(async () => {
+              await unregisterCurrentDevicePushSubscription();
+              await signOutAction();
+            })
+          }
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--negative-soft)] text-[var(--negative)] transition-[background-color,transform] group-hover:scale-[1.03] group-hover:bg-[#fee2e2] group-focus-visible:scale-[1.03] group-focus-visible:bg-[#fee2e2]">
             <LogOut className="size-5" aria-hidden="true" />

@@ -3,7 +3,7 @@
 import { Droplets, Flame, ReceiptText, Wifi, Zap } from "lucide-react";
 import { useState } from "react";
 
-import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
+import { LandlordAvatar, MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { cn } from "../ui/cn";
 import { DateInput } from "../ui/date-input";
 import { Dialog } from "../ui/dialog";
@@ -208,11 +208,15 @@ export function BillMetaControls({
                 onClick={() => setDraftPayer(member.id)}
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar
-                    name={member.name}
-                    color={member.avatarColor}
-                    className="size-9 border-0 shadow-none"
-                  />
+                  {member.id === "landlord" ? (
+                    <LandlordAvatar />
+                  ) : (
+                    <MemberAvatar
+                      name={member.name}
+                      color={member.avatarColor}
+                      className="size-9 border-0 shadow-none"
+                    />
+                  )}
                   <span className="font-semibold">{member.name}</span>
                 </span>
               </ChoiceRow>

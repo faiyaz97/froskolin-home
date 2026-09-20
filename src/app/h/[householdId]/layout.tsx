@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/household/app-shell";
+import { PushNotificationSettings } from "@/components/household/push-notification-settings";
 import { requireHouseholdMembership } from "@/lib/auth";
 
 export default async function HouseholdLayout({
@@ -29,6 +30,7 @@ export default async function HouseholdLayout({
   return (
     <AppShell householdId={householdId} {...shell}>
       {children}
+      {!shell.mustChangePin && <PushNotificationSettings promptOnly />}
     </AppShell>
   );
 }

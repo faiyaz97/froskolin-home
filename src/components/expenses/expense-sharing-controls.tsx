@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, Users } from "lucide-react";
-import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
+import { LandlordAvatar, MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Dialog } from "../ui/dialog";
 import { Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
@@ -285,11 +285,15 @@ export function ExpenseSharingControls({
                 onClick={() => setDraftPayer(member.id)}
               >
                 <span className="flex items-center gap-3">
-                  <MemberAvatar
-                    name={member.name}
-                    color={member.avatarColor}
-                    className="size-9 border-0 shadow-none"
-                  />
+                  {member.id === "landlord" ? (
+                    <LandlordAvatar />
+                  ) : (
+                    <MemberAvatar
+                      name={member.name}
+                      color={member.avatarColor}
+                      className="size-9 border-0 shadow-none"
+                    />
+                  )}
                   <span className="font-semibold break-words">{member.name}</span>
                 </span>
               </ChoiceRow>

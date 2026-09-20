@@ -3,8 +3,8 @@
 import {
   Archive,
   Banknote,
-  Building2,
   ChevronRight,
+  House,
   KeyRound,
   Pause,
   Pencil,
@@ -14,6 +14,7 @@ import {
   UserMinus,
   UsersRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -30,7 +31,7 @@ import {
 } from "@/lib/actions";
 import { updateRememberedHouseCode } from "@/lib/device-memory";
 import { formatMoney } from "@/lib/format";
-import { Button, ButtonLink } from "../ui/button";
+import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { ConfirmationButton } from "../ui/confirmation-button";
 import { Dialog } from "../ui/dialog";
@@ -310,7 +311,7 @@ export function SettingsPanel({
             onClick={() => saveGroup({ landlordEnabled: !landlordEnabled })}
           >
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]">
-              <Building2 className="size-5" aria-hidden="true" />
+              <House className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">Landlord mode</span>
             <Switch checked={landlordEnabled} />
@@ -509,6 +510,7 @@ export function SettingsPanel({
                     type="button"
                     className={iconActionClass({ tone: "brand", className: "size-10" })}
                     aria-label={rule.active ? `Pause ${rule.title}` : `Resume ${rule.title}`}
+                    title={rule.active ? `Pause ${rule.title}` : `Resume ${rule.title}`}
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
@@ -532,13 +534,14 @@ export function SettingsPanel({
                       <Play className="size-4" aria-hidden="true" />
                     )}
                   </button>
-                  <ButtonLink
+                  <Link
                     href={`/h/${householdId}/settings/recurring/${rule.id}/edit`}
-                    tone="quiet"
-                    className="min-h-10 px-3 py-2"
+                    className={iconActionClass({ tone: "brand", className: "size-10" })}
+                    aria-label={`Edit ${rule.title}`}
+                    title={`Edit ${rule.title}`}
                   >
-                    <Pencil className="size-4" aria-hidden="true" /> Edit
-                  </ButtonLink>
+                    <Pencil className="size-4" aria-hidden="true" />
+                  </Link>
                   <ConfirmationButton
                     triggerLabel={`Archive ${rule.title}`}
                     title={`Archive ${rule.title}?`}

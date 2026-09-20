@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { notifyExpense, readExpensePushSnapshot } from "@/lib/push/expense-events";
+import { schedulePush } from "@/lib/push/delivery";
+
 import { requireHouseholdMutation } from "@/lib/auth";
 import {
   calculateEqualShares,
@@ -124,6 +127,15 @@ export async function saveExpenseAction(
       p_occurrence_date: null,
     });
     if (error || !data) throw error ?? new Error("No expense returned.");
+    notifyExpense({
+      householdId: parsed.data.householdId,
+      expenseId: String(data),
+      actorUserId: user.id,
+      shares: normalExpenseShares(parsed.data),
+      currency: parsed.data.currency,
+      payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      bill: false,
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: { expenseId: String(data) } };
   } catch (error) {
@@ -136,6 +148,10 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { user } = await requireHouseholdMutation(parsed.data.householdId);
+    const pushBefore = await readExpensePushSnapshot(
+      parsed.data.householdId,
+      parsed.data.expenseId,
+    );
     const { error } = await callRpc(createAdminClient(), "replace_expense_with_landlord_support", {
       p_expense_id: parsed.data.expenseId,
       p_title: parsed.data.title,
@@ -152,6 +168,16 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
       p_note: parsed.data.note ?? null,
     });
     if (error) throw error;
+    notifyExpense({
+      householdId: parsed.data.householdId,
+      expenseId: parsed.data.expenseId,
+      actorUserId: user.id,
+      shares: normalExpenseShares(parsed.data),
+      currency: parsed.data.currency,
+      payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      bill: false,
+      before: pushBefore,
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };
   } catch (error) {
@@ -267,6 +293,11 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
         })),
       };
     });
+    const pushSnapshots = await Promise.all(
+      affectedUtilities.map((utility) =>
+        readExpensePushSnapshot(parsed.data.householdId, utility.expense_id),
+      ),
+    );
     const { error } = await callRpc(createAdminClient(), rpc.replaceAbsences, {
       p_household_id: parsed.data.householdId,
       p_member_id: parsed.data.memberId,
@@ -285,6 +316,20 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
       p_actor_user_id: user.id,
     });
     if (error) throw error;
+    utilityUpdates.forEach((update, index) => {
+      const before = pushSnapshots[index];
+      if (before)
+        notifyExpense({
+          householdId: parsed.data.householdId,
+          expenseId: update.expense_id,
+          actorUserId: user.id,
+          shares: update.shares,
+          currency: before.currency,
+          payer: before.payer,
+          before,
+          bill: true,
+        });
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };
   } catch (error) {
@@ -374,6 +419,18 @@ export async function confirmUtilityBillAction(
       p_actor_user_id: user.id,
     });
     if (error || !data) throw error ?? new Error("No bill returned.");
+    notifyExpense({
+      householdId: parsed.data.householdId,
+      expenseId: String(data),
+      actorUserId: user.id,
+      shares: utility.shares.map((share) => ({
+        member_id: share.memberId,
+        share_cents: share.amountCents,
+      })),
+      currency: parsed.data.currency,
+      payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      bill: true,
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: { expenseId: String(data) } };
   } catch (error) {
@@ -386,6 +443,10 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const pushBefore = await readExpensePushSnapshot(
+      parsed.data.householdId,
+      parsed.data.expenseId,
+    );
     const { data: existingExpense, error: expenseError } = await supabase
       .from("expenses")
       .select("expense_date")
@@ -467,6 +528,19 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
       },
     );
     if (error) throw error;
+    notifyExpense({
+      householdId: parsed.data.householdId,
+      expenseId: parsed.data.expenseId,
+      actorUserId: user.id,
+      shares: utility.shares.map((share) => ({
+        member_id: share.memberId,
+        share_cents: share.amountCents,
+      })),
+      currency: parsed.data.currency,
+      payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
+      bill: true,
+      before: pushBefore,
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };
   } catch (error) {
@@ -492,6 +566,13 @@ export async function saveSettlementAction(
       p_actor_user_id: user.id,
     });
     if (error || !data) throw error ?? new Error("No settlement returned.");
+    schedulePush({
+      householdId: parsed.data.householdId,
+      actorUserId: user.id,
+      memberIds: [parsed.data.payingMemberId, parsed.data.receivingMemberId],
+      body: "A payment involving you was recorded.",
+      url: `/h/${parsed.data.householdId}/settlements/${String(data)}`,
+    });
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: { settlementId: String(data) } };
   } catch (error) {
@@ -645,8 +726,8 @@ export async function generateDueRecurringExpensesAction(
   const parsed = uuidSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Choose a valid household." };
   try {
-    await requireHouseholdMutation(parsed.data);
-    const result = await generateDueRecurringExpenses(parsed.data);
+    const { user } = await requireHouseholdMutation(parsed.data);
+    const result = await generateDueRecurringExpenses(parsed.data, user.id);
     refreshHousehold(parsed.data);
     if (result.failed)
       return {

@@ -302,3 +302,15 @@ The generated database types are an output, not the schema source. `supabase/see
 - Production integration and route compilation: `pnpm build`.
 
 Security-sensitive changes should be tested at both the application entry point and the database boundary.
+
+## Push-only notifications
+
+Notifications have no inbox UI and no new notification-history rows. The push migration removes `notifications_from_audit`; existing historical rows are retained, and Activity audit events continue normally. `push_subscriptions` stores only browser endpoints, encryption keys, ownership, and update time. It is RLS-enabled with no anonymous/authenticated table grants; authenticated server actions validate membership, endpoint hosts, and keys before using service-role access. Endpoint hosts are restricted to known browser push providers to prevent arbitrary outbound requests.
+
+After successful financial writes, Next.js `after` schedules best-effort Web Push. Only involved active group members receive messages; the actor is excluded. Creation covers expenses, utility bills, settlements, and newly generated recurring occurrences. Expense/bill edits and absence recalculation compare financial shares and notify affected participants (including those removed from a split). Payment edits/voids, settings changes, and mere recurring-rule edits do not currently send push. Lock-screen copy is generic and taps open the corresponding authenticated record. No titles, amounts, member names, or PINs are sent in the body.
+
+Delivery has bounded per-request timeouts and concurrency, removes expired endpoints (404/410), and never changes a financial write's result. There is no persistent queue, replay, or retry guarantee. Pre-edit snapshots are best effort and read outside the transaction: concurrent edits may cause missed or redundant alerts. Financial records and audit history remain authoritative.
+
+Notifications are opt-in per browser/device from Personal Settings. Enabling registers the current user's subscription; disabling or signing out removes that device subscription. Other devices remain enabled. The service worker handles push/click only, without caching private pages or implementing offline access. Missing configuration leaves a clear unavailable state.
+
+Deployment requires server-only `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (a real `mailto:` contact or HTTPS contact URL). Generate one stable key pair with `pnpm exec web-push generate-vapid-keys`, store it using deployment secrets, and keep the private key out of source and logs. The public key is returned by an authenticated configuration action; it does not need a NEXT_PUBLIC variable. Use a trusted HTTPS origin for phone installation (a hosting-provided domain is sufficient). iOS/iPadOS users must add the app to the Home Screen and explicitly enable notifications. Key rotation may require re-subscribing devices. Apply migrations before enabling delivery. Validate on actual iOS and Android devices before release; unit tests mock the push provider and do not prove device delivery.

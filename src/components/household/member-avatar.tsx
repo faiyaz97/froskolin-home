@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { House } from "lucide-react";
 
 import { avatarColors, avatars, resolveAvatarId, type AvatarColor } from "@/lib/avatar";
 import { cn } from "../ui/cn";
@@ -32,6 +33,20 @@ export function MemberAvatar({
       aria-hidden="true"
     >
       <Image src={avatar.image} alt="" fill sizes="96px" className="object-cover" />
+    </span>
+  );
+}
+
+export function LandlordAvatar({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <House className="size-5" />
     </span>
   );
 }

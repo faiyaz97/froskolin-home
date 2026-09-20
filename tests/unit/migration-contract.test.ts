@@ -36,8 +36,19 @@ const pairBalancesMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260908205313_add_household_pair_balances.sql"),
   "utf8",
 ).toLowerCase();
+const recurringGeneratorGrantMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260920162334_grant_recurring_generator_columns.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
+  it("grants the recurring generator every rule column it reads", () => {
+    expect(recurringGeneratorGrantMigration).toContain("grant select (currency, payer_member_id)");
+    expect(recurringGeneratorGrantMigration).toContain(
+      "on public.recurring_expense_rules to service_role",
+    );
+  });
+
   it("keeps real pair balances RLS-backed and read-only", () => {
     expect(pairBalancesMigration).toContain("with (security_invoker = true)");
     expect(pairBalancesMigration).toContain("not e.paid_by_landlord");

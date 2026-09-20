@@ -1,4 +1,5 @@
 import "server-only";
+import { notifyExpense } from "@/lib/push/expense-events";
 
 import {
   calculateEqualShares,
@@ -17,12 +18,13 @@ export type RecurringGenerationResult = { generated: number; failed: number };
 
 export async function generateDueRecurringExpenses(
   householdId?: string,
+  actorUserId: string | null = null,
 ): Promise<RecurringGenerationResult> {
   const admin = createAdminClient();
   let rulesQuery = admin
     .from("recurring_expense_rules")
     .select(
-      "id, household_id, amount_cents, split_config, anchor_date, end_date, next_due_date, frequency",
+      "id, household_id, currency, payer_member_id, amount_cents, split_config, anchor_date, end_date, next_due_date, frequency",
     )
     .eq("active", true)
     .is("archived_at", null);
@@ -77,7 +79,17 @@ export async function generateDueRecurringExpenses(
           },
         );
         if (error) throw error;
-        if (data) generated += 1;
+        if (data) {
+          generated += 1;
+          notifyExpense({
+            householdId: String(rule.household_id),
+            expenseId: data,
+            actorUserId,
+            shares,
+            currency: String(rule.currency),
+            payer: rule.payer_member_id,
+          });
+        }
       }
     } catch {
       failed += 1;
