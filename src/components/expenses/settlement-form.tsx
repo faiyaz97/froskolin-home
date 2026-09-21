@@ -281,13 +281,15 @@ export function SettlementForm({
         <Dialog
           title={dialog === "payer" ? "Payer" : "Receiver"}
           onClose={() => setDialog(null)}
-          doneDisabled={
-            !draftMemberId ||
-            (dialog === "payer" ? draftMemberId === receiver : draftMemberId === payer)
-          }
+          doneDisabled={!draftMemberId}
           onDone={() => {
-            if (dialog === "payer") setPayer(draftMemberId);
-            else setReceiver(draftMemberId);
+            if (dialog === "payer") {
+              if (draftMemberId === receiver) setReceiver(payer);
+              setPayer(draftMemberId);
+            } else {
+              if (draftMemberId === payer) setPayer(receiver);
+              setReceiver(draftMemberId);
+            }
             setDialog(null);
           }}
         >
@@ -297,12 +299,10 @@ export function SettlementForm({
             className="grid gap-1"
           >
             {members.map((member) => {
-              const unavailable = dialog === "payer" ? member.id === receiver : member.id === payer;
               return (
                 <ChoiceRow
                   key={member.id}
                   selected={draftMemberId === member.id}
-                  disabled={unavailable}
                   onClick={() => setDraftMemberId(member.id)}
                 >
                   <span className="flex items-center gap-3">

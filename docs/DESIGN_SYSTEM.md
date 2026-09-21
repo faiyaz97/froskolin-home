@@ -275,7 +275,7 @@ Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`)
 
 - Add and edit use the same form component with initial state. The add flow selects the authenticated member as payer and the member they owe most as receiver, based on the existing per-currency ledger suggestions; when there is no debt suggestion, select any other active member.
 - Present payer and receiver as compact avatar-and-name actions with a single directional arrow between them. Tint each action from that member's avatar background. Do not repeat “Paid by” and “Paid to” as visible labels.
-- Each member action opens a `Dialog` of `ChoiceRow` items. Disable the person selected on the opposite side so a member cannot pay themselves.
+- Each member action opens a `Dialog` of `ChoiceRow` items. Choosing the person currently selected on the opposite side swaps payer and receiver, keeping the parties distinct and allowing a two-member payment to reverse direction in one selection.
 - Use the same oversized underlined amount entry and `CurrencyAction` as expense and bill forms.
 - Payment date defaults to the device's current local date and uses `ExpenseDateAction` without recurrence. Notes use the shared `TransactionNoteAction`; its filled lavender state indicates saved note content.
 - Place date and note actions in `ExpenseTools` directly after the form content. Align them right on mobile; on desktop, use a single normal-flow action row with icon tools aligned left and Cancel plus Record/Save aligned right. Do not fix this row to the viewport, position it relative to the floating navigation, or stretch short forms to the viewport height.
