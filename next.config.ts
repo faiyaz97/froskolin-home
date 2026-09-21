@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   poweredByHeader: false,
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "sharp"],
-  outputFileTracingIncludes: {
-    "/api/bills/**": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
-  },
   async headers() {
     return [
       {
