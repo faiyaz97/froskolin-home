@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
-import { notifyExpense, readExpensePushSnapshot } from "@/lib/push/expense-events";
+import {
+  notifyExpense,
+  readExpensePushSnapshot,
+  readPushMemberNames,
+  settlementPushBodies,
+} from "@/lib/push/expense-events";
 import { schedulePush } from "@/lib/push/delivery";
 import { formatMoney } from "@/lib/format";
 
@@ -571,7 +576,7 @@ export async function saveSettlementAction(
   const parsed = settlementInputSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.recordSettlement, {
       p_household_id: parsed.data.householdId,
       p_paying_member_id: parsed.data.payingMemberId,
@@ -583,17 +588,26 @@ export async function saveSettlementAction(
       p_actor_user_id: user.id,
     });
     if (error || !data) throw error ?? new Error("No settlement returned.");
+    const memberNames = await readPushMemberNames(parsed.data.householdId, [
+      parsed.data.payingMemberId,
+      parsed.data.receivingMemberId,
+    ]);
+    const payerName = memberNames[parsed.data.payingMemberId] ?? "A member";
+    const receiverName = memberNames[parsed.data.receivingMemberId] ?? "another member";
+    const amount = formatMoney(parsed.data.amountCents, parsed.data.currency);
     await schedulePush({
       householdId: parsed.data.householdId,
       actorUserId: user.id,
+      title: "Payment",
       memberIds: [parsed.data.payingMemberId, parsed.data.receivingMemberId],
       body: "A payment involving you was recorded.",
-      memberBodies: {
-        [parsed.data.payingMemberId]:
-          `${membership.display_name} recorded a payment. You paid ${formatMoney(parsed.data.amountCents, parsed.data.currency)}.`,
-        [parsed.data.receivingMemberId]:
-          `${membership.display_name} recorded a payment. You received ${formatMoney(parsed.data.amountCents, parsed.data.currency)}.`,
-      },
+      memberBodies: settlementPushBodies({
+        payingMemberId: parsed.data.payingMemberId,
+        receivingMemberId: parsed.data.receivingMemberId,
+        payerName,
+        receiverName,
+        amount,
+      }),
       url: `/h/${parsed.data.householdId}/settlements/${String(data)}`,
     });
     refreshHousehold(parsed.data.householdId);

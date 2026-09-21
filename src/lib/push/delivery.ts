@@ -7,6 +7,7 @@ import { pushSubscriptionSchema } from "./subscription";
 export type PushEvent = {
   householdId: string;
   actorUserId: string | null;
+  title: string;
   memberIds: string[];
   body: string;
   memberBodies?: Record<string, string>;
@@ -99,7 +100,7 @@ export async function deliverPush(event: PushEvent): Promise<PushDeliveryResult>
             await webpush.sendNotification(
               parsed.data,
               JSON.stringify({
-                title: "Froskolin",
+                title: event.title,
                 body: bodiesByUserId.get(String(subscription.user_id)) ?? event.body,
                 url: event.url,
               }),

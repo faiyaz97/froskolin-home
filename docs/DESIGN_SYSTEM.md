@@ -412,6 +412,6 @@ These are not defined by the completed pages and should be decided in a future t
 
 ### Push notification preference
 
-Personal Settings contains a per-device notification section with an explicit Turn on/Turn off action, current status, and concise platform/setup feedback. Request browser permission only after the enable click. Do not add a notification inbox, unread badge, or notification history page; Activity remains the history view. Lock-screen notification copy names the acting member, record type/title, and the recipient's own amount, then opens the related record.
+Personal Settings contains a per-device notification section with an explicit Turn on/Turn off action, current status, and concise platform/setup feedback. Request browser permission only after the enable click. Do not add a notification inbox, unread badge, or notification history page; Activity remains the history view. The lock-screen title uses the expense, bill, or payment title. Its body states who paid, the total paid, and the recipient's amount from their perspective, then opens the related record.
 
 On the first eligible signed-in launch in standalone mode, show a small “Enable notifications?” dialog with one sentence, Enable, and Not now. Remember presentation per account/device locally. Skip unsupported, blocked, enabled, and unconfigured states, and never interrupt a required PIN change or another open dialog. Reuse the Personal Settings subscription flow.

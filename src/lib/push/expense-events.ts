@@ -10,6 +10,40 @@ export type ExpensePushSnapshot = {
   shares: Record<string, number>;
 };
 
+export async function readPushMemberNames(
+  householdId: string,
+  memberIds: string[],
+): Promise<Record<string, string>> {
+  const ids = [...new Set(memberIds)].filter(Boolean);
+  if (!ids.length) return {};
+  try {
+    const { data, error } = await createAdminClient()
+      .from("household_members")
+      .select("id, display_name")
+      .eq("household_id", householdId)
+      .in("id", ids);
+    if (error) return {};
+    return Object.fromEntries(
+      (data ?? []).map((member) => [String(member.id), String(member.display_name)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function settlementPushBodies(input: {
+  payingMemberId: string;
+  receivingMemberId: string;
+  payerName: string;
+  receiverName: string;
+  amount: string;
+}): Record<string, string> {
+  return {
+    [input.payingMemberId]: `You paid ${input.receiverName} ${input.amount}.`,
+    [input.receivingMemberId]: `${input.payerName} paid you ${input.amount}.`,
+  };
+}
+
 export async function readExpensePushSnapshot(
   householdId: string,
   expenseId: string,
@@ -58,34 +92,53 @@ export async function notifyExpense(input: {
     input.shares.map((share) => [share.member_id, share.share_cents]),
   );
   const before = input.before;
+  const nextIds = [...Object.keys(next), ...(input.payer ? [input.payer] : [])];
+  const beforeIds = before
+    ? [...Object.keys(before.shares), ...(before.payer ? [before.payer] : [])]
+    : [];
+  const nextTotal = Object.values(next).reduce((total, share) => total + share, 0);
+  const beforeTotal = before
+    ? Object.values(before.shares).reduce((total, share) => total + share, 0)
+    : null;
   const ids = before
-    ? [...new Set([...Object.keys(before.shares), ...Object.keys(next)])].filter(
+    ? [...new Set([...beforeIds, ...nextIds])].filter(
         (id) =>
           before.shares[id] !== next[id] ||
           before.currency !== input.currency ||
-          before.payer !== input.payer,
+          before.payer !== input.payer ||
+          beforeTotal !== nextTotal,
       )
-    : Object.keys(next);
-  const item = input.title?.trim() || (input.bill ? "a bill" : "an expense");
-  const action = before ? "updated" : input.actorName ? "added" : "was added";
-  const subject = input.actorName
-    ? `${input.actorName} ${action} ${input.title ? `${input.bill ? "a bill" : "an expense"}: ` : ""}${item}.`
-    : `${input.bill ? "A bill" : "A recurring expense"} ${action}${input.title ? `: ${item}` : ""}.`;
+    : [...new Set(nextIds)];
+  const names = await readPushMemberNames(input.householdId, nextIds);
+  const notificationTitle = input.title?.trim() || (input.bill ? "Bill" : "Expense");
+  const payerName = input.payer ? (names[input.payer] ?? "The payer") : "Landlord";
+  const total = formatMoney(nextTotal, input.currency);
+  const debtors = Object.entries(next).filter(
+    ([memberId, share]) => memberId !== input.payer && share > 0,
+  );
   const memberBodies = Object.fromEntries(
     ids.map((memberId) => {
       const share = next[memberId];
-      if (share === undefined) return [memberId, `${subject} You are no longer included.`];
+      if (memberId === input.payer) {
+        const payerShare = share ?? 0;
+        const owed = nextTotal - payerShare;
+        if (owed <= 0) return [memberId, `You paid ${total}.`];
+        const owedBy = debtors.length === 1 ? (names[debtors[0][0]] ?? "Another member") : "Others";
+        return [
+          memberId,
+          `You paid ${total}. ${owedBy} ${debtors.length === 1 ? "owes" : "owe"} you ${formatMoney(owed, input.currency)}.`,
+        ];
+      }
+      if (share === undefined)
+        return [memberId, `${payerName} paid ${total}. You are no longer included.`];
       const amount = formatMoney(share, input.currency);
-      const amountText =
-        input.actorName && input.actorMemberId === input.payer && memberId !== input.payer
-          ? `You ${before ? "now " : ""}owe ${input.actorName} ${amount}.`
-          : `Your share is ${before ? "now " : ""}${amount}.`;
-      return [memberId, `${subject} ${amountText}`];
+      return [memberId, `${payerName} paid ${total}. You owe ${amount}.`];
     }),
   );
   await schedulePush({
     householdId: input.householdId,
     actorUserId: input.actorUserId,
+    title: notificationTitle,
     memberIds: ids,
     memberBodies,
     body: before

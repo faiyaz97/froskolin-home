@@ -13,7 +13,7 @@ vi.mock("@/lib/push/delivery", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/push/delivery")>();
   return { ...original, schedulePush: schedule };
 });
-import { notifyExpense } from "@/lib/push/expense-events";
+import { notifyExpense, settlementPushBodies } from "@/lib/push/expense-events";
 import { deliverPush } from "@/lib/push/delivery";
 
 beforeEach(() => {
@@ -23,6 +23,15 @@ beforeEach(() => {
     privateKey: "private",
     subject: "mailto:test@example.com",
   });
+  const names = builder({
+    data: [
+      { id: "a", display_name: "Alex" },
+      { id: "b", display_name: "Bea" },
+      { id: "c", display_name: "Chris" },
+    ],
+    error: null,
+  });
+  admin.mockReturnValue({ from: vi.fn(() => names) });
 });
 
 it.each([
@@ -66,43 +75,80 @@ const base = {
   ],
 };
 describe("expense recipients", () => {
-  it("includes the record and recipient amount in new bill copy", () => {
-    notifyExpense({ ...base, bill: true });
+  it("uses the bill title and describes the payment from each recipient's perspective", async () => {
+    await notifyExpense({ ...base, bill: true });
     expect(schedule).toHaveBeenCalledWith(
       expect.objectContaining({
         memberIds: ["a", "b"],
         actorUserId: "actor",
+        title: "Breakfast",
         body: "A new bill includes you.",
         memberBodies: {
-          a: "Alex added a bill: Breakfast. Your share is €1.00.",
-          b: "Alex added a bill: Breakfast. You owe Alex €2.00.",
+          a: "You paid €3.00. Bea owes you €2.00.",
+          b: "Alex paid €3.00. You owe €2.00.",
         },
         url: "/h/group/expenses/expense",
       }),
     );
   });
-  it("selects changed, added and removed shares, excluding unaffected participants", () => {
-    notifyExpense({
+  it("updates everyone whose displayed total or share changed", async () => {
+    await notifyExpense({
       ...base,
       before: { currency: "EUR", payer: "a", shares: { a: 100, b: 150, c: 200 } },
     });
-    expect(schedule.mock.calls[0][0].memberIds).toEqual(["b", "c"]);
+    expect(schedule.mock.calls[0][0].memberIds).toEqual(["a", "b", "c"]);
     expect(schedule.mock.calls[0][0].memberBodies).toEqual({
-      b: "Alex updated an expense: Breakfast. You now owe Alex €2.00.",
-      c: "Alex updated an expense: Breakfast. You are no longer included.",
+      a: "You paid €3.00. Bea owes you €2.00.",
+      b: "Alex paid €3.00. You owe €2.00.",
+      c: "Alex paid €3.00. You are no longer included.",
     });
   });
-  it("does not send for unchanged financial details", () => {
-    notifyExpense({ ...base, before: { currency: "EUR", payer: "a", shares: { a: 100, b: 200 } } });
+  it("does not send for unchanged financial details", async () => {
+    await notifyExpense({
+      ...base,
+      before: { currency: "EUR", payer: "a", shares: { a: 100, b: 200 } },
+    });
     expect(schedule.mock.calls[0][0].memberIds).toEqual([]);
   });
-  it("does not guess edit recipients when the old snapshot failed", () => {
-    notifyExpense({ ...base, before: null });
+  it("does not guess edit recipients when the old snapshot failed", async () => {
+    await notifyExpense({ ...base, before: null });
     expect(schedule).not.toHaveBeenCalled();
   });
-  it("notifies participants when currency changes", () => {
-    notifyExpense({ ...base, before: { currency: "USD", payer: "a", shares: { a: 100, b: 200 } } });
+  it("notifies participants when currency changes", async () => {
+    await notifyExpense({
+      ...base,
+      before: { currency: "USD", payer: "a", shares: { a: 100, b: 200 } },
+    });
     expect(schedule.mock.calls[0][0].memberIds).toEqual(["a", "b"]);
+  });
+  it("identifies the landlord without mentioning who added the bill", async () => {
+    await notifyExpense({ ...base, payer: null, bill: true });
+    expect(schedule.mock.calls[0][0].memberBodies).toEqual({
+      a: "Landlord paid €3.00. You owe €1.00.",
+      b: "Landlord paid €3.00. You owe €2.00.",
+    });
+  });
+  it("uses a concise collective amount when several members owe the payer", async () => {
+    await notifyExpense({
+      ...base,
+      shares: [...base.shares, { member_id: "c", share_cents: 300 }],
+    });
+    expect(schedule.mock.calls[0][0].memberBodies.a).toBe("You paid €6.00. Others owe you €5.00.");
+  });
+});
+
+it("formats settlement copy from each party's perspective", () => {
+  expect(
+    settlementPushBodies({
+      payingMemberId: "a",
+      receivingMemberId: "b",
+      payerName: "Alex",
+      receiverName: "Bea",
+      amount: "€20.00",
+    }),
+  ).toEqual({
+    a: "You paid Bea €20.00.",
+    b: "Alex paid you €20.00.",
   });
 });
 
@@ -115,6 +161,7 @@ function builder(result: unknown) {
 const event = {
   householdId: "group",
   actorUserId: "actor",
+  title: "Breakfast",
   memberIds: ["a", "b", "removed"],
   body: "A new expense includes you.",
   memberBodies: { b: "Alex added an expense: Breakfast. You owe Alex €2.00." },
@@ -145,7 +192,7 @@ it("filters recipients and sends each member's own copy", async () => {
   expect(devices.in).toHaveBeenCalledWith("user_id", ["recipient"]);
   expect(send).toHaveBeenCalledOnce();
   expect(JSON.parse(send.mock.calls[0][1])).toEqual({
-    title: "Froskolin",
+    title: "Breakfast",
     body: event.memberBodies.b,
     url: event.url,
   });

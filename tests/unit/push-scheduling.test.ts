@@ -49,6 +49,7 @@ it("keeps the action alive until push delivery finishes", async () => {
   await schedulePush({
     householdId: "group",
     actorUserId: "actor",
+    title: "Breakfast",
     memberIds: ["member"],
     body: "A new expense includes you.",
     url: "/h/group/expenses/expense",
