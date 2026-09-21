@@ -141,7 +141,12 @@ it("removes expired endpoints but tolerates delivery failure", async () => {
     from: vi.fn((table) => (table === "household_members" ? members : devices)),
   });
   send.mockRejectedValue({ statusCode: 410 });
-  await expect(deliverPush(event)).resolves.toBeUndefined();
+  await expect(deliverPush(event)).resolves.toMatchObject({
+    status: "completed",
+    delivered: 0,
+    failed: 0,
+    expired: 1,
+  });
   expect(devices.delete).toHaveBeenCalledOnce();
   expect(devices.eq).toHaveBeenCalledWith("user_id", "recipient");
 });

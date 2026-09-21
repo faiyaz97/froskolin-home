@@ -12,16 +12,49 @@ export type PushEvent = {
   url: string;
 };
 
-/** Best effort, no inbox or persistent queue. Never affect the financial result. */
-export async function schedulePush(event: PushEvent) {
-  if (!getPushConfig() || !event.memberIds.length) return;
-  await deliverPush(event);
+export type PushDeliveryResult = {
+  status:
+    | "completed"
+    | "not-configured"
+    | "no-members"
+    | "member-query-failed"
+    | "no-recipients"
+    | "subscription-query-failed"
+    | "unexpected-error";
+  recipients: number;
+  subscriptions: number;
+  delivered: number;
+  failed: number;
+  expired: number;
+};
+
+function deliveryResult(
+  status: PushDeliveryResult["status"],
+  values: Partial<Omit<PushDeliveryResult, "status">> = {},
+): PushDeliveryResult {
+  return {
+    status,
+    recipients: 0,
+    subscriptions: 0,
+    delivered: 0,
+    failed: 0,
+    expired: 0,
+    ...values,
+  };
 }
 
-export async function deliverPush(event: PushEvent) {
+/** Best effort, no inbox or persistent queue. Never affect the financial result. */
+export async function schedulePush(event: PushEvent) {
+  if (!event.memberIds.length) return;
+  const result = await deliverPush(event);
+  console.info("[push] delivery", result);
+}
+
+export async function deliverPush(event: PushEvent): Promise<PushDeliveryResult> {
   try {
     const config = getPushConfig();
-    if (!config || !event.memberIds.length) return;
+    if (!config) return deliveryResult("not-configured");
+    if (!event.memberIds.length) return deliveryResult("no-members");
     const admin = createAdminClient();
     const { data: members, error } = await admin
       .from("household_members")
@@ -29,16 +62,23 @@ export async function deliverPush(event: PushEvent) {
       .eq("household_id", event.householdId)
       .in("id", [...new Set(event.memberIds)])
       .is("removed_at", null);
-    if (error) return;
+    if (error) return deliveryResult("member-query-failed", { failed: 1 });
     const userIds = [...new Set((members ?? []).map((member) => String(member.user_id)))].filter(
       (id) => id !== event.actorUserId,
     );
-    if (!userIds.length) return;
+    if (!userIds.length) return deliveryResult("no-recipients");
     const { data: subscriptions, error: subscriptionError } = await admin
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth, user_id")
       .in("user_id", userIds);
-    if (subscriptionError) return;
+    if (subscriptionError)
+      return deliveryResult("subscription-query-failed", {
+        recipients: userIds.length,
+        failed: 1,
+      });
+    let delivered = 0;
+    let failed = 0;
+    let expired = 0;
     // Small concurrent batches bound resource use. No endpoints or payloads in logs.
     for (let index = 0; index < (subscriptions?.length ?? 0); index += 8) {
       await Promise.allSettled(
@@ -59,21 +99,33 @@ export async function deliverPush(event: PushEvent) {
                 urgency: "normal",
               },
             );
+            delivered += 1;
           } catch (error) {
             const status =
               error && typeof error === "object" && "statusCode" in error ? error.statusCode : null;
             if (status === 404 || status === 410) {
+              expired += 1;
               await admin
                 .from("push_subscriptions")
                 .delete()
                 .eq("endpoint", subscription.endpoint)
                 .eq("user_id", subscription.user_id);
+            } else {
+              failed += 1;
             }
           }
         }),
       );
     }
+    return deliveryResult("completed", {
+      recipients: userIds.length,
+      subscriptions: subscriptions?.length ?? 0,
+      delivered,
+      failed,
+      expired,
+    });
   } catch {
     /* Delivery failures must not escape into financial writes. */
+    return deliveryResult("unexpected-error", { failed: 1 });
   }
 }
