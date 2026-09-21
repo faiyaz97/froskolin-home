@@ -2,6 +2,7 @@ import "server-only";
 import { structuredBillExtractionSchema, type StructuredBillExtraction } from "@/lib/validation";
 import { calculateBillTotals } from "@/lib/domain/bill-analysis";
 import type { BillExtractor, PreparedBillDocument } from "./bill-extractor";
+import type { BillExtractionDebugger } from "./debug";
 
 type RepairExtractor = BillExtractor & {
   repair?: (
@@ -42,15 +43,24 @@ function repairIssues(raw: StructuredBillExtraction, issues: string[]) {
 }
 
 /** One initial extraction and at most one targeted repair. No cache or retries. */
-export async function analyzeBill(document: PreparedBillDocument, extractor: RepairExtractor) {
+export async function analyzeBill(
+  document: PreparedBillDocument,
+  extractor: RepairExtractor,
+  debug?: BillExtractionDebugger,
+) {
   const raw = structuredBillExtractionSchema.parse(await extractor.extract(document));
+  debug?.structured("initial", raw);
   const initial = calculateBillTotals(raw);
+  debug?.calculation("initial", initial);
   const issues = initial.analysis?.issues ?? [];
   if (initial.analysis?.status === "ready" || !issues.length || !extractor.repair) return initial;
   try {
+    const targetedIssues = repairIssues(raw, issues);
+    debug?.repairIssues(targetedIssues);
     const repaired = structuredBillExtractionSchema.parse(
-      await extractor.repair(document, raw, repairIssues(raw, issues)),
+      await extractor.repair(document, raw, targetedIssues),
     );
+    debug?.structured("repair-returned", repaired);
     // Never accept a repair that changes unrelated invoice identity/total to balance charges.
     for (const field of [
       "schemaVersion",
@@ -63,7 +73,10 @@ export async function analyzeBill(document: PreparedBillDocument, extractor: Rep
       "currency",
       "consumption",
     ] as const) {
-      if (JSON.stringify(raw[field]) !== JSON.stringify(repaired[field])) return initial;
+      if (JSON.stringify(raw[field]) !== JSON.stringify(repaired[field])) {
+        debug?.repairRejected(`identity-field-changed:${field}`);
+        return initial;
+      }
     }
     const affected = new Set<string>();
     for (const row of [...raw.lineItems, ...raw.vatLines]) {
@@ -87,7 +100,10 @@ export async function analyzeBill(document: PreparedBillDocument, extractor: Rep
           // Full-JSON model output can incidentally rephrase unrelated evidence.
           // Preserve original rows in code rather than accepting those mutations.
           const index = repaired[collection].findIndex((candidate) => candidate.id === row.id);
-          if (index < 0) return initial;
+          if (index < 0) {
+            debug?.repairRejected(`unaffected-row-missing:${collection}:${row.id}`);
+            return initial;
+          }
           const candidate = repaired[collection][index];
           const relationshipChanged =
             candidate.includedInPayableTotal !== row.includedInPayableTotal ||
@@ -121,8 +137,12 @@ export async function analyzeBill(document: PreparedBillDocument, extractor: Rep
         }
       }
     }
-    return calculateBillTotals(repaired);
-  } catch {
+    debug?.structured("repair-accepted", repaired);
+    const result = calculateBillTotals(repaired);
+    debug?.calculation("after-repair", result);
+    return result;
+  } catch (error) {
+    debug?.repairFailed(error);
     // Failed/malformed repair preserves the original safe review draft, not guessed totals.
     return initial;
   }

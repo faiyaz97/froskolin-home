@@ -5,6 +5,7 @@ import {
   BillExtractionError,
   GeminiBillExtractor,
   analyzeBill,
+  createDevelopmentBillExtractionDebugger,
   prepareBillUpload,
   sanitizeBillError,
 } from "@/lib/bills";
@@ -29,8 +30,14 @@ export async function POST(request: Request) {
     await requireHouseholdMutation(householdId);
     stage = "preparation";
     const prepared = await prepareBillUpload(file);
+    const debug = createDevelopmentBillExtractionDebugger("/api/bills/extract");
+    debug?.preparation(prepared);
     stage = "analysis";
-    const extraction = await analyzeBill(prepared, new GeminiBillExtractor());
+    const extraction = await analyzeBill(
+      prepared,
+      new GeminiBillExtractor(undefined, debug),
+      debug,
+    );
     console.info(
       "[bill-analysis] completed",
       JSON.stringify({

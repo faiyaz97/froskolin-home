@@ -12,6 +12,7 @@ import {
   type BillExtractor,
   type PreparedBillDocument,
 } from "./bill-extractor";
+import type { BillExtractionDebugger } from "./debug";
 import { redactSensitiveText } from "./preprocessing";
 
 export const BILL_EXTRACTION_PROMPT = `Read and extract facts from this group utility bill. Do not calculate final fixed or usage totals, allocate VAT, or calculate members' shares. Application code performs all arithmetic.
@@ -79,7 +80,10 @@ function extractionFailure(error: unknown, phase: "request" | "response" | "vali
 }
 
 export class GeminiBillExtractor implements BillExtractor {
-  constructor(private readonly apiKey = process.env.GEMINI_API_KEY) {}
+  constructor(
+    private readonly apiKey = process.env.GEMINI_API_KEY,
+    private readonly debug?: BillExtractionDebugger,
+  ) {}
 
   async extract(document: PreparedBillDocument): Promise<StructuredBillExtraction> {
     return this.request(document, BILL_EXTRACTION_PROMPT);
@@ -112,6 +116,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
     let phase: "request" | "response" | "validation" = "request";
     try {
       const ai = new GoogleGenAI({ apiKey: this.apiKey });
+      this.debug?.geminiInput(document, repairOriginal ? "repair" : "initial");
       const documentParts = document.extractedText
         ? [
             { text: `Sanitized PDF text for search support:\n${document.extractedText}` },
