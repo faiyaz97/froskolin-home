@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type ThinkingLevel } from "@google/genai";
 
 import { structuredBillExtractionSchema, type StructuredBillExtraction } from "@/lib/validation";
 import { extractionSchema } from "./extraction-schema";
@@ -156,6 +156,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
         ],
         config: {
           temperature: 0,
+          thinkingConfig: { thinkingLevel: "HIGH" as ThinkingLevel },
           responseMimeType: "application/json",
           responseJsonSchema: repairOriginal ? repairSchema : extractionSchema,
         },

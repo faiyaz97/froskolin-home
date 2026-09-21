@@ -31,6 +31,17 @@ export async function POST(request: Request) {
     const prepared = await prepareBillUpload(file);
     stage = "analysis";
     const extraction = await analyzeBill(prepared, new GeminiBillExtractor());
+    console.info(
+      "[bill-analysis] completed",
+      JSON.stringify({
+        route: "upload",
+        utilityType: extraction.utilityType,
+        status: extraction.analysis?.status ?? "unknown",
+        issueCount: extraction.analysis?.issues.length ?? 0,
+        hasFixed: extraction.charges.fixedCents !== null,
+        hasConsumption: extraction.charges.consumptionCents !== null,
+      }),
+    );
     return NextResponse.json({ extraction, pageCount: prepared.pageCount });
   } catch (error) {
     if (!(error instanceof BillExtractionError)) {

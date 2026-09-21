@@ -33,6 +33,7 @@ describe("model extraction contract", () => {
     );
     const request = generateContent.mock.calls[0][0];
     expect(request.config.temperature).toBe(0);
+    expect(request.config.thinkingConfig).toEqual({ thinkingLevel: "HIGH" });
     expect(request.config.responseJsonSchema).toEqual(repairSchema);
     expect(request.contents[0].parts[0].text).toContain("TARGETED REPAIR, NOT A NEW EXTRACTION");
     expect(request.contents[0].parts[0].text).toContain(JSON.stringify(rawBill()));
