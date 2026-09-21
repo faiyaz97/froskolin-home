@@ -9,6 +9,7 @@ export type PushEvent = {
   actorUserId: string | null;
   memberIds: string[];
   body: string;
+  memberBodies?: Record<string, string>;
   url: string;
 };
 
@@ -58,7 +59,7 @@ export async function deliverPush(event: PushEvent): Promise<PushDeliveryResult>
     const admin = createAdminClient();
     const { data: members, error } = await admin
       .from("household_members")
-      .select("user_id")
+      .select("id, user_id")
       .eq("household_id", event.householdId)
       .in("id", [...new Set(event.memberIds)])
       .is("removed_at", null);
@@ -67,6 +68,12 @@ export async function deliverPush(event: PushEvent): Promise<PushDeliveryResult>
       (id) => id !== event.actorUserId,
     );
     if (!userIds.length) return deliveryResult("no-recipients");
+    const bodiesByUserId = new Map(
+      (members ?? []).map((member) => [
+        String(member.user_id),
+        event.memberBodies?.[String(member.id)] ?? event.body,
+      ]),
+    );
     const { data: subscriptions, error: subscriptionError } = await admin
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth, user_id")
@@ -91,7 +98,11 @@ export async function deliverPush(event: PushEvent): Promise<PushDeliveryResult>
           try {
             await webpush.sendNotification(
               parsed.data,
-              JSON.stringify({ title: "Froskolin", body: event.body, url: event.url }),
+              JSON.stringify({
+                title: "Froskolin",
+                body: bodiesByUserId.get(String(subscription.user_id)) ?? event.body,
+                url: event.url,
+              }),
               {
                 vapidDetails: config,
                 TTL: 3600,

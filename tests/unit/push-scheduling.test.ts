@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 it("keeps the action alive until push delivery finishes", async () => {
-  const members = builder({ data: [{ user_id: "recipient" }], error: null });
+  const members = builder({ data: [{ id: "member", user_id: "recipient" }], error: null });
   const devices = builder({
     data: [
       {

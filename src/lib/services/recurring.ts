@@ -19,12 +19,14 @@ export type RecurringGenerationResult = { generated: number; failed: number };
 export async function generateDueRecurringExpenses(
   householdId?: string,
   actorUserId: string | null = null,
+  actorName?: string,
+  actorMemberId?: string,
 ): Promise<RecurringGenerationResult> {
   const admin = createAdminClient();
   let rulesQuery = admin
     .from("recurring_expense_rules")
     .select(
-      "id, household_id, currency, payer_member_id, amount_cents, split_config, anchor_date, end_date, next_due_date, frequency",
+      "id, household_id, title, currency, payer_member_id, amount_cents, split_config, anchor_date, end_date, next_due_date, frequency",
     )
     .eq("active", true)
     .is("archived_at", null);
@@ -85,6 +87,9 @@ export async function generateDueRecurringExpenses(
             householdId: String(rule.household_id),
             expenseId: data,
             actorUserId,
+            actorMemberId,
+            actorName,
+            title: String(rule.title),
             shares,
             currency: String(rule.currency),
             payer: rule.payer_member_id,

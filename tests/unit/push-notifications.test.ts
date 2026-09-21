@@ -1,16 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isPushEndpoint, pushSubscriptionSchema } from "@/lib/push/subscription";
-const { schedule, admin, send, config, after } = vi.hoisted(() => ({
+const { schedule, admin, send, config } = vi.hoisted(() => ({
   schedule: vi.fn(),
   admin: vi.fn(),
   send: vi.fn(),
   config: vi.fn(),
-  after: vi.fn(),
 }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: admin }));
 vi.mock("@/lib/push/config", () => ({ getPushConfig: config }));
 vi.mock("web-push", () => ({ default: { sendNotification: send } }));
-vi.mock("next/server", () => ({ after }));
 vi.mock("@/lib/push/delivery", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/push/delivery")>();
   return { ...original, schedulePush: schedule };
@@ -57,6 +55,9 @@ const base = {
   householdId: "group",
   expenseId: "expense",
   actorUserId: "actor",
+  actorMemberId: "a",
+  actorName: "Alex",
+  title: "Breakfast",
   currency: "EUR",
   payer: "a",
   shares: [
@@ -65,13 +66,17 @@ const base = {
   ],
 };
 describe("expense recipients", () => {
-  it("includes only participants for a new bill and keeps lock-screen copy private", () => {
+  it("includes the record and recipient amount in new bill copy", () => {
     notifyExpense({ ...base, bill: true });
     expect(schedule).toHaveBeenCalledWith(
       expect.objectContaining({
         memberIds: ["a", "b"],
         actorUserId: "actor",
         body: "A new bill includes you.",
+        memberBodies: {
+          a: "Alex added a bill: Breakfast. Your share is €1.00.",
+          b: "Alex added a bill: Breakfast. You owe Alex €2.00.",
+        },
         url: "/h/group/expenses/expense",
       }),
     );
@@ -82,6 +87,10 @@ describe("expense recipients", () => {
       before: { currency: "EUR", payer: "a", shares: { a: 100, b: 150, c: 200 } },
     });
     expect(schedule.mock.calls[0][0].memberIds).toEqual(["b", "c"]);
+    expect(schedule.mock.calls[0][0].memberBodies).toEqual({
+      b: "Alex updated an expense: Breakfast. You now owe Alex €2.00.",
+      c: "Alex updated an expense: Breakfast. You are no longer included.",
+    });
   });
   it("does not send for unchanged financial details", () => {
     notifyExpense({ ...base, before: { currency: "EUR", payer: "a", shares: { a: 100, b: 200 } } });
@@ -108,6 +117,7 @@ const event = {
   actorUserId: "actor",
   memberIds: ["a", "b", "removed"],
   body: "A new expense includes you.",
+  memberBodies: { b: "Alex added an expense: Breakfast. You owe Alex €2.00." },
   url: "/h/group/expenses/expense",
 };
 const subscription = {
@@ -116,8 +126,14 @@ const subscription = {
   auth: "a".repeat(22),
   user_id: "recipient",
 };
-it("filters recipients by active group membership, excludes actor, and sends only generic content", async () => {
-  const members = builder({ data: [{ user_id: "actor" }, { user_id: "recipient" }], error: null });
+it("filters recipients and sends each member's own copy", async () => {
+  const members = builder({
+    data: [
+      { id: "a", user_id: "actor" },
+      { id: "b", user_id: "recipient" },
+    ],
+    error: null,
+  });
   const devices = builder({ data: [subscription], error: null });
   admin.mockReturnValue({
     from: vi.fn((table) => (table === "household_members" ? members : devices)),
@@ -130,12 +146,12 @@ it("filters recipients by active group membership, excludes actor, and sends onl
   expect(send).toHaveBeenCalledOnce();
   expect(JSON.parse(send.mock.calls[0][1])).toEqual({
     title: "Froskolin",
-    body: event.body,
+    body: event.memberBodies.b,
     url: event.url,
   });
 });
 it("removes expired endpoints but tolerates delivery failure", async () => {
-  const members = builder({ data: [{ user_id: "recipient" }], error: null });
+  const members = builder({ data: [{ id: "b", user_id: "recipient" }], error: null });
   const devices = builder({ data: [subscription], error: null });
   admin.mockReturnValue({
     from: vi.fn((table) => (table === "household_members" ? members : devices)),

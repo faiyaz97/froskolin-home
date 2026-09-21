@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatMoney } from "@/lib/format";
 import { schedulePush } from "./delivery";
 import { getPushConfig } from "./config";
 
@@ -42,6 +43,9 @@ export async function notifyExpense(input: {
   householdId: string;
   expenseId: string;
   actorUserId: string | null;
+  actorMemberId?: string;
+  actorName?: string;
+  title?: string;
   shares: Array<{ member_id: string; share_cents: number }>;
   currency: string;
   payer: string | null;
@@ -62,10 +66,28 @@ export async function notifyExpense(input: {
           before.payer !== input.payer,
       )
     : Object.keys(next);
+  const item = input.title?.trim() || (input.bill ? "a bill" : "an expense");
+  const action = before ? "updated" : input.actorName ? "added" : "was added";
+  const subject = input.actorName
+    ? `${input.actorName} ${action} ${input.title ? `${input.bill ? "a bill" : "an expense"}: ` : ""}${item}.`
+    : `${input.bill ? "A bill" : "A recurring expense"} ${action}${input.title ? `: ${item}` : ""}.`;
+  const memberBodies = Object.fromEntries(
+    ids.map((memberId) => {
+      const share = next[memberId];
+      if (share === undefined) return [memberId, `${subject} You are no longer included.`];
+      const amount = formatMoney(share, input.currency);
+      const amountText =
+        input.actorName && input.actorMemberId === input.payer && memberId !== input.payer
+          ? `You ${before ? "now " : ""}owe ${input.actorName} ${amount}.`
+          : `Your share is ${before ? "now " : ""}${amount}.`;
+      return [memberId, `${subject} ${amountText}`];
+    }),
+  );
   await schedulePush({
     householdId: input.householdId,
     actorUserId: input.actorUserId,
     memberIds: ids,
+    memberBodies,
     body: before
       ? "An update changed your share of an expense."
       : input.bill
