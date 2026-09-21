@@ -343,14 +343,8 @@ export function HouseholdLedger({
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-4 rounded-2xl bg-white px-4 py-5 shadow-[var(--shadow-sm)] sm:px-5">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
-            <ReceiptText className="size-5" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="font-black">No expenses yet</p>
-            <p className="mt-0.5 text-sm text-[var(--muted)]">Add the first shared cost.</p>
-          </div>
+        <div className="rounded-2xl bg-white px-4 py-5 shadow-[var(--shadow-sm)] sm:px-5">
+          <p className="text-sm text-[var(--muted)]">No expenses yet</p>
         </div>
       )}
     </section>
