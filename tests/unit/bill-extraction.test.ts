@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 
 import type { BillExtractor, PreparedBillDocument } from "@/lib/bills";
@@ -6,6 +6,8 @@ import { BILL_EXTRACTION_PROMPT, prepareBillUpload, redactSensitiveText } from "
 import { determineBillEntryMode } from "@/lib/bills/entry-mode";
 import { extractedBillSchema, structuredBillExtractionSchema } from "@/lib/validation";
 import { rawBill } from "../fixtures/bill-analysis";
+
+afterEach(() => vi.restoreAllMocks());
 
 const fixture = {
   supplier: "Example Energia",
@@ -114,6 +116,26 @@ describe("bill extraction boundary", () => {
     expect(prepared.mimeType).toBe("image/png");
     expect(prepared.bytes.byteLength).toBeGreaterThan(0);
     expect(prepared.filename).toBe("account-123.png");
+  });
+
+  it("falls back to the original PDF when server preprocessing cannot decode it", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const bytes = new TextEncoder().encode("%PDF-1.7\nprovider-specific unsupported structure");
+    const prepared = await prepareBillUpload(
+      new File([bytes], "provider.pdf", { type: "application/pdf" }),
+    );
+    expect(prepared).toMatchObject({
+      mimeType: "application/pdf",
+      filename: "provider.pdf",
+      pageCount: undefined,
+      extractedText: undefined,
+      pageImages: undefined,
+    });
+    expect(prepared.bytes).toEqual(bytes);
+    expect(console.error).toHaveBeenCalledWith(
+      "[bill-preparation] PDF fallback",
+      JSON.stringify({ format: "pdf", stage: "load" }),
+    );
   });
 
   it("redacts common identifiers before text or evidence is retained", () => {

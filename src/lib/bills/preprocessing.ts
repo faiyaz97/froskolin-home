@@ -44,46 +44,61 @@ async function preparePdf(bytes: Uint8Array) {
     data: bytes.slice(),
     useSystemFonts: true,
   });
-  const pdf = await loadingTask.promise;
+  let stage: "load" | "text" | "render" = "load";
+  let loaded = false;
   try {
-    if (pdf.numPages > MAX_BILL_PAGES) {
-      throw new BillExtractionError("Bills must have 10 pages or fewer.");
-    }
+    const pdf = await loadingTask.promise;
+    loaded = true;
+    try {
+      if (pdf.numPages > MAX_BILL_PAGES) {
+        throw new BillExtractionError("Bills must have 10 pages or fewer.");
+      }
 
-    const textParts: string[] = [];
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const content = await page.getTextContent();
-      textParts.push(
-        content.items
-          .flatMap((item) => ("str" in item && typeof item.str === "string" ? [item.str] : []))
-          .join(" "),
-      );
-    }
-    const extractedText = redactSensitiveText(textParts.join("\n")).slice(0, 30_000);
-    if (usefulText(extractedText)) {
-      return { pageCount: pdf.numPages, extractedText, pageImages: undefined };
-    }
+      stage = "text";
+      const textParts: string[] = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        textParts.push(
+          content.items
+            .flatMap((item) => ("str" in item && typeof item.str === "string" ? [item.str] : []))
+            .join(" "),
+        );
+      }
+      const extractedText = redactSensitiveText(textParts.join("\n")).slice(0, 30_000);
+      if (usefulText(extractedText)) {
+        return { pageCount: pdf.numPages, extractedText, pageImages: undefined };
+      }
 
-    const pageImages: Array<{ mimeType: "image/png"; bytes: Uint8Array }> = [];
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const baseViewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(1.6, 2200 / Math.max(baseViewport.width, baseViewport.height));
-      const viewport = page.getViewport({ scale });
-      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-      await page.render({
-        canvas: canvas as unknown as HTMLCanvasElement,
-        viewport,
-      }).promise;
-      pageImages.push({
-        mimeType: "image/png",
-        bytes: new Uint8Array(canvas.toBuffer("image/png")),
-      });
+      stage = "render";
+      const pageImages: Array<{ mimeType: "image/png"; bytes: Uint8Array }> = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(1.6, 2200 / Math.max(baseViewport.width, baseViewport.height));
+        const viewport = page.getViewport({ scale });
+        const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+        await page.render({
+          canvas: canvas as unknown as HTMLCanvasElement,
+          viewport,
+        }).promise;
+        pageImages.push({
+          mimeType: "image/png",
+          bytes: new Uint8Array(canvas.toBuffer("image/png")),
+        });
+      }
+      return { pageCount: pdf.numPages, extractedText: undefined, pageImages };
+    } finally {
+      await loadingTask.destroy();
     }
-    return { pageCount: pdf.numPages, extractedText: undefined, pageImages };
-  } finally {
-    await loadingTask.destroy();
+  } catch (error) {
+    if (error instanceof BillExtractionError) throw error;
+    // Some provider PDFs use structures or embedded assets that pdf.js cannot
+    // decode in a serverless runtime. Gemini accepts the original PDF directly,
+    // so retain the validated upload instead of failing before the model call.
+    console.error("[bill-preparation] PDF fallback", JSON.stringify({ format: "pdf", stage }));
+    if (!loaded) await loadingTask.destroy().catch(() => undefined);
+    return { pageCount: undefined, extractedText: undefined, pageImages: undefined };
   }
 }
 
