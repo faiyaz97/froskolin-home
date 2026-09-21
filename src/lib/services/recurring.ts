@@ -81,7 +81,7 @@ export async function generateDueRecurringExpenses(
         if (error) throw error;
         if (data) {
           generated += 1;
-          notifyExpense({
+          await notifyExpense({
             householdId: String(rule.household_id),
             expenseId: data,
             actorUserId,

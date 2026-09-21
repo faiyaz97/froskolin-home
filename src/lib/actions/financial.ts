@@ -127,7 +127,7 @@ export async function saveExpenseAction(
       p_occurrence_date: null,
     });
     if (error || !data) throw error ?? new Error("No expense returned.");
-    notifyExpense({
+    await notifyExpense({
       householdId: parsed.data.householdId,
       expenseId: String(data),
       actorUserId: user.id,
@@ -168,7 +168,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
       p_note: parsed.data.note ?? null,
     });
     if (error) throw error;
-    notifyExpense({
+    await notifyExpense({
       householdId: parsed.data.householdId,
       expenseId: parsed.data.expenseId,
       actorUserId: user.id,
@@ -316,20 +316,22 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
       p_actor_user_id: user.id,
     });
     if (error) throw error;
-    utilityUpdates.forEach((update, index) => {
-      const before = pushSnapshots[index];
-      if (before)
-        notifyExpense({
-          householdId: parsed.data.householdId,
-          expenseId: update.expense_id,
-          actorUserId: user.id,
-          shares: update.shares,
-          currency: before.currency,
-          payer: before.payer,
-          before,
-          bill: true,
-        });
-    });
+    await Promise.all(
+      utilityUpdates.map(async (update, index) => {
+        const before = pushSnapshots[index];
+        if (before)
+          await notifyExpense({
+            householdId: parsed.data.householdId,
+            expenseId: update.expense_id,
+            actorUserId: user.id,
+            shares: update.shares,
+            currency: before.currency,
+            payer: before.payer,
+            before,
+            bill: true,
+          });
+      }),
+    );
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };
   } catch (error) {
@@ -419,7 +421,7 @@ export async function confirmUtilityBillAction(
       p_actor_user_id: user.id,
     });
     if (error || !data) throw error ?? new Error("No bill returned.");
-    notifyExpense({
+    await notifyExpense({
       householdId: parsed.data.householdId,
       expenseId: String(data),
       actorUserId: user.id,
@@ -528,7 +530,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
       },
     );
     if (error) throw error;
-    notifyExpense({
+    await notifyExpense({
       householdId: parsed.data.householdId,
       expenseId: parsed.data.expenseId,
       actorUserId: user.id,
@@ -566,7 +568,7 @@ export async function saveSettlementAction(
       p_actor_user_id: user.id,
     });
     if (error || !data) throw error ?? new Error("No settlement returned.");
-    schedulePush({
+    await schedulePush({
       householdId: parsed.data.householdId,
       actorUserId: user.id,
       memberIds: [parsed.data.payingMemberId, parsed.data.receivingMemberId],

@@ -38,7 +38,7 @@ export async function readExpensePushSnapshot(
   }
 }
 
-export function notifyExpense(input: {
+export async function notifyExpense(input: {
   householdId: string;
   expenseId: string;
   actorUserId: string | null;
@@ -62,7 +62,7 @@ export function notifyExpense(input: {
           before.payer !== input.payer,
       )
     : Object.keys(next);
-  schedulePush({
+  await schedulePush({
     householdId: input.householdId,
     actorUserId: input.actorUserId,
     memberIds: ids,

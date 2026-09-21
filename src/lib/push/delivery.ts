@@ -1,5 +1,4 @@
 import "server-only";
-import { after } from "next/server";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPushConfig } from "./config";
@@ -14,13 +13,9 @@ export type PushEvent = {
 };
 
 /** Best effort, no inbox or persistent queue. Never affect the financial result. */
-export function schedulePush(event: PushEvent) {
+export async function schedulePush(event: PushEvent) {
   if (!getPushConfig() || !event.memberIds.length) return;
-  try {
-    after(() => deliverPush(event));
-  } catch {
-    /* No request lifecycle: skip safely. */
-  }
+  await deliverPush(event);
 }
 
 export async function deliverPush(event: PushEvent) {
