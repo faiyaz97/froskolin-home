@@ -2,6 +2,9 @@ import "server-only";
 
 import { createCanvas } from "@napi-rs/canvas";
 import { fileTypeFromBuffer } from "file-type";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import sharp from "sharp";
 
 import { BillExtractionError, type PreparedBillDocument } from "./bill-extractor";
@@ -18,6 +21,14 @@ export const acceptedBillMimeTypes = new Set([
 ] as const);
 
 type BillMimeType = PreparedBillDocument["mimeType"];
+
+const nodeRequire = createRequire(import.meta.url);
+
+function configurePdfWorker(pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs")) {
+  const packageRoot = path.dirname(nodeRequire.resolve("pdfjs-dist/package.json"));
+  const workerPath = path.join(packageRoot, "legacy", "build", "pdf.worker.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+}
 
 function isAcceptedMimeType(value: string): value is BillMimeType {
   return acceptedBillMimeTypes.has(value as BillMimeType);
@@ -40,6 +51,7 @@ function usefulText(value: string): boolean {
 
 async function preparePdf(bytes: Uint8Array) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  configurePdfWorker(pdfjs);
   const loadingTask = pdfjs.getDocument({
     data: bytes.slice(),
     useSystemFonts: true,

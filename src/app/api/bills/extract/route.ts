@@ -42,6 +42,14 @@ export async function POST(request: Request) {
       "[bill-analysis] completed",
       JSON.stringify({
         route: "upload",
+        pageCount: prepared.pageCount ?? null,
+        inputMode: prepared.extractedText
+          ? "original_pdf_with_sanitized_text"
+          : prepared.pageImages?.length
+            ? "rendered_page_images"
+            : prepared.mimeType === "application/pdf"
+              ? "original_pdf"
+              : "sanitized_image",
         utilityType: extraction.utilityType,
         status: extraction.analysis?.status ?? "unknown",
         issueCount: extraction.analysis?.issues.length ?? 0,
