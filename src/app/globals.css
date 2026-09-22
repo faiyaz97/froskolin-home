@@ -291,10 +291,24 @@ a {
   }
 }
 
+.group-loading-skeleton {
+  position: fixed;
+  inset: 0.75rem 0.75rem calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: 1;
+  max-width: 980px;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .group-loading-skeleton {
+    inset: 6.25rem 1.5rem 7rem;
+  }
+}
+
 @media (max-width: 767px) {
-  main[data-home="true"] .group-loading-skeleton {
-    width: calc(100% - 1.5rem);
-    margin-top: 0.75rem;
+  .mobile-subpage .group-loading-skeleton {
+    top: calc(4rem + env(safe-area-inset-top));
+    bottom: 0.75rem;
   }
 
   .app-safe-bottom {

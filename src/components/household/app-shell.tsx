@@ -102,7 +102,6 @@ export function AppShell({
           )}
 
           <main
-            data-home={isHome}
             className={cn(
               "mx-auto w-full max-w-[980px] min-w-0 md:px-6 md:pt-7 md:pb-36 lg:px-8 lg:pt-8",
               isHome ? "px-0 pt-0" : "px-3 pt-3",

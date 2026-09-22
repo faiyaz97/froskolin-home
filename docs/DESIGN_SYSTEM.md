@@ -112,7 +112,7 @@ Canonical shell: `src/components/household/app-shell.tsx`.
 - Canonical navigation component: `src/components/household/app-navigation.tsx`.
 - On mobile, primary navigation is a compact white bar attached to the bottom screen edge and extending through the safe area. The selected icon and label turn sky blue, with a short blue underline that glides between destinations; the account avatar receives a matching ring. The sleeping cat rests just above the bar. From `md` upward, navigation remains a white floating dock with a soft blue selected surface. Icons lift slightly on hover. The global reduced-motion rule shortens these transitions.
 - Keep Home's floating action stack above the dock at both standard and phone safe-area insets.
-- Group pages share one compact loading card with two short placeholder rows. It stays above the fold without a scrolling placeholder; Home adds the same mobile inset as other pages while loading.
+- Group pages share one viewport-filling loading skeleton with a heading, two summary cards, and ledger-like rows. It fits between the header and navigation without extending the page or requiring scrolling; Home uses the same placement as other primary pages.
 
 Special page behavior:
 
