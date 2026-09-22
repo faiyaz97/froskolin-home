@@ -258,7 +258,9 @@ export function HouseholdLedger({
                           <HandCoins className="size-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-extrabold">Payment</p>
+                          <p className="line-clamp-2 text-sm leading-5 font-extrabold [overflow-wrap:anywhere] break-words">
+                            Payment
+                          </p>
                           <p className="truncate text-xs text-[var(--muted)] sm:text-sm">
                             {memberNames[settlement.paying_member_id] ?? "Former roommate"} paid{" "}
                             {memberNames[settlement.receiving_member_id] ?? "Former roommate"}
@@ -312,7 +314,9 @@ export function HouseholdLedger({
                       </time>
                       <ExpenseIcon expense={expense} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-extrabold">{expense.title}</p>
+                        <p className="line-clamp-2 text-sm leading-5 font-extrabold [overflow-wrap:anywhere] break-words">
+                          {expense.title}
+                        </p>
                         <p className="truncate text-xs text-[var(--muted)] sm:text-sm">
                           {expense.paid_by_landlord
                             ? "Landlord"

@@ -90,7 +90,7 @@ export default async function AuditDetail({
               <p className="text-[10px] font-black tracking-[0.12em] text-[var(--muted)] uppercase">
                 {activityEntityLabel(event.entity_type)}
               </p>
-              <h2 className="mt-1 text-xl leading-tight font-black tracking-[-0.03em] sm:text-2xl">
+              <h2 className="mt-1 text-xl leading-tight font-black tracking-[-0.03em] [overflow-wrap:anywhere] break-words sm:text-2xl">
                 {activityHeadline(event, members)}
               </h2>
               <time className="mt-1 block text-xs text-[var(--muted)]">

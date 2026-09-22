@@ -116,40 +116,42 @@ export default async function HouseholdHome({
               <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#c9eadf] text-[var(--brand)] sm:size-8">
                 <Users className="size-3.5 sm:size-4" aria-hidden="true" />
               </span>
-              <span className="home-summary-copy min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-                <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
-                  Group
+              <span className="min-w-0 flex-1 overflow-hidden">
+                <span className="home-summary-copy block overflow-hidden whitespace-nowrap">
+                  <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
+                    Group
+                  </span>
+                  {ownBalances.length ? (
+                    <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
+                      {Number(ownBalances[0]?.net_cents ?? 0) > 0 ? "You are owed" : "You owe"}
+                    </span>
+                  ) : (
+                    <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
+                      All settled
+                    </span>
+                  )}
                 </span>
-                {ownBalances.length ? (
-                  <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                    {Number(ownBalances[0]?.net_cents ?? 0) > 0 ? "You are owed" : "You owe"}
-                  </span>
-                ) : (
-                  <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                    All settled
-                  </span>
-                )}
-              </span>
-              <span className="min-w-0 shrink-0 text-right tabular-nums">
-                {ownBalances.length ? (
-                  <span className="grid gap-0.5">
-                    {ownBalances.map((balance) => {
-                      const netCents = Number(balance.net_cents);
-                      return (
-                        <span
-                          key={balance.currency}
-                          className={`block max-w-[4.4rem] truncate text-[clamp(.8rem,3.6vw,1.15rem)] leading-5 font-black sm:max-w-none ${netCents > 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}
-                        >
-                          {formatMoney(Math.abs(netCents), balance.currency, locale)}
-                        </span>
-                      );
-                    })}
-                  </span>
-                ) : (
-                  <span className="block text-[clamp(.8rem,3.6vw,1.15rem)] leading-5 font-black text-[var(--ink)]">
-                    {formatMoney(0, home?.default_currency ?? "EUR", locale)}
-                  </span>
-                )}
+                <span className="mt-0.5 block min-w-0 text-left tabular-nums">
+                  {ownBalances.length ? (
+                    <span className="grid gap-0.5">
+                      {ownBalances.map((balance) => {
+                        const netCents = Number(balance.net_cents);
+                        return (
+                          <span
+                            key={balance.currency}
+                            className={`block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] ${netCents > 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}
+                          >
+                            {formatMoney(Math.abs(netCents), balance.currency, locale)}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  ) : (
+                    <span className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--ink)]">
+                      {formatMoney(0, home?.default_currency ?? "EUR", locale)}
+                    </span>
+                  )}
+                </span>
               </span>
               <ChevronRight
                 className="size-3 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 sm:size-4"
@@ -167,31 +169,33 @@ export default async function HouseholdHome({
                   <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] sm:size-8">
                     <House className="size-3.5 sm:size-4" aria-hidden="true" />
                   </span>
-                  <span className="home-summary-copy min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-                    <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
-                      Landlord
-                    </span>
-                    <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                      {landlordTotals.length ? "You owe" : "All settled"}
-                    </span>
-                  </span>
-                  <span className="min-w-0 shrink-0 text-right tabular-nums">
-                    {landlordTotals.length ? (
-                      <span className="grid gap-0.5">
-                        {landlordTotals.map((row) => (
-                          <span
-                            key={row.currency}
-                            className="block max-w-[4.4rem] truncate text-[clamp(.8rem,3.6vw,1.15rem)] leading-5 font-black text-[var(--negative)] sm:max-w-none"
-                          >
-                            {formatMoney(row.amountCents, row.currency, locale)}
-                          </span>
-                        ))}
+                  <span className="min-w-0 flex-1 overflow-hidden">
+                    <span className="home-summary-copy block overflow-hidden whitespace-nowrap">
+                      <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
+                        Landlord
                       </span>
-                    ) : (
-                      <span className="block text-[clamp(.8rem,3.6vw,1.15rem)] leading-5 font-black text-[var(--ink)]">
-                        {formatMoney(0, home?.default_currency ?? "EUR", locale)}
+                      <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
+                        {landlordTotals.length ? "You owe" : "All settled"}
                       </span>
-                    )}
+                    </span>
+                    <span className="mt-0.5 block min-w-0 text-left tabular-nums">
+                      {landlordTotals.length ? (
+                        <span className="grid gap-0.5">
+                          {landlordTotals.map((row) => (
+                            <span
+                              key={row.currency}
+                              className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--negative)]"
+                            >
+                              {formatMoney(row.amountCents, row.currency, locale)}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--ink)]">
+                          {formatMoney(0, home?.default_currency ?? "EUR", locale)}
+                        </span>
+                      )}
+                    </span>
                   </span>
                   <ChevronRight
                     className="size-3 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 sm:size-4"

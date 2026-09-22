@@ -177,7 +177,7 @@ export default async function ExpenseDetail({
                   </span>
                 )}
               </div>
-              <h2 className="mt-1 text-xl leading-tight font-black tracking-[-0.03em] sm:text-2xl">
+              <h2 className="mt-1 max-w-full text-xl leading-tight font-black tracking-[-0.03em] [overflow-wrap:anywhere] break-words sm:text-2xl">
                 {expense.title}
               </h2>
               <p className="mt-1 text-xs text-[var(--muted)]">

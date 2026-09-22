@@ -84,17 +84,17 @@ export function LandlordBalanceView({
         aria-label="Outstanding landlord balance"
         className="rounded-[22px] bg-white px-3.5 py-3 shadow-[var(--shadow-sm)] sm:px-5"
       >
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+          <span className="row-span-2 grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)] sm:row-span-1">
             <House className="size-5" aria-hidden="true" />
           </span>
           <h2 className="min-w-0 flex-1 text-sm font-black">Outstanding</h2>
-          <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
+          <div className="col-start-2 flex min-w-0 flex-wrap justify-start gap-x-3 gap-y-1 sm:col-start-3 sm:row-start-1 sm:justify-end">
             {totals.length ? (
               totals.map((total) => (
                 <p
                   key={total.currency}
-                  className="text-xl leading-tight font-black tracking-[-0.035em] text-[var(--peach)] tabular-nums"
+                  className="max-w-full text-[clamp(1rem,5vw,1.25rem)] leading-tight font-black tracking-[-0.035em] [overflow-wrap:anywhere] text-[var(--peach)] tabular-nums"
                 >
                   {formatMoney(total.amountCents, total.currency, locale)}
                 </p>
@@ -125,13 +125,13 @@ export function LandlordBalanceView({
             {outstanding.map((row) => (
               <article
                 key={row.expenseId}
-                className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] px-3.5 py-3 last:border-0 sm:px-5"
+                className="grid min-h-[68px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-[var(--soft-line)] px-3.5 py-3 last:border-0 sm:gap-3 sm:px-5"
               >
                 <LandlordExpenseIcon row={row} />
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/h/${householdId}/expenses/${row.expenseId}`}
-                    className="block truncate text-sm font-black text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+                    className="line-clamp-2 text-sm leading-5 font-black [overflow-wrap:anywhere] break-words text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
                   >
                     {row.title}
                   </Link>
@@ -139,17 +139,19 @@ export function LandlordBalanceView({
                     {formatBillDate(row.expenseDate, locale)}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-black text-[var(--peach)] tabular-nums">
-                  {formatMoney(row.remainingCents, row.currency, locale)}
-                </p>
-                <Button
-                  tone="pastel"
-                  disabled={pending}
-                  onClick={() => markAsPaid(row)}
-                  className="min-h-9 shrink-0 rounded-full border-0 px-2.5 py-1.5 text-xs shadow-none sm:px-3"
-                >
-                  Mark paid
-                </Button>
+                <div className="grid shrink-0 justify-items-end gap-1">
+                  <p className="text-sm font-black text-[var(--peach)] tabular-nums">
+                    {formatMoney(row.remainingCents, row.currency, locale)}
+                  </p>
+                  <Button
+                    tone="pastel"
+                    disabled={pending}
+                    onClick={() => markAsPaid(row)}
+                    className="min-h-8 rounded-full border-0 px-2 py-1 text-[11px] shadow-none"
+                  >
+                    Mark paid
+                  </Button>
+                </div>
               </article>
             ))}
           </div>
@@ -181,7 +183,7 @@ export function LandlordBalanceView({
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/h/${householdId}/expenses/${row.expenseId}`}
-                    className="block truncate text-sm font-black text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+                    className="line-clamp-2 text-sm leading-5 font-black [overflow-wrap:anywhere] break-words text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
                   >
                     {row.title}
                   </Link>

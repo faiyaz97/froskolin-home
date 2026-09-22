@@ -136,7 +136,7 @@ export function AuditList({
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <strong className="block truncate text-sm leading-5">
+                  <strong className="line-clamp-2 text-sm leading-5 [overflow-wrap:anywhere] break-words">
                     {activityHeadline(event, members)}
                   </strong>
                   <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">

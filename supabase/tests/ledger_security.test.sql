@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(46);
+select plan(51);
 
 select set_config('app.suppress_audit', 'true', true);
 
@@ -494,6 +494,62 @@ select throws_like(
   $test$,
   '%already confirmed%',
   'the same bill document cannot create a second expense'
+);
+select lives_ok(
+  $test$
+  select public.replace_absences_and_utility_shares(
+    p_household_id => '00000000-0000-4000-8000-00000000b001',
+    p_member_id => '00000000-0000-4000-8000-00000000c001',
+    p_ranges => '[{"start_date":"2030-01-01","end_date":"2030-01-31"}]'::jsonb,
+    p_utility_updates => jsonb_build_array(jsonb_build_object(
+      'expense_id', (select id from public.expenses where title = 'Gas bill'),
+      'variable_split_mode', 'occupancy',
+      'shares', jsonb_build_array(
+        jsonb_build_object('member_id','00000000-0000-4000-8000-00000000c001','share_cents',25,'fixed_share_cents',25,'variable_share_cents',0,'presence_days',0,'allocation_order',0),
+        jsonb_build_object('member_id','00000000-0000-4000-8000-00000000c002','share_cents',75,'fixed_share_cents',25,'variable_share_cents',50,'presence_days',31,'allocation_order',1)
+      )
+    )),
+    p_expected_absences => '[]'::jsonb,
+    p_actor_user_id => '00000000-0000-4000-8000-00000000a001'
+  )
+  $test$,
+  'changing away dates atomically recalculates utility shares'
+);
+select is(
+  (select share_cents from public.expense_shares where expense_id = (select id from public.expenses where title = 'Gas bill') and member_id = '00000000-0000-4000-8000-00000000c001'),
+  25::bigint,
+  'the recalculated utility share is stored'
+);
+select is(
+  (
+    select previous_values->'split_config'->'shares'->0->>'share_cents'
+    from public.audit_events
+    where entity_type = 'expense' and entity_id = (select id from public.expenses where title = 'Gas bill') and action_type = 'updated'
+    order by occurred_at desc limit 1
+  ),
+  '50',
+  'the recalculation activity stores the previous member share'
+);
+select is(
+  (
+    select new_values->'split_config'->'shares'->0->>'share_cents'
+    from public.audit_events
+    where entity_type = 'expense' and entity_id = (select id from public.expenses where title = 'Gas bill') and action_type = 'updated'
+    order by occurred_at desc limit 1
+  ),
+  '25',
+  'the recalculation activity stores the new member share'
+);
+select is(
+  (
+    select count(*)
+    from public.audit_events
+    where entity_type = 'utility_bill'
+      and entity_id = (select id from public.expenses where title = 'Gas bill')
+      and action_type = 'updated'
+  ),
+  0::bigint,
+  'share recalculation does not create an empty utility activity event'
 );
 select lives_ok(
   $test$

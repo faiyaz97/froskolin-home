@@ -37,6 +37,7 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
       style.setProperty("--home-balance-height", `${68 - 26 * eased}px`);
       style.setProperty("--home-detail-opacity", `${expanded}`);
       style.setProperty("--home-detail-width", `${76 * expanded}px`);
+      style.setProperty("--home-detail-height", `${28 * expanded}px`);
       style.setProperty("--home-member-height", `${20 * expanded}px`);
       style.setProperty("--home-summary-gap", `${8 - 4 * eased}px`);
       style.setProperty("--home-header-pad", `${14 - 7 * eased}px`);

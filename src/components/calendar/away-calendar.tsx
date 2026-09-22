@@ -50,7 +50,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
-    year: "numeric",
+    year: "2-digit",
     timeZone: "UTC",
   }).format(dateOnlyToDate(value));
 }

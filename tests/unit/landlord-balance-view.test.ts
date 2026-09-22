@@ -37,7 +37,7 @@ describe("landlord balance view", () => {
   it("keeps outstanding rows compact and shows only the latest five paid bills", () => {
     const outstanding: LandlordBillBalance = {
       expenseId: "outstanding",
-      title: "Gas bill",
+      title: "Gas bill with an exceptionally long supplier reference that must remain readable",
       currency: "EUR",
       expenseDate: "2026-09-08",
       originalShareCents: 3_353,
@@ -57,7 +57,13 @@ describe("landlord balance view", () => {
 
     expect(screen.queryByText("left", { exact: true })).toBeNull();
     expect(screen.queryByText(/Paid .* of/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Mark paid" })).toBeTruthy();
+    const markPaid = screen.getByRole("button", { name: "Mark paid" });
+    expect(markPaid.className).toContain("min-h-8");
+    expect(
+      screen.getByRole("link", {
+        name: "Gas bill with an exceptionally long supplier reference that must remain readable",
+      }).className,
+    ).toContain("line-clamp-2");
     expect(screen.queryByText("Paid bill 1", { exact: true })).toBeNull();
     expect(screen.queryByText("Paid bill 2", { exact: true })).toBeNull();
     expect(screen.getByText("Paid bill 7", { exact: true })).toBeTruthy();

@@ -133,6 +133,7 @@ a {
   --home-balance-height: 68px;
   --home-detail-opacity: 1;
   --home-detail-width: 76px;
+  --home-detail-height: 28px;
   --home-member-height: 20px;
   --home-summary-gap: 8px;
   --home-header-pad: 14px;
@@ -210,6 +211,7 @@ a {
 .home-summary-copy {
   width: var(--home-detail-width);
   max-width: var(--home-detail-width);
+  max-height: var(--home-detail-height);
   opacity: var(--home-detail-opacity);
 }
 
