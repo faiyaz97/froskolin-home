@@ -110,7 +110,7 @@ Canonical shell: `src/components/household/app-shell.tsx`.
 - `>=1024px`: the primary navigation becomes a centered floating rounded bar near the bottom.
 - Any form controlled by the shell Save icon must have `data-mobile-submit` and a semantic submit button.
 - Canonical navigation component: `src/components/household/app-navigation.tsx`.
-- On mobile, primary navigation is a compact white bar attached to the bottom screen edge and extending through the safe area. The selected icon and label turn sky blue, with a short blue underline that glides between destinations; the account avatar receives a matching ring. The sleeping cat rests just above the bar. From `md` upward, navigation remains a white floating dock with a soft blue selected surface. Icons lift slightly on hover. The global reduced-motion rule shortens these transitions.
+- On mobile, primary navigation is a compact white bar attached to the bottom screen edge and extending through the safe area. The selected icon and label turn sky blue, with a short blue underline that glides between destinations; the account avatar receives a matching ring. The sleeping cat touches the bar's top edge with no visible gap. From `md` upward, navigation remains a white floating dock with a soft blue selected surface. Icons lift slightly on hover. The global reduced-motion rule shortens these transitions.
 - Keep Home's floating action stack above the dock at both standard and phone safe-area insets.
 - Group pages share one viewport-filling loading skeleton with a heading, two summary cards, and ledger-like rows. It fits between the header and navigation without extending the page or requiring scrolling; Home uses the same placement as other primary pages.
 

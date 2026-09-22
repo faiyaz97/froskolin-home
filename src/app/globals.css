@@ -220,7 +220,7 @@ a {
 .bottom-mascot-image {
   position: fixed;
   z-index: 10;
-  bottom: calc(59px + max(0.35rem, env(safe-area-inset-bottom)));
+  bottom: calc(55px + max(0.375rem, env(safe-area-inset-bottom)));
   left: 1.25rem;
 }
 
@@ -275,7 +275,7 @@ a {
   }
 
   .bottom-mascot-image {
-    bottom: 87px;
+    bottom: 85px;
     left: 50%;
     translate: -50% 0;
   }
@@ -288,6 +288,12 @@ a {
     --home-head-height: 104px;
     --home-balance-height: 58px;
     will-change: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bottom-mascot-image {
+    bottom: 93px;
   }
 }
 

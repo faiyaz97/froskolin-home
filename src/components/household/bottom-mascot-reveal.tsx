@@ -59,7 +59,7 @@ export function BottomMascotReveal() {
         sizes="(max-width: 767px) 108px, 120px"
         alt=""
         aria-hidden="true"
-        className="bottom-mascot-image pointer-events-none h-auto w-[108px] opacity-0 will-change-transform md:mb-1 md:w-30"
+        className="bottom-mascot-image pointer-events-none h-auto w-[108px] opacity-0 will-change-transform md:w-30"
       />
     </div>
   );
