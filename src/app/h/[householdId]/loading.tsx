@@ -1,9 +1,6 @@
 export default function Loading() {
   return (
-    <div
-      role="status"
-      className="group-loading-skeleton mx-auto w-full max-w-2xl"
-    >
+    <div role="status" className="group-loading-skeleton mx-auto w-full max-w-2xl">
       <span className="screen-reader-only">Loading page…</span>
       <div
         aria-hidden="true"
