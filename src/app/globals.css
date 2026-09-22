@@ -292,6 +292,11 @@ a {
 }
 
 @media (max-width: 767px) {
+  main[data-home="true"] .group-loading-skeleton {
+    width: calc(100% - 1.5rem);
+    margin-top: 0.75rem;
+  }
+
   .app-safe-bottom {
     padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom)));
   }
