@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 export class AuthorizationError extends Error {
@@ -9,7 +11,7 @@ export class AuthorizationError extends Error {
   }
 }
 
-export async function requireAuthenticatedUser() {
+export const requireAuthenticatedUser = cache(async function requireAuthenticatedUser() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,7 +19,7 @@ export async function requireAuthenticatedUser() {
   } = await supabase.auth.getUser();
   if (error || !user) throw new AuthorizationError("Please sign in to continue.");
   return { supabase, user };
-}
+});
 
 function assertPinChangeComplete(user: { app_metadata?: Record<string, unknown> }) {
   if (user.app_metadata?.must_change_pin === true) {
@@ -31,7 +33,9 @@ export async function requireAuthenticatedMutation() {
   return result;
 }
 
-export async function requireHouseholdMembership(householdId: string) {
+export const requireHouseholdMembership = cache(async function requireHouseholdMembership(
+  householdId: string,
+) {
   const { supabase, user } = await requireAuthenticatedUser();
   const { data, error } = await supabase
     .from("household_members")
@@ -51,7 +55,7 @@ export async function requireHouseholdMembership(householdId: string) {
       avatar_color: string | null;
     },
   };
-}
+});
 
 export async function requireHouseholdOwner(householdId: string) {
   const result = await requireHouseholdMembership(householdId);
