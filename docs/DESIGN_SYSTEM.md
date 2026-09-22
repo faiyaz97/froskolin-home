@@ -110,6 +110,8 @@ Canonical shell: `src/components/household/app-shell.tsx`.
 - `>=1024px`: the primary navigation becomes a centered floating rounded bar near the bottom.
 - Any form controlled by the shell Save icon must have `data-mobile-submit` and a semantic submit button.
 - Canonical navigation component: `src/components/household/app-navigation.tsx`.
+- On mobile, primary navigation is a compact white bar attached to the bottom screen edge and extending through the safe area. The selected icon and label turn sky blue, with a short blue underline that glides between destinations; the account avatar receives a matching ring. The sleeping cat rests just above the bar. From `md` upward, navigation remains a white floating dock with a soft blue selected surface. Icons lift slightly on hover. The global reduced-motion rule shortens these transitions.
+- Keep Home's floating action stack above the dock at both standard and phone safe-area insets.
 
 Special page behavior:
 
@@ -232,6 +234,12 @@ Canonical feature control: `src/components/expenses/transaction-note-action.tsx`
 - Match the date and attachment tools: a 56px circular action target with no nested tile. A non-empty note uses the lighter persistent lavender state and a filled icon so its presence is visible without exposing its contents; hover uses the stronger lavender tint.
 - Keep notes to 500 characters, trim them on confirmation, and hide empty notes on read-only pages.
 - On read-only transaction pages, place notes inside the main detail card after the people/share rows as compact inline copy in the form “Notes: …”. Do not create a separate notes card.
+
+### Transaction detail summary
+
+- On mobile, keep the record icon and title/date together above the divider. Place monetary information inside the payer/share section beneath that divider so long titles never compete with the amount.
+- Keep the total amount prominent and right-aligned without a label. On utility bills, show Fixed and Usage together on one muted line immediately beside the total and vertically centered with it; ordinary and recurring expenses show only the total.
+- From `sm` upward, keep the amount at the right of the title and show the utility breakdown beneath it.
 
 ### Date-range calendars
 

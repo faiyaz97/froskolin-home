@@ -223,7 +223,7 @@ export default async function HouseholdHome({
         <BottomMascotReveal />
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-[88px] z-20 max-w-full lg:bottom-28">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[max(88px,calc(80px+env(safe-area-inset-bottom)))] z-20 max-w-full lg:bottom-28">
         <div className="mx-auto flex w-full max-w-[980px] justify-end px-3 sm:px-6 lg:px-8">
           <div className="pointer-events-auto flex flex-col items-end gap-2.5">
             <ButtonLink

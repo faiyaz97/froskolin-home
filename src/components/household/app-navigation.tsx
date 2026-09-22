@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, History, Home } from "lucide-react";
@@ -32,15 +33,18 @@ export function AppNavigation({
 }) {
   const pathname = usePathname();
   const root = `/h/${householdId}`;
+  const activeIndex = items.findIndex(({ path }) => isActive(pathname, `${root}${path}`, path));
 
   return (
     <nav
       aria-label="Primary"
+      style={{ "--app-nav-index": activeIndex } as CSSProperties}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 grid-cols-4 border-t border-[var(--line)] bg-white/95 px-1 pt-1.5 pb-[max(.35rem,env(safe-area-inset-bottom))] shadow-[0_-8px_28px_rgb(15_23_42/0.08)] backdrop-blur-xl md:grid lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-[min(520px,calc(100vw-2rem))] lg:-translate-x-1/2 lg:rounded-[var(--radius-surface)] lg:border lg:px-2 lg:pb-1.5",
+        "app-navigation fixed inset-x-0 bottom-0 z-40 grid-cols-4 border-t border-[var(--line)] px-1.5 pt-1 pb-[max(.375rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgb(23_32_51/0.05)] md:inset-x-3 md:bottom-3 md:grid md:rounded-[24px] md:border md:p-1.5 md:shadow-[0_12px_36px_rgb(23_32_51/0.14),0_2px_8px_rgb(23_32_51/0.06)] md:backdrop-blur-xl lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-[min(520px,calc(100vw-2rem))] lg:-translate-x-1/2",
         showOnMobile ? "grid" : "hidden",
       )}
     >
+      {activeIndex >= 0 && <span className="app-navigation-indicator" aria-hidden="true" />}
       {items.map(({ label, path, icon: Icon }) => {
         const href = `${root}${path}`;
         const active = isActive(pathname, href, path);
@@ -50,24 +54,26 @@ export function AppNavigation({
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex min-h-[58px] flex-col items-center justify-end gap-1 rounded-xl pb-1 text-[10px] font-extrabold no-underline",
+              "group relative z-10 flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11px] leading-none font-bold no-underline transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sky)] md:min-h-[58px]",
               active
-                ? "bg-[var(--pastel-mint)] text-[var(--brand)]"
-                : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink-soft)]",
+                ? "font-extrabold text-[var(--sky)]"
+                : "text-[var(--muted)] hover:text-[var(--sky)]",
             )}
           >
-            {Icon ? (
-              <Icon className="size-[22px]" strokeWidth={active ? 2.7 : 2} aria-hidden="true" />
-            ) : (
-              <MemberAvatar
-                name={memberName}
-                color={memberAvatarColor as AvatarColor | null}
-                className={cn(
-                  "size-6 border-0 text-[9px] shadow-none",
-                  active && "ring-2 ring-[var(--brand)] ring-offset-2",
-                )}
-              />
-            )}
+            <span className="grid size-7 place-items-center transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
+              {Icon ? (
+                <Icon className="size-[22px]" strokeWidth={active ? 2.5 : 2} aria-hidden="true" />
+              ) : (
+                <MemberAvatar
+                  name={memberName}
+                  color={memberAvatarColor as AvatarColor | null}
+                  className={cn(
+                    "size-6 border-0 text-[9px] shadow-none",
+                    active && "ring-2 ring-[var(--sky)] ring-offset-2",
+                  )}
+                />
+              )}
+            </span>
             <span>{label}</span>
           </Link>
         );

@@ -147,12 +147,9 @@ export default async function ExpenseDetail({
 
       <article className="overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-sm)]">
         <div className="p-4 sm:p-6">
-          <div className="flex items-start gap-3 sm:gap-4">
+          <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-start gap-x-3 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:gap-x-4">
             {utility ? (
-              <UtilityTypeIcon
-                value={utility.utility_type}
-                className="size-12 self-center [&>svg]:size-5"
-              />
+              <UtilityTypeIcon value={utility.utility_type} className="size-12 [&>svg]:size-5" />
             ) : (
               <span
                 className={
@@ -193,7 +190,7 @@ export default async function ExpenseDetail({
               )}
             </div>
 
-            <div className="shrink-0 text-right">
+            <div className="hidden shrink-0 text-right sm:block">
               <strong className="block text-xl font-black tracking-[-0.035em] tabular-nums sm:text-3xl">
                 {formatMoney(Number(expense.total_cents), expense.currency, locale)}
               </strong>
@@ -207,7 +204,20 @@ export default async function ExpenseDetail({
             </div>
           </div>
 
-          <div className="mt-5 border-t border-[var(--soft-line)] pt-3">
+          <div className="mt-3 border-t border-[var(--soft-line)] pt-3 sm:mt-5">
+            <div className="flex items-center justify-end gap-3 text-right sm:hidden">
+              {utility && (
+                <p className="text-xs leading-4 font-semibold text-[var(--muted)] tabular-nums">
+                  Fixed {formatMoney(Number(utility.fixed_cents), expense.currency, locale)}
+                  <span className="px-1">·</span>
+                  Usage {formatMoney(Number(utility.variable_cents), expense.currency, locale)}
+                </p>
+              )}
+              <strong className="shrink-0 text-xl font-black tracking-[-0.035em] tabular-nums">
+                {formatMoney(Number(expense.total_cents), expense.currency, locale)}
+              </strong>
+            </div>
+
             <div className="relative flex min-h-11 items-center gap-2">
               <span className="relative z-10">
                 {expense.paid_by_landlord ? (
