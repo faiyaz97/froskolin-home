@@ -149,7 +149,6 @@ a {
   --home-group-border: var(--pastel-mint-line);
   --home-landlord-bg: var(--pastel-peach);
   --home-landlord-border: var(--pastel-peach-line);
-  will-change: transform;
 }
 
 .home-summary-surface {

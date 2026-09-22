@@ -185,8 +185,7 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
     .evaluate((element) => ({ client: element.clientWidth, scroll: element.scrollWidth }));
   expect(ledgerWidths.scroll).toBeLessThanOrEqual(ledgerWidths.client);
 
-  await page.mouse.move(160, 180);
-  await page.mouse.wheel(0, 120);
+  await page.evaluate(() => window.scrollTo(0, 48));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await expect
     .poll(async () =>
@@ -203,8 +202,18 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   expect(midTransitionOpacity).toBeGreaterThan(0.2);
   await page.screenshot({ path: testInfo.outputPath("home-summary-transition-320.png") });
 
-  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
-  await expect(summary).toHaveAttribute("data-collapsed", "true");
+  const fastScrollState = await page.evaluate(async () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight });
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    const element = document.querySelector<HTMLElement>(".home-summary-motion");
+    return {
+      collapsed: element?.dataset.collapsed,
+      opacity: Number(element?.style.getPropertyValue("--home-detail-opacity")),
+    };
+  });
+  expect(fastScrollState).toEqual({ collapsed: "true", opacity: 0 });
   const collapsedSummary = await summary.boundingBox();
   const collapsedFrame = await stickyFrame.boundingBox();
   expect(collapsedSummary!.height).toBeLessThan(expandedSummary!.height);
