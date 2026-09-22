@@ -40,8 +40,30 @@ const recurringGeneratorGrantMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260920162334_grant_recurring_generator_columns.sql"),
   "utf8",
 ).toLowerCase();
+const singleCurrencyMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260922095409_enforce_single_household_currency.sql"),
+  "utf8",
+).toLowerCase();
 
 describe("database security and automation contract", () => {
+  it("enforces one currency across every group financial record", () => {
+    expect(singleCurrencyMigration).toContain("create trigger expenses_apply_household_currency");
+    expect(singleCurrencyMigration).toContain(
+      "create trigger settlements_apply_household_currency",
+    );
+    expect(singleCurrencyMigration).toContain(
+      "create trigger recurring_rules_apply_household_currency",
+    );
+    expect(singleCurrencyMigration).toContain("create trigger households_cascade_currency");
+    expect(singleCurrencyMigration).toContain("for share");
+    expect(singleCurrencyMigration).toContain(
+      "revoke all on function private.apply_household_currency() from public, anon, authenticated",
+    );
+    expect(singleCurrencyMigration).toContain(
+      "revoke all on function private.cascade_household_currency() from public, anon, authenticated",
+    );
+  });
+
   it("grants the recurring generator every rule column it reads", () => {
     expect(recurringGeneratorGrantMigration).toContain("grant select (currency, payer_member_id)");
     expect(recurringGeneratorGrantMigration).toContain(

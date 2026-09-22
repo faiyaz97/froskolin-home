@@ -63,8 +63,8 @@ export function AppShell({
 
   return (
     <MobileTitleContext.Provider value={setMobileTitleOverride}>
-      <div className="min-h-dvh overflow-x-clip bg-[var(--canvas)]">
-        <div className="min-w-0">
+      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-[var(--canvas)]">
+        <div className="w-full max-w-full min-w-0">
           <header className="sticky top-0 z-30 hidden border-b border-[var(--line)] bg-white/92 px-6 py-2.5 backdrop-blur-xl md:block lg:px-8">
             <div className="mx-auto flex max-w-[980px] items-center">
               <CatMark />
@@ -103,7 +103,7 @@ export function AppShell({
 
           <main
             className={cn(
-              "mx-auto w-full max-w-[980px] md:px-6 md:pt-7 md:pb-36 lg:px-8 lg:pt-8",
+              "mx-auto w-full max-w-[980px] min-w-0 md:px-6 md:pt-7 md:pb-36 lg:px-8 lg:pt-8",
               isHome ? "px-0 pt-0" : "px-3 pt-3",
               isPrimaryPage ? "app-safe-bottom" : "mobile-subpage pb-6",
             )}

@@ -49,9 +49,9 @@ describe("settlement form defaults", () => {
     expect(
       (document.querySelector('input[name="receivingMemberId"]') as HTMLInputElement).value,
     ).toBe("member-two");
-    expect((document.querySelector('input[name="currency"]') as HTMLInputElement).value).toBe(
-      "EUR",
-    );
+    expect(screen.getByRole("img", { name: "Group currency: EUR" })).toBeTruthy();
+    expect(document.querySelector('input[name="currency"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Currency" })).toBeNull();
   });
 
   it("swaps payer and receiver when the opposite member is selected", () => {

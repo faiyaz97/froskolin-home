@@ -54,12 +54,15 @@
 }
 
 html {
-  min-width: 320px;
+  width: 100%;
+  max-width: 100%;
   background: var(--canvas);
-  scrollbar-gutter: stable;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   margin: 0;
   color: var(--ink);
   background: var(--canvas);
@@ -223,6 +226,10 @@ a {
 }
 
 @media (min-width: 768px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+
   .bottom-mascot-image {
     bottom: 87px;
     left: 50%;

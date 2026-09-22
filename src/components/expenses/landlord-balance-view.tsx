@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, House, ReceiptText, RotateCcw } from "lucide-react";
+import { Check, CheckCircle2, House, ReceiptText, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -10,7 +10,6 @@ import { totalLandlordOutstanding } from "@/lib/domain";
 import { formatMoney } from "@/lib/format";
 import type { LandlordBillBalance } from "@/lib/queries";
 import { UtilityTypeIcon } from "../bills/bill-meta-controls";
-import { Button } from "../ui/button";
 import { ConfirmationButton } from "../ui/confirmation-button";
 import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
@@ -139,18 +138,24 @@ export function LandlordBalanceView({
                     {formatBillDate(row.expenseDate, locale)}
                   </p>
                 </div>
-                <div className="grid shrink-0 justify-items-end gap-1">
-                  <p className="text-sm font-black text-[var(--peach)] tabular-nums">
+                <div className="flex shrink-0 items-center gap-2">
+                  <p className="text-sm font-black whitespace-nowrap text-[var(--peach)] tabular-nums">
                     {formatMoney(row.remainingCents, row.currency, locale)}
                   </p>
-                  <Button
-                    tone="pastel"
+                  <button
+                    type="button"
+                    aria-label="Mark paid"
+                    title="Mark paid"
                     disabled={pending}
                     onClick={() => markAsPaid(row)}
-                    className="min-h-8 rounded-full border-0 px-2 py-1 text-[11px] shadow-none"
+                    className={iconActionClass({
+                      tone: "brand",
+                      active: true,
+                      className: "size-9",
+                    })}
                   >
-                    Mark paid
-                  </Button>
+                    <Check className="size-4" strokeWidth={3} aria-hidden="true" />
+                  </button>
                 </div>
               </article>
             ))}

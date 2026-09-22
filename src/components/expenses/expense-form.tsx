@@ -20,7 +20,7 @@ import {
 } from "./expense-attachment-action";
 import { ExpenseDateAction } from "./expense-date-action";
 import {
-  CurrencyAction,
+  CurrencyMark,
   ExpenseSharingControls,
   splitIsValid,
   type SplitValues,
@@ -144,9 +144,7 @@ export function ExpenseForm({
     initial?.expenseDate ?? initialRecurring?.startDate ?? new Date().toISOString().slice(0, 10),
   );
   const [recurringEndDate, setRecurringEndDate] = useState(initialRecurring?.endDate ?? "");
-  const [currency, setCurrency] = useState(
-    initial?.currency ?? initialRecurring?.currency ?? defaultCurrency,
-  );
+  const currency = defaultCurrency;
   const [attachmentFile, setAttachmentFile] = useState<File>();
   const [attachmentRemoved, setAttachmentRemoved] = useState(false);
   const [note, setNote] = useState(initial?.note ?? "");
@@ -228,7 +226,6 @@ export function ExpenseForm({
         householdId,
         title: String(data.get("title") ?? ""),
         totalCents,
-        currency,
         payerMemberId: payer,
         expenseDate,
         note: note || undefined,
@@ -239,7 +236,6 @@ export function ExpenseForm({
           householdId,
           title: input.title,
           amountCents: input.totalCents,
-          currency: input.currency,
           payerMemberId: input.payerMemberId,
           splitConfig,
           startDate: input.expenseDate,
@@ -346,7 +342,7 @@ export function ExpenseForm({
               <label className="screen-reader-only" htmlFor="expense-amount">
                 Amount
               </label>
-              <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+              <CurrencyMark value={currency} />
               <input
                 id="expense-amount"
                 name="amount"

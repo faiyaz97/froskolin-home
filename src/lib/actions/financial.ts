@@ -77,6 +77,16 @@ function localDateOnly(timezone: string): string {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+async function readGroupCurrency(householdId: string): Promise<string> {
+  const { data, error } = await createAdminClient()
+    .from("households")
+    .select("default_currency")
+    .eq("id", householdId)
+    .single();
+  if (error || !data) throw error ?? new Error("Group currency is unavailable.");
+  return String(data.default_currency);
+}
+
 function normalExpenseShares(input: ReturnType<typeof expenseInputSchema.parse>) {
   const config = input.splitConfig;
   const shares =
@@ -114,11 +124,12 @@ export async function saveExpenseAction(
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.createExpense, {
       p_household_id: parsed.data.householdId,
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
-      p_currency: parsed.data.currency,
+      p_currency: currency,
       p_payer_member_id:
         parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
@@ -141,7 +152,7 @@ export async function saveExpenseAction(
       actorName: membership.display_name,
       title: parsed.data.title,
       shares: normalExpenseShares(parsed.data),
-      currency: parsed.data.currency,
+      currency,
       payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       bill: false,
     });
@@ -157,6 +168,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const pushBefore = await readExpensePushSnapshot(
       parsed.data.householdId,
       parsed.data.expenseId,
@@ -165,7 +177,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
       p_expense_id: parsed.data.expenseId,
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
-      p_currency: parsed.data.currency,
+      p_currency: currency,
       p_payer_member_id:
         parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
@@ -185,7 +197,7 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
       actorName: membership.display_name,
       title: parsed.data.title,
       shares: normalExpenseShares(parsed.data),
-      currency: parsed.data.currency,
+      currency,
       payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       bill: false,
       before: pushBefore,
@@ -362,10 +374,11 @@ export async function confirmUtilityBillAction(
     const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: household, error: householdError } = await supabase
       .from("households")
-      .select("timezone")
+      .select("timezone, default_currency")
       .eq("id", parsed.data.householdId)
       .single();
     if (householdError || !household) throw householdError ?? new Error("Household not found.");
+    const currency = String(household.default_currency);
     const ids = parsed.data.participants.map((participant) => participant.memberId);
     const { data: absenceRows, error: absenceError } = await supabase
       .from("absence_periods")
@@ -400,7 +413,7 @@ export async function confirmUtilityBillAction(
       p_household_id: parsed.data.householdId,
       p_title: parsed.data.title,
       p_total_cents: parsed.data.totalCents,
-      p_currency: parsed.data.currency,
+      p_currency: currency,
       p_payer_member_id:
         parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
@@ -446,7 +459,7 @@ export async function confirmUtilityBillAction(
         member_id: share.memberId,
         share_cents: share.amountCents,
       })),
-      currency: parsed.data.currency,
+      currency,
       payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       bill: true,
     });
@@ -462,6 +475,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const pushBefore = await readExpensePushSnapshot(
       parsed.data.householdId,
       parsed.data.expenseId,
@@ -511,7 +525,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
         p_expense_id: parsed.data.expenseId,
         p_title: parsed.data.title,
         p_total_cents: parsed.data.totalCents,
-        p_currency: parsed.data.currency,
+        p_currency: currency,
         p_payer_member_id:
           parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
         p_paid_by_landlord: parsed.data.payerMemberId === "landlord",
@@ -558,7 +572,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
         member_id: share.memberId,
         share_cents: share.amountCents,
       })),
-      currency: parsed.data.currency,
+      currency,
       payer: parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
       bill: true,
       before: pushBefore,
@@ -577,12 +591,13 @@ export async function saveSettlementAction(
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { user } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.recordSettlement, {
       p_household_id: parsed.data.householdId,
       p_paying_member_id: parsed.data.payingMemberId,
       p_receiving_member_id: parsed.data.receivingMemberId,
       p_amount_cents: parsed.data.amountCents,
-      p_currency: parsed.data.currency,
+      p_currency: currency,
       p_settlement_date: parsed.data.settlementDate,
       p_note: parsed.data.note ?? null,
       p_actor_user_id: user.id,
@@ -594,7 +609,7 @@ export async function saveSettlementAction(
     ]);
     const payerName = memberNames[parsed.data.payingMemberId] ?? "A member";
     const receiverName = memberNames[parsed.data.receivingMemberId] ?? "another member";
-    const amount = formatMoney(parsed.data.amountCents, parsed.data.currency);
+    const amount = formatMoney(parsed.data.amountCents, currency);
     await schedulePush({
       householdId: parsed.data.householdId,
       actorUserId: user.id,
@@ -670,13 +685,14 @@ export async function updateSettlementAction(input: unknown): Promise<ActionResu
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const { data, error } = await supabase
       .from("settlements")
       .update({
         paying_member_id: parsed.data.payingMemberId,
         receiving_member_id: parsed.data.receivingMemberId,
         amount_cents: parsed.data.amountCents,
-        currency: parsed.data.currency,
+        currency,
         settlement_date: parsed.data.settlementDate,
         note: parsed.data.note ?? null,
         updated_by: user.id,
@@ -727,13 +743,14 @@ export async function saveRecurringExpenseRuleAction(
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(parsed.data.householdId);
     const { data, error } = await supabase
       .from("recurring_expense_rules")
       .insert({
         household_id: parsed.data.householdId,
         title: parsed.data.title,
         amount_cents: parsed.data.amountCents,
-        currency: parsed.data.currency,
+        currency,
         payer_member_id:
           parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
         paid_by_landlord: parsed.data.payerMemberId === "landlord",
@@ -789,10 +806,11 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
     const { data: home, error: homeError } = await supabase
       .from("households")
-      .select("timezone")
+      .select("timezone, default_currency")
       .eq("id", parsed.data.householdId)
       .single();
     if (homeError) throw homeError;
+    const currency = String(home.default_currency);
     const today = localDateOnly(home.timezone);
     const through = epochDayToDateOnly(
       Math.max(dateOnlyToEpochDay(today), dateOnlyToEpochDay(parsed.data.startDate)) + 400,
@@ -809,7 +827,7 @@ export async function updateRecurringExpenseRuleAction(input: unknown): Promise<
       .update({
         title: parsed.data.title,
         amount_cents: parsed.data.amountCents,
-        currency: parsed.data.currency,
+        currency,
         payer_member_id:
           parsed.data.payerMemberId === "landlord" ? null : parsed.data.payerMemberId,
         paid_by_landlord: parsed.data.payerMemberId === "landlord",

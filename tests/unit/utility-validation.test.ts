@@ -11,7 +11,6 @@ const validBill = {
   totalCents: 10_000,
   fixedCents: 4_000,
   variableCents: 6_000,
-  currency: "EUR",
   payerMemberId: "22222222-2222-4222-8222-222222222222",
   participants: [{ memberId: "22222222-2222-4222-8222-222222222222", order: 0 }],
 };
@@ -35,5 +34,14 @@ describe("utility bill entry mode", () => {
     expect(
       utilityConfirmationSchema.safeParse({ ...validBill, entryMode: "automatic" }).success,
     ).toBe(false);
+  });
+
+  it("does not accept a client-controlled currency", () => {
+    const parsed = utilityConfirmationSchema.parse({
+      ...validBill,
+      currency: "USD",
+      entryMode: "manual",
+    });
+    expect(parsed).not.toHaveProperty("currency");
   });
 });

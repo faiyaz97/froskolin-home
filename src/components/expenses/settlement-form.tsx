@@ -11,7 +11,7 @@ import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { StatusNote } from "../ui/page";
 import { ExpenseDateAction } from "./expense-date-action";
-import { ChoiceRow, CurrencyAction } from "./expense-sharing-controls";
+import { ChoiceRow, CurrencyMark } from "./expense-sharing-controls";
 import { ExpenseTools } from "./expense-tools";
 import { TransactionNoteAction } from "./transaction-note-action";
 
@@ -107,7 +107,7 @@ export function SettlementForm({
         ? (defaultAmountCents / 100).toFixed(2)
         : "",
   );
-  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
+  const currency = defaultCurrency;
   const [paymentDate, setPaymentDate] = useState(initial?.settlementDate ?? localToday());
   const [note, setNote] = useState(initial?.note ?? "");
   const [dialog, setDialog] = useState<MemberDialog>(null);
@@ -132,7 +132,6 @@ export function SettlementForm({
         payingMemberId: payer,
         receivingMemberId: receiver,
         amountCents,
-        currency,
         settlementDate: paymentDate,
         note: note || undefined,
       };
@@ -195,7 +194,7 @@ export function SettlementForm({
               attemptedSubmit && !amountValid && "border-[var(--negative)]",
             )}
           >
-            <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+            <CurrencyMark value={currency} />
             <label className="screen-reader-only" htmlFor="settlement-amount">
               Amount
             </label>
@@ -224,7 +223,6 @@ export function SettlementForm({
 
         <input type="hidden" name="payingMemberId" value={payer} />
         <input type="hidden" name="receivingMemberId" value={receiver} />
-        <input type="hidden" name="currency" value={currency} />
         <input type="hidden" name="settlementDate" value={paymentDate} />
         <input type="hidden" name="note" value={note} />
       </section>

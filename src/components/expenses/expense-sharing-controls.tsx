@@ -5,7 +5,6 @@ import { Check, ChevronDown, Users } from "lucide-react";
 import { LandlordAvatar, MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { Dialog } from "../ui/dialog";
 import { Input } from "../ui/field";
-import { iconActionClass } from "../ui/icon-action";
 import { MoneyInput } from "../ui/money-input";
 import { cn } from "../ui/cn";
 
@@ -71,70 +70,19 @@ export function ChoiceRow({
   );
 }
 
-export function CurrencyAction({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
+export function CurrencyMark({ value }: { value: string }) {
+  const currency = currencies.find((item) => item.code === value);
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Currency"
-        title={`Currency: ${value}`}
-        aria-haspopup="dialog"
-        aria-expanded={draft !== null}
-        disabled={disabled}
-        onClick={() => setDraft(value)}
-        className={iconActionClass({
-          tone: "brand",
-          active: true,
-          className: "size-11 self-center rounded-xl",
-        })}
-      >
-        <span className="block text-2xl leading-none font-semibold" aria-hidden="true">
-          {currencies.find((item) => item.code === value)?.symbol ?? value}
-        </span>
-      </button>
-      {draft !== null && (
-        <Dialog
-          title="Currency"
-          onClose={() => setDraft(null)}
-          onDone={() => {
-            onChange(draft);
-            setDraft(null);
-          }}
-        >
-          <div role="radiogroup" aria-label="Currency" className="grid gap-1">
-            {currencies.map((item) => (
-              <ChoiceRow
-                key={item.code}
-                selected={draft === item.code}
-                onClick={() => setDraft(item.code)}
-              >
-                <span className="flex items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--canvas)] text-xl"
-                  >
-                    {item.symbol}
-                  </span>
-                  <span className="min-w-0">
-                    <strong className="block">{item.code}</strong>
-                    <span className="block text-xs text-[var(--muted)]">{item.name}</span>
-                  </span>
-                </span>
-              </ChoiceRow>
-            ))}
-          </div>
-        </Dialog>
-      )}
-    </>
+    <span
+      role="img"
+      aria-label={`Group currency: ${value}`}
+      title={`Group currency: ${value}`}
+      className="grid size-11 shrink-0 place-items-center self-center rounded-xl bg-[var(--brand-icon-soft)] text-[var(--brand)]"
+    >
+      <span className="block text-2xl leading-none font-semibold" aria-hidden="true">
+        {currency?.symbol ?? value}
+      </span>
+    </span>
   );
 }
 

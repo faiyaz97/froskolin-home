@@ -9,7 +9,7 @@ import { determineBillEntryMode, type BillFinancialBaseline } from "@/lib/bills/
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import type { ExtractedBill } from "@/lib/validation";
-import { CurrencyAction } from "../expenses/expense-sharing-controls";
+import { CurrencyMark } from "../expenses/expense-sharing-controls";
 import { ExpenseTools } from "../expenses/expense-tools";
 import { TransactionNoteAction } from "../expenses/transaction-note-action";
 import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
@@ -116,9 +116,7 @@ export function BillConfirmation({
       : (existing?.title ?? formatUtilityBillTitle(initialUtilityType, "", "", locale)),
   );
   const [titleWasEdited, setTitleWasEdited] = useState(Boolean(existing && !initial));
-  const [currency, setCurrency] = useState(
-    initial?.currency ?? existing?.currency ?? defaultCurrency,
-  );
+  const currency = defaultCurrency;
   const [payer, setPayer] = useState(
     existing?.payerMemberId ?? (landlordEnabled ? "landlord" : currentMemberId),
   );
@@ -246,7 +244,6 @@ export function BillConfirmation({
         totalCents,
         fixedCents,
         variableCents,
-        currency,
         payerMemberId: payer,
         participants: members
           .filter((member) => selected.has(member.id))
@@ -342,7 +339,7 @@ export function BillConfirmation({
             attemptedSubmit && !totalValid && "border-[var(--negative)]",
           )}
         >
-          <CurrencyAction value={currency} onChange={setCurrency} disabled={pending} />
+          <CurrencyMark value={currency} />
           <label className="screen-reader-only" htmlFor="bill-total">
             Total due
           </label>

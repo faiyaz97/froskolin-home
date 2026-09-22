@@ -25,14 +25,8 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const expenseForm = page.locator("form[data-mobile-submit]");
-  await expect(async () => {
-    await page.getByRole("button", { name: "Currency", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Currency", exact: true })).toBeVisible();
-  }).toPass({ timeout: 15000 });
-  await page
-    .getByRole("dialog", { name: "Currency", exact: true })
-    .getByRole("button", { name: "Back", exact: true })
-    .click();
+  await expect(page.getByRole("img", { name: "Group currency: EUR" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Currency", exact: true })).toHaveCount(0);
   if (testInfo.project.use.viewport!.width < 768) {
     await page.getByRole("button", { name: "Add expense", exact: true }).click();
   } else {
@@ -55,10 +49,9 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
 
   for (const width of [320, 360, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 740 });
-    for (const name of ["Currency", "Split method", "Paid by"]) {
+    for (const name of ["Split method", "Paid by"]) {
       await page.getByRole("button", { name, exact: true }).click();
-      const dialogName =
-        name === "Split method" ? "Split expense" : name === "Paid by" ? "Paid by" : "Currency";
+      const dialogName = name === "Split method" ? "Split expense" : "Paid by";
       const dialog = page.getByRole("dialog", { name: dialogName, exact: true });
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Back", exact: true })).toBeVisible();
@@ -180,6 +173,13 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   const expandedSummary = await summary.boundingBox();
   const expandedFrame = await stickyFrame.boundingBox();
   await page.screenshot({ path: testInfo.outputPath("home-summary-expanded-320.png") });
+  const mobileWidths = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    document: document.documentElement.scrollWidth,
+    body: document.body.scrollWidth,
+  }));
+  expect(mobileWidths.document).toBeLessThanOrEqual(mobileWidths.viewport);
+  expect(mobileWidths.body).toBeLessThanOrEqual(mobileWidths.viewport);
 
   await page.mouse.move(160, 180);
   await page.mouse.wheel(0, 120);

@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import {
   centsSchema,
-  currencySchema,
   dateOnlySchema,
   nonEmptyTextSchema,
   positiveCentsSchema,
@@ -55,7 +54,6 @@ export const expenseInputSchema = z
     householdId: uuidSchema,
     title: nonEmptyTextSchema,
     totalCents: positiveCentsSchema,
-    currency: currencySchema,
     payerMemberId: payerSelectionSchema,
     expenseDate: dateOnlySchema,
     note: z.string().trim().max(500).optional(),
@@ -106,7 +104,6 @@ export const settlementInputSchema = z
     payingMemberId: uuidSchema,
     receivingMemberId: uuidSchema,
     amountCents: positiveCentsSchema,
-    currency: currencySchema,
     settlementDate: dateOnlySchema,
     note: z.string().trim().max(500).optional(),
   })

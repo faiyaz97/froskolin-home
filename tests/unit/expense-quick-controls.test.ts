@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ExpenseAttachmentAction } from "@/components/expenses/expense-attachment-action";
 import {
-  CurrencyAction,
+  CurrencyMark,
   ExpenseSharingControls,
   participantSummary,
 } from "@/components/expenses/expense-sharing-controls";
@@ -44,22 +44,14 @@ describe("expense quick controls", () => {
     ).toBe("Andrea, Luca, & Maya");
   });
 
-  it("uses a symbol button and applies a currency only when Done is pressed", () => {
-    const onChange = vi.fn();
-    render(React.createElement(CurrencyAction, { value: "EUR", onChange }));
+  it("shows the group currency as a non-interactive amount marker", () => {
+    render(React.createElement(CurrencyMark, { value: "EUR" }));
 
-    const currencyButton = screen.getByRole("button", { name: "Currency" });
-    expect(currencyButton.textContent).toBe("€");
-    expect(currencyButton.className).toContain("rounded-xl");
-    expect(currencyButton.className).toContain("bg-[var(--brand-icon-soft)]");
-    fireEvent.click(currencyButton);
-    const dialog = screen.getByRole("dialog", { name: "Currency" });
-    expect(dialog.querySelector('[aria-label="Back"]')).toBeTruthy();
-    expect(dialog.querySelector('[aria-label="Done"]')).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /GBP/ }));
-    expect(onChange).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onChange).toHaveBeenCalledWith("GBP");
+    const currencyMark = screen.getByRole("img", { name: "Group currency: EUR" });
+    expect(currencyMark.textContent).toBe("€");
+    expect(currencyMark.className).toContain("rounded-xl");
+    expect(currencyMark.className).toContain("bg-[var(--brand-icon-soft)]");
+    expect(screen.queryByRole("button", { name: "Currency" })).toBeNull();
   });
 
   it("edits payer, participants, and split settings in separate dialogs", () => {

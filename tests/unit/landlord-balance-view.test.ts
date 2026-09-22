@@ -58,7 +58,11 @@ describe("landlord balance view", () => {
     expect(screen.queryByText("left", { exact: true })).toBeNull();
     expect(screen.queryByText(/Paid .* of/)).toBeNull();
     const markPaid = screen.getByRole("button", { name: "Mark paid" });
-    expect(markPaid.className).toContain("min-h-8");
+    expect(markPaid.className).toContain("size-9");
+    expect(markPaid.className).toContain("rounded-full");
+    expect(markPaid.getAttribute("title")).toBe("Mark paid");
+    expect(markPaid.textContent).toBe("");
+    expect(markPaid.parentElement?.className).toContain("items-center");
     expect(
       screen.getByRole("link", {
         name: "Gas bill with an exceptionally long supplier reference that must remain readable",

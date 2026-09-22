@@ -1,12 +1,6 @@
 import { z } from "zod";
 
-import {
-  centsSchema,
-  currencySchema,
-  dateOnlySchema,
-  positiveCentsSchema,
-  uuidSchema,
-} from "./common";
+import { centsSchema, dateOnlySchema, positiveCentsSchema, uuidSchema } from "./common";
 import { payerSelectionSchema } from "./expenses";
 
 export const utilityTypeSchema = z.enum(["electricity", "gas", "water", "internet", "other"]);
@@ -29,7 +23,6 @@ export const utilityConfirmationSchema = z
     totalCents: positiveCentsSchema,
     fixedCents: centsSchema,
     variableCents: centsSchema,
-    currency: currencySchema,
     payerMemberId: payerSelectionSchema,
     participants: z.array(utilityParticipantSchema).min(1),
     consumptionAmount: z.number().finite().nonnegative().nullable().optional(),

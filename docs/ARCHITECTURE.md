@@ -131,9 +131,13 @@ Do not introduce physical deletion for ledger-linked data without an explicit re
 
 - Persist and calculate money as integer cents (`bigint` where database arithmetic requires it).
 - Decimal strings and floating-point parsing are confined to form/input boundaries.
-- An expense has one payer, one currency, and explicit participant shares.
+- An expense has one payer and explicit participant shares.
 - The payer does not have to be a participant.
-- Every currency is an independent ledger; never convert or net currencies implicitly.
+- Each group has exactly one canonical currency in `households.default_currency`. Expenses,
+  settlements, and recurring rules inherit it, and database triggers prevent child records from
+  diverging.
+- Changing the group currency atomically relabels every existing financial record. Integer-cent
+  amount values stay unchanged; Froskolin does not perform an exchange-rate conversion.
 
 The ledger never stores a mutable balance:
 
@@ -238,7 +242,7 @@ The direct extraction route has temporary development-only structured diagnostic
 
 PDF preparation extracts a bounded, redacted text layer or renders metadata-free page images when supported. The PDF.js worker handler is imported explicitly so Next.js includes it as a normal serverless dependency and local and deployed preprocessing use the same parser. If the serverless PDF parser still cannot decode a provider-specific PDF, extraction falls back to sending the already size/type-validated original PDF to Gemini, which supports PDF input directly. The fallback logs only the preparation stage and file format; it never logs bill content, filenames, or parser errors. Successful extraction diagnostics include only page count and input mode alongside the existing allowlisted result summary so deployed preprocessing can be verified without bill content or identifiers.
 
-`BillExtractor.extract` returns `StructuredBillExtraction`, not final fixed/usage totals. `src/lib/bills/extraction-schema.ts` derives a compact generation schema from the strict Zod contract: literals become enums, nullable scalar unions become type arrays, and local validation limits/patterns are omitted from generation hints to reduce provider schema complexity. Full strict Zod validation still applies to every response. The model reads supplier, dates, currency, amount due, consumption, `lineItems`, and separate `vatLines`; final buckets are not model output fields. Existing saved financial records and the manual add/edit form remain compatible.
+`BillExtractor.extract` returns `StructuredBillExtraction`, not final fixed/usage totals. `src/lib/bills/extraction-schema.ts` derives a compact generation schema from the strict Zod contract: literals become enums, nullable scalar unions become type arrays, and local validation limits/patterns are omitted from generation hints to reduce provider schema complexity. Full strict Zod validation still applies to every response. The model reads supplier, dates, currency, amount due, consumption, `lineItems`, and separate `vatLines`; final buckets are not model output fields. Extracted invoice currency is evidence only: a saved bill always uses the group's currency. Existing saved financial records and the manual add/edit form remain compatible.
 
 The opt-in `tests/unit/bill-ai-live.test.ts` verifies the real API extraction and deterministic VAT calculation with synthetic data. Run with `BILL_AI_LIVE_TEST=1` in the environment; it loads the existing `.env.local` API key and spends API quota. Normal test runs skip it. Never substitute private user bills in this test or commit credentials.
 

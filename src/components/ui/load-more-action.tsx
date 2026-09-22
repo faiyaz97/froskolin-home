@@ -1,8 +1,18 @@
 "use client";
 
-export function LoadMoreAction({ pending, onLoad }: { pending: boolean; onLoad: () => void }) {
+import { cn } from "./cn";
+
+export function LoadMoreAction({
+  pending,
+  onLoad,
+  className,
+}: {
+  pending: boolean;
+  onLoad: () => void;
+  className?: string;
+}) {
   return (
-    <div className="flex justify-center py-4">
+    <div className={cn("flex justify-center pt-2 pb-4", className)}>
       <button
         type="button"
         onClick={onLoad}

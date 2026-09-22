@@ -93,8 +93,8 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="home-summary-sticky-frame pointer-events-none sticky top-0 z-[25] md:pointer-events-auto md:static">
-      <div ref={ref} className="home-summary-motion pointer-events-auto">
+    <div className="home-summary-sticky-frame pointer-events-none sticky top-0 z-[25] w-full max-w-full min-w-0 md:pointer-events-auto md:static">
+      <div ref={ref} className="home-summary-motion pointer-events-auto w-full max-w-full min-w-0">
         {children}
       </div>
     </div>

@@ -98,7 +98,6 @@ export function RecurringForm({
         householdId,
         title: String(data.get("title") ?? ""),
         amountCents: Math.round(Number(data.get("amount")) * 100),
-        currency: String(data.get("currency") ?? defaultCurrency),
         payerMemberId: String(data.get("payerMemberId") ?? ""),
         splitConfig,
         startDate: String(data.get("startDate") ?? ""),
@@ -133,31 +132,24 @@ export function RecurringForm({
           disabled={pending}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
+      <div className="grid gap-4">
         <Field label="Amount">
-          <Input
-            name="amount"
-            inputMode="decimal"
-            min="0.01"
-            step="0.01"
-            type="number"
-            defaultValue={initial ? (initial.amountCents / 100).toFixed(2) : undefined}
-            required
-            disabled={pending}
-          />
-        </Field>
-        <Field label="Currency">
-          <SelectInput
-            name="currency"
-            defaultValue={initial?.currency ?? defaultCurrency}
-            ariaLabel="Currency"
-            disabled={pending}
-            options={[
-              { value: "EUR", label: "EUR" },
-              { value: "GBP", label: "GBP" },
-              { value: "USD", label: "USD" },
-            ]}
-          />
+          <div className="relative">
+            <Input
+              name="amount"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              type="number"
+              defaultValue={initial ? (initial.amountCents / 100).toFixed(2) : undefined}
+              required
+              disabled={pending}
+              className="pr-16"
+            />
+            <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-[var(--muted)]">
+              {defaultCurrency}
+            </span>
+          </div>
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -265,7 +257,7 @@ export function RecurringForm({
                       required
                     />
                     <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-[var(--muted)]">
-                      {split === "percentage" ? "%" : (initial?.currency ?? defaultCurrency)}
+                      {split === "percentage" ? "%" : defaultCurrency}
                     </span>
                   </div>
                 </Field>

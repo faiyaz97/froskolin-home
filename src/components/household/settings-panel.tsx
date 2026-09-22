@@ -277,7 +277,7 @@ export function SettingsPanel({
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
               <Banknote className="size-5" aria-hidden="true" />
             </span>
-            <span className="min-w-0 flex-1">Default currency</span>
+            <span className="min-w-0 flex-1">Group currency</span>
             <span className="text-[var(--muted)]">{defaultCurrency}</span>
             {isOwner && (
               <ChevronRight
@@ -636,14 +636,18 @@ export function SettingsPanel({
 
       {currencyDialogOpen && (
         <Dialog
-          title="Default currency"
+          title="Group currency"
           onClose={() => !pending && setCurrencyDialogOpen(false)}
           onDone={() =>
             saveGroup({ defaultCurrency: draftCurrency }, () => setCurrencyDialogOpen(false))
           }
           doneDisabled={pending || draftCurrency === defaultCurrency}
         >
-          <div className="grid grid-cols-3 gap-2 px-2 pt-2 pb-3">
+          <p className="px-2 pt-1 text-sm leading-6 text-[var(--muted)]">
+            This updates every existing expense, bill, payment, and recurring expense. Amounts stay
+            the same.
+          </p>
+          <div className="grid grid-cols-3 gap-2 px-2 pt-4 pb-3">
             {currencies.map((currency) => {
               const selected = currency === draftCurrency;
               return (

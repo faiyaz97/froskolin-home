@@ -238,9 +238,14 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.locator("select")).toHaveCount(0);
   await expect(page.getByLabel("Locale")).toHaveCount(0);
   await expect(page.getByLabel("Timezone")).toHaveCount(0);
-  await page.getByRole("button", { name: "Default currency" }).click();
-  const currencyDialog = page.getByRole("dialog", { name: "Default currency" });
+  await page.getByRole("button", { name: "Group currency" }).click();
+  const currencyDialog = page.getByRole("dialog", { name: "Group currency" });
   await expect(currencyDialog).toBeVisible();
+  await expect(
+    currencyDialog.getByText(
+      /updates every existing expense, bill, payment, and recurring expense/i,
+    ),
+  ).toBeVisible();
   await expect(currencyDialog.getByRole("button", { name: "EUR" })).toHaveAttribute(
     "aria-pressed",
     "true",

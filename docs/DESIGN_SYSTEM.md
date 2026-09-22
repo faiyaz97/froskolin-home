@@ -129,7 +129,7 @@ Canonical components: `src/components/public/auth-shell.tsx` and `src/components
 - Use one three-option segmented control for changing authentication mode. The active option uses the standard white selected surface; inactive options remain muted with a simple text hover.
 - Keep fields in one flat stack. Do not divide credentials into nested cards or add explanatory descriptions.
 - User-facing copy uses `group` and `member`: Group name, Group code, Group PIN, Your name, and Personal PIN. Compatibility identifiers such as `householdName` and `houseCode` remain internal.
-- Creating a group does not expose currency or locale controls. Infer the supported currency from the device locale, fall back to EUR, and allow later changes in Group Settings. Use the device timezone without asking for it.
+- Creating a group does not expose currency or locale controls. Infer the supported group currency from the device locale, fall back to EUR, and allow admins to change it later in Group Settings. A change relabels the complete group ledger without converting the amount values. Use the device timezone without asking for it.
 - A remembered sign-in may replace the code and name inputs with one compact neutral identity row. `Use another` returns to the full sign-in fields.
 - The card must fit narrow screens without horizontal overflow and may scroll vertically on unusually short viewports.
 - Invitation links open `/join` directly and prefill editable Group code and Group PIN fields from a validated URL fragment. Your name and Personal PIN remain empty, and joining always requires submission.
@@ -155,7 +155,7 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - Icon-only buttons need a minimum 40–44px hit area and an `aria-label`; compact inline edit controls may use a 28px target when attached directly to a heading.
 - A control that represents present content, such as a saved note, attachment, bill document, or selected date, keeps a very light circular tint at rest. Its hover tint must be visibly stronger than its persistent content tint. The icon itself may fill to reinforce the content-present state.
 - The Home header settings control is a deliberate visibility exception: it keeps a translucent white circular surface over the sky header and becomes solid white on hover.
-- `CurrencyAction` is a deliberate form-control exception: keep its persistent light teal surface and 12px rounded-square shape so the currency symbol remains visually attached to the amount input.
+- `CurrencyMark` is a static form indicator. Keep its persistent light teal surface and 12px rounded-square shape so the group currency symbol remains visually attached to the amount input. It must not open a picker; Group Settings is the only currency control.
 - Hover changes the surface softly; active state moves down 1px; disabled state reduces opacity and blocks interaction. Semantic display icons and record-type tiles are not icon controls and may retain their pastel tile backgrounds.
 
 ### Inputs and textareas
@@ -273,10 +273,10 @@ Canonical route: `src/app/h/[householdId]/expenses/[expenseId]/page.tsx`.
 
 Canonical form: `src/components/expenses/settlement-form.tsx` (`SettlementForm`).
 
-- Add and edit use the same form component with initial state. The add flow selects the authenticated member as payer and the member they owe most as receiver, based on the existing per-currency ledger suggestions; when there is no debt suggestion, select any other active member.
+- Add and edit use the same form component with initial state. The add flow selects the authenticated member as payer and the member they owe most as receiver, based on the group ledger suggestions; when there is no debt suggestion, select any other active member.
 - Present payer and receiver as compact avatar-and-name actions with a single directional arrow between them. Tint each action from that member's avatar background. Do not repeat “Paid by” and “Paid to” as visible labels.
 - Each member action opens a `Dialog` of `ChoiceRow` items. Choosing the person currently selected on the opposite side swaps payer and receiver, keeping the parties distinct and allowing a two-member payment to reverse direction in one selection.
-- Use the same oversized underlined amount entry and `CurrencyAction` as expense and bill forms.
+- Use the same oversized underlined amount entry and static `CurrencyMark` as expense and bill forms.
 - Payment date defaults to the device's current local date and uses `ExpenseDateAction` without recurrence. Notes use the shared `TransactionNoteAction`; its filled lavender state indicates saved note content.
 - Place date and note actions in `ExpenseTools` directly after the form content. Align them right on mobile; on desktop, use a single normal-flow action row with icon tools aligned left and Cancel plus Record/Save aligned right. Do not fix this row to the viewport, position it relative to the floating navigation, or stretch short forms to the viewport height.
 - Opening a saved payment shows a read-only detail card, never the edit form. Match the transaction-detail composition: payment icon, visible formatted date, amount at the far right, then a divider and an avatar-colored payer-to-receiver row.
@@ -297,10 +297,11 @@ Canonical list: `src/components/activity/audit-list.tsx`; canonical presentation
 ### Group and landlord balances
 
 - Both balance routes use a centered `max-w-2xl` column, the standard desktop `PageHeader`, short section labels, and borderless 22px grouped cards with soft full-width row dividers.
+- Outstanding landlord rows keep the remaining amount and the shared compact mint icon action together on one line at the right edge. Use a check icon with `Mark paid` as its accessible label and tooltip so the row stays compact on mobile.
 - The first Group Balances section is “Members”; do not add a currency label beside its title because each formatted amount already communicates currency. Each member row shows the avatar, name, and absolute balance, followed by smaller counterpart rows that explain the balance. Reuse the utility-detail breakdown structure: connect child rows beneath the parent avatar on the left with a clean elbow that meets the avatar directly and has no terminal dot, keep each counterpart avatar and name together, and align every amount at the right edge. Breakdown amounts repeat the parent total's positive-green or negative-red meaning at lower opacity.
 - Place the compact `Simplified`/`Actual` switch at the right edge of the Members heading. Simplified is the default and shows the minimum-payment projection; Actual preserves the remaining original payer-to-participant relationships. Switching modes must update the connected member breakdowns and Settle up rows together.
 - Settlement suggestions use avatar → avatar rows, member names, and one right-aligned amount. When the authenticated member is the payer, place a compact text-only mint `Settle up` action immediately before the amount and prefill the existing payment form with that exact payer, recipient, currency, and amount. Do not show a generic page-level settlement action.
-- Landlord balances lead with one compact white Outstanding summary row: peach icon tile, short label, and the total aligned right. Outstanding rows show the canonical expense or utility-type icon, title, date, amount, then a small text-only mint `Mark paid` action. Do not add redundant “left” or paid-versus-total copy when only full payment is supported.
+- Landlord balances lead with one compact white Outstanding summary row: peach icon tile, short label, and the total aligned right. Outstanding rows show the canonical expense or utility-type icon, title, date, amount, then the icon-only `Mark paid` action. Do not add redundant “left” or paid-versus-total copy when only full payment is supported.
 - Payment history shows at most the five most recently paid bills. Reuse the expense or utility-type icon rather than a completion tick, show the payment date and paid amount, and retain the icon-only reopen action with an explicit accessible label. Empty states are short borderless cards or one line of muted copy; do not restore dashed panels or explanatory paragraphs.
 
 ### Tables
@@ -326,7 +327,7 @@ No completed reference page defines a canonical data-table design. Use responsiv
 - Home uses a sky header and its own responsive summary system rather than the generic `PageHeader`. On desktop, use the stronger `--home-header-blue` surface with the balance cards grouped inside one inset white rounded panel; mobile retains the edge-to-edge scroll/morph composition.
 - The Home header pairs the bold group name with a smaller member count underneath. Decorative paw prints span both sides, with lighter prints on the left to preserve title readability. Keep them non-interactive and hidden from assistive technology, with no circular outlines. They fade with the existing mobile header collapse.
 - Home transaction history uses Activity’s grouped-list shell: a borderless 22px white card, clipped outer corners, rectangular middle rows, and soft dividers. Preserve Home’s existing row content and month labels outside each card.
-- Home transaction history is progressive: render the latest 10 combined expense/payment rows, then reveal batches of 10 with the shared `LoadMoreAction`. On Home and Activity, place this centered text-only action outside the grouped card and label it “Load more,” which works for pointer and touch input.
+- Home transaction history is progressive: render the latest 10 combined expense/payment rows, then reveal batches of 10 with the shared `LoadMoreAction`. On Home and Activity, place this centered text-only action just below the grouped card with compact top spacing and label it “Load more,” which works for pointer and touch input.
 - Expense/Utility type switch: `src/components/expenses/expense-type-nav.tsx`; show only in add mode, not edit mode.
 - Home floating actions use stacked pastel pill `ButtonLink`s and remain above navigation/content.
 

@@ -1,12 +1,6 @@
 import { z } from "zod";
 
-import {
-  currencySchema,
-  dateOnlySchema,
-  nonEmptyTextSchema,
-  positiveCentsSchema,
-  uuidSchema,
-} from "./common";
+import { dateOnlySchema, nonEmptyTextSchema, positiveCentsSchema, uuidSchema } from "./common";
 import { normalSplitConfigSchema, payerSelectionSchema } from "./expenses";
 
 export const recurrenceFrequencySchema = z.enum(["weekly", "monthly", "yearly"]);
@@ -16,7 +10,6 @@ export const recurringExpenseRuleSchema = z
     householdId: uuidSchema,
     title: nonEmptyTextSchema,
     amountCents: positiveCentsSchema,
-    currency: currencySchema,
     payerMemberId: payerSelectionSchema,
     splitConfig: normalSplitConfigSchema,
     startDate: dateOnlySchema,

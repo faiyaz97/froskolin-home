@@ -6,7 +6,6 @@ const validExpense = {
   householdId: "11111111-1111-4111-8111-111111111111",
   title: "Groceries",
   totalCents: 1200,
-  currency: "EUR",
   payerMemberId: "22222222-2222-4222-8222-222222222222",
   expenseDate: "2026-09-08",
   splitConfig: {
@@ -23,5 +22,10 @@ describe("expense notes", () => {
     expect(expenseInputSchema.safeParse({ ...validExpense, note: "n".repeat(501) }).success).toBe(
       false,
     );
+  });
+
+  it("does not accept a client-controlled currency", () => {
+    const parsed = expenseInputSchema.parse({ ...validExpense, currency: "USD" });
+    expect(parsed).not.toHaveProperty("currency");
   });
 });

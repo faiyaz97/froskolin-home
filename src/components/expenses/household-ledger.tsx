@@ -339,7 +339,7 @@ export function HouseholdLedger({
               </div>
             </section>
           ))}
-          {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} />}
+          {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} className="-mt-5" />}
           {loadError && (
             <p role="alert" className="text-center text-xs font-bold text-[var(--negative)]">
               {loadError}
