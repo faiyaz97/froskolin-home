@@ -180,6 +180,10 @@ test("expense controls fit small screens and persist weekly/yearly schedules", a
   }));
   expect(mobileWidths.document).toBeLessThanOrEqual(mobileWidths.viewport);
   expect(mobileWidths.body).toBeLessThanOrEqual(mobileWidths.viewport);
+  const ledgerWidths = await page
+    .locator('section[aria-label="Expenses"]')
+    .evaluate((element) => ({ client: element.clientWidth, scroll: element.scrollWidth }));
+  expect(ledgerWidths.scroll).toBeLessThanOrEqual(ledgerWidths.client);
 
   await page.mouse.move(160, 180);
   await page.mouse.wheel(0, 120);

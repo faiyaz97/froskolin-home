@@ -229,15 +229,15 @@ export function HouseholdLedger({
   );
 
   return (
-    <section aria-label="Expenses">
+    <section aria-label="Expenses" className="w-full max-w-full min-w-0">
       {groups.length ? (
-        <div className="grid gap-5">
+        <div className="grid min-w-0 gap-5">
           {groups.map((group) => (
-            <section key={group.key} aria-label={group.label}>
+            <section key={group.key} aria-label={group.label} className="min-w-0">
               <h3 className="mb-1.5 px-1 text-[11px] font-black tracking-[0.08em] text-[var(--muted)] uppercase">
                 {group.label}
               </h3>
-              <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
+              <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
                 {group.rows.map((row) => {
                   const date = formatDay(row.date, locale);
                   if (row.kind === "settlement") {
@@ -246,7 +246,7 @@ export function HouseholdLedger({
                       <Link
                         key={`settlement-${settlement.id}`}
                         href={`/h/${householdId}/settlements/${settlement.id}`}
-                        className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
+                        className="flex min-h-[68px] w-full max-w-full min-w-0 items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
                       >
                         <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                           {date.month}
@@ -304,7 +304,7 @@ export function HouseholdLedger({
                     <Link
                       key={`expense-${expense.id}`}
                       href={`/h/${householdId}/expenses/${expense.id}`}
-                      className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
+                      className="flex min-h-[68px] w-full max-w-full min-w-0 items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
                     >
                       <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
                         {date.month}
