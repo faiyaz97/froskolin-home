@@ -113,8 +113,8 @@ export default async function HouseholdHome({
               href={`/h/${householdId}/balances`}
               className="home-summary-card home-summary-card-group group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
             >
-              <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] sm:size-8">
-                <Users className="size-4 sm:size-5" aria-hidden="true" />
+              <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] min-[360px]:size-8 sm:size-9">
+                <Users className="size-5 min-[360px]:size-6" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-center">
                 <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">
@@ -168,8 +168,8 @@ export default async function HouseholdHome({
                   href={`/h/${householdId}/landlord`}
                   className="home-summary-card home-summary-card-landlord group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
                 >
-                  <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] sm:size-8">
-                    <House className="size-4 sm:size-5" aria-hidden="true" />
+                  <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] min-[360px]:size-8 sm:size-9">
+                    <House className="size-5 min-[360px]:size-6" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1 overflow-hidden text-center">
                     <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">

@@ -260,7 +260,7 @@ Canonical feature component: `src/components/calendar/away-calendar.tsx` (`AwayC
 - Rows are at least 64px and separated by inset 1px `--soft-line` dividers (`mx-4`).
 - Leading icons sit in 40px pastel tiles with 12px radius. The label owns the flexible center; optional value/switch/chevron sits at the end.
 - Hover/focus uses the shared soft-neutral `--row-hover` background so feedback stays visible against both white cards and the canvas. Do not use the page canvas itself as a grouped-row hover color. Icon tiles may scale very slightly; chevrons may translate 2px. Do not recolor chevrons per row.
-- Home balance cards use blue/peach surfaces and collapse into a borderless divided strip during the mobile scroll morph.
+- Home balance cards use blue/peach surfaces and collapse into a borderless divided strip during the mobile scroll morph. Their icon tiles are 24px at the narrowest supported width, 32px on ordinary phones, and 36px from the `sm` breakpoint; keep the card height and signed amounts stable as the icons grow.
 - `src/components/ui/surface.tsx` is useful for semantic pastel surfaces, but its default visible border is not the default for completed-page cards. Override deliberately or use the grouped-card pattern.
 
 ### Expense and utility-bill details
