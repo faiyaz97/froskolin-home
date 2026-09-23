@@ -246,7 +246,7 @@ export default async function HouseholdHome({
               href={`/h/${householdId}/add/expense`}
               tone="pastel"
               appearance="floating"
-              className="min-h-12 w-40 rounded-full border-0 px-4 py-2.5 text-sm"
+              className="min-h-12 w-40 rounded-full border-0 bg-[var(--home-add-expense-bg)] px-4 py-2.5 text-sm text-[var(--home-add-expense-text)] shadow-[0_8px_18px_rgb(15_118_110/0.14)] hover:bg-[var(--home-add-expense-hover)] hover:shadow-[0_12px_24px_rgb(15_118_110/0.22)]"
             >
               <Plus className="size-[18px]" aria-hidden="true" /> Add expense
             </ButtonLink>
