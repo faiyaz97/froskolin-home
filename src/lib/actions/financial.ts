@@ -77,8 +77,11 @@ function localDateOnly(timezone: string): string {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-async function readGroupCurrency(householdId: string): Promise<string> {
-  const { data, error } = await createAdminClient()
+async function readGroupCurrency(
+  supabase: Awaited<ReturnType<typeof requireHouseholdMutation>>["supabase"],
+  householdId: string,
+): Promise<string> {
+  const { data, error } = await supabase
     .from("households")
     .select("default_currency")
     .eq("id", householdId)
@@ -123,8 +126,8 @@ export async function saveExpenseAction(
   const parsed = expenseInputSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user, membership } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.createExpense, {
       p_household_id: parsed.data.householdId,
       p_title: parsed.data.title,
@@ -167,8 +170,8 @@ export async function updateExpenseAction(input: unknown): Promise<ActionResult>
   const parsed = updateExpenseSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user, membership } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const pushBefore = await readExpensePushSnapshot(
       parsed.data.householdId,
       parsed.data.expenseId,
@@ -475,7 +478,7 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const pushBefore = await readExpensePushSnapshot(
       parsed.data.householdId,
       parsed.data.expenseId,
@@ -590,8 +593,8 @@ export async function saveSettlementAction(
   const parsed = settlementInputSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
-    const { user } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.recordSettlement, {
       p_household_id: parsed.data.householdId,
       p_paying_member_id: parsed.data.payingMemberId,
@@ -685,7 +688,7 @@ export async function updateSettlementAction(input: unknown): Promise<ActionResu
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const { data, error } = await supabase
       .from("settlements")
       .update({
@@ -743,7 +746,7 @@ export async function saveRecurringExpenseRuleAction(
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
-    const currency = await readGroupCurrency(parsed.data.householdId);
+    const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const { data, error } = await supabase
       .from("recurring_expense_rules")
       .insert({
