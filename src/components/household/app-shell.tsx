@@ -50,6 +50,10 @@ export function AppShell({
   }, [mustChangePin, pathname, root, router]);
 
   function goBack() {
+    if (/\/expenses\/[^/]+\/attachment$/.test(pathname)) {
+      router.replace(pathname.slice(0, -"/attachment".length));
+      return;
+    }
     if (window.history.length > 1) router.back();
     else router.replace(root);
   }
@@ -150,6 +154,7 @@ function getMobileTitle(pathname: string, root: string) {
   if (/\/expenses\/[^/]+\/edit$/.test(pathname)) return "Edit expense";
   if (/\/bills\/[^/]+\/confirm$/.test(pathname)) return "Utility bill";
   if (/\/settlements\/[^/]+\/edit$/.test(pathname)) return "Edit payment";
+  if (/\/expenses\/[^/]+\/attachment$/.test(pathname)) return "Attachment";
   if (/\/expenses\/[^/]+$/.test(pathname)) return "Expense";
   if (/\/settlements\/[^/]+$/.test(pathname)) return "Payment";
   if (/\/activity\/[^/]+$/.test(pathname)) return "Activity";

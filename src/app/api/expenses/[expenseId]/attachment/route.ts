@@ -77,13 +77,26 @@ export async function GET(request: Request, { params }: Context) {
     const { supabase } = await authorizeExpense(householdId, expenseId);
     const { data: attachment, error } = await supabase
       .from("expense_attachments")
-      .select("storage_path")
+      .select("storage_path, detected_mime")
       .eq("expense_id", expenseId)
       .eq("household_id", householdId)
       .is("removed_at", null)
       .maybeSingle();
     if (error || !attachment)
       return NextResponse.json({ error: "Attachment not found." }, { status: 404 });
+    if (new URL(request.url).searchParams.get("inline") === "1") {
+      const { data: file, error: downloadError } = await supabase.storage
+        .from("froskolin-bills")
+        .download(attachment.storage_path);
+      if (downloadError || !file) throw downloadError ?? new Error("Could not open attachment.");
+      return new NextResponse(file, {
+        headers: {
+          "Content-Type": attachment.detected_mime,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
     const { data, error: signedUrlError } = await supabase.storage
       .from("froskolin-bills")
       .createSignedUrl(attachment.storage_path, 60);

@@ -332,14 +332,8 @@ export default async function ExpenseDetail({
       <div className="mt-4 mb-6 flex items-center justify-between px-1">
         <div>
           {(utility?.bill_document_id || attachment) && (
-            <a
-              href={
-                utility?.bill_document_id
-                  ? `/api/bills/${utility.bill_document_id}/view?householdId=${householdId}`
-                  : `/api/expenses/${expenseId}/attachment?householdId=${householdId}`
-              }
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              href={`/h/${householdId}/expenses/${expenseId}/attachment`}
               aria-label={
                 utility
                   ? "View bill document"
@@ -353,7 +347,7 @@ export default async function ExpenseDetail({
               ) : (
                 <Paperclip className="size-5" aria-hidden="true" />
               )}
-            </a>
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-2">
