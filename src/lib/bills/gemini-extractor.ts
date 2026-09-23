@@ -148,6 +148,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
             ];
       const providerStartedAt = performance.now();
       const pass = repairOriginal ? "repair" : "initial";
+      const thinkingLevel = repairOriginal ? "HIGH" : "MEDIUM";
       const response = await ai.models.generateContent({
         model: MODEL,
         contents: [
@@ -163,7 +164,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
         ],
         config: {
           temperature: 0,
-          thinkingConfig: { thinkingLevel: "HIGH" as ThinkingLevel },
+          thinkingConfig: { thinkingLevel: thinkingLevel as ThinkingLevel },
           responseMimeType: "application/json",
           responseJsonSchema: repairOriginal ? repairSchema : extractionSchema,
         },
@@ -173,6 +174,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
         JSON.stringify({
           model: MODEL,
           pass,
+          thinkingLevel,
           durationMs: Math.round(performance.now() - providerStartedAt),
           thoughtsTokens: response.usageMetadata?.thoughtsTokenCount ?? null,
         }),

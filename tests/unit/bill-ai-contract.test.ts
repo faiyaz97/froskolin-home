@@ -116,6 +116,9 @@ describe("model extraction contract", () => {
       filename: "test.png",
     });
     expect(raw).toEqual(input);
+    expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+      thinkingLevel: "MEDIUM",
+    });
     expect(raw).not.toHaveProperty("charges");
     const properties = extractionSchema.properties as Record<string, unknown>;
     expect(properties).toHaveProperty("lineItems");
