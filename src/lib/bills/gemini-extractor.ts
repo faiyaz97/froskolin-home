@@ -37,22 +37,30 @@ Read the signs of previous and current rounding independently: both may contribu
 Return only structured extraction facts, never final fixedCents or consumptionCents.`;
 
 const MODEL = "gemini-3.1-flash-lite";
+const FALLBACK_MODEL = "gemini-3.5-flash-lite";
 
-function extractionFailure(error: unknown, phase: "request" | "response" | "validation") {
+function providerStatus(error: unknown): number | null {
   const candidate =
     typeof error === "object" && error !== null && "status" in error ? error.status : null;
-  const status =
-    typeof candidate === "number" &&
+  return typeof candidate === "number" &&
     Number.isInteger(candidate) &&
     candidate >= 400 &&
     candidate <= 599
-      ? candidate
-      : null;
+    ? candidate
+    : null;
+}
+
+function extractionFailure(
+  error: unknown,
+  phase: "request" | "response" | "validation",
+  model: string,
+) {
+  const status = providerStatus(error);
   // Allowlisted metadata only: upstream messages, Zod issues and responses can contain
   // API keys, URLs, document contents or personal information. Never log the error object.
   console.error(
     "[bill-extraction] failed",
-    JSON.stringify({ provider: "gemini", model: MODEL, phase, status }),
+    JSON.stringify({ provider: "gemini", model, phase, status }),
   );
   if (phase === "validation" || phase === "response")
     return new BillExtractionError(
@@ -114,6 +122,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
       throw new BillExtractionError("Bill extraction is not configured. Enter the bill manually.");
 
     let phase: "request" | "response" | "validation" = "request";
+    let model = MODEL;
     try {
       const ai = new GoogleGenAI({ apiKey: this.apiKey });
       this.debug?.geminiInput(document, repairOriginal ? "repair" : "initial");
@@ -149,8 +158,8 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
       const providerStartedAt = performance.now();
       const pass = repairOriginal ? "repair" : "initial";
       const thinkingLevel = repairOriginal ? "HIGH" : "MEDIUM";
-      const response = await ai.models.generateContent({
-        model: MODEL,
+      const request = {
+        model,
         contents: [
           {
             role: "user",
@@ -168,11 +177,23 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
           responseMimeType: "application/json",
           responseJsonSchema: repairOriginal ? repairSchema : extractionSchema,
         },
-      });
+      };
+      let response;
+      try {
+        response = await ai.models.generateContent(request);
+      } catch (error) {
+        if (providerStatus(error) !== 503) throw error;
+        model = FALLBACK_MODEL;
+        console.warn(
+          "[bill-extraction] provider-fallback",
+          JSON.stringify({ from: MODEL, to: model, pass, status: 503 }),
+        );
+        response = await ai.models.generateContent({ ...request, model });
+      }
       console.info(
         "[bill-extraction] provider-call",
         JSON.stringify({
-          model: MODEL,
+          model,
           pass,
           thinkingLevel,
           durationMs: Math.round(performance.now() - providerStartedAt),
@@ -210,7 +231,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
       };
     } catch (error) {
       if (error instanceof BillExtractionError) throw error;
-      throw extractionFailure(error, phase);
+      throw extractionFailure(error, phase, model);
     }
   }
 }

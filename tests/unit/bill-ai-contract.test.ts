@@ -12,6 +12,7 @@ vi.mock("@google/genai", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -84,13 +85,37 @@ describe("model extraction contract", () => {
       "[bill-extraction] failed",
       JSON.stringify({
         provider: "gemini",
-        model: "gemini-3.1-flash-lite",
+        model: status === 503 ? "gemini-3.5-flash-lite" : "gemini-3.1-flash-lite",
         phase: "request",
         status,
       }),
     );
+    expect(generateContent).toHaveBeenCalledTimes(status === 503 ? 2 : 1);
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("secret-key");
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private");
+  });
+  it("uses the newer Flash-Lite model when the primary is unavailable", async () => {
+    generateContent
+      .mockRejectedValueOnce({ status: 503, message: "private bill data" })
+      .mockResolvedValueOnce({ text: JSON.stringify(rawBill()) });
+
+    const result = await new GeminiBillExtractor("test-key").extract(document);
+
+    expect(result).toEqual(rawBill());
+    expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash-lite",
+    ]);
+    expect(console.warn).toHaveBeenCalledWith(
+      "[bill-extraction] provider-fallback",
+      JSON.stringify({
+        from: "gemini-3.1-flash-lite",
+        to: "gemini-3.5-flash-lite",
+        pass: "initial",
+        status: 503,
+      }),
+    );
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain("private bill data");
   });
   it.each([undefined, "not json", "{}"])(
     "distinguishes invalid responses from quota errors",
