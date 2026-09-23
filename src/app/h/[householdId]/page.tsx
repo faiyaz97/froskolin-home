@@ -116,13 +116,13 @@ export default async function HouseholdHome({
               <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] sm:size-8">
                 <Users className="size-3.5 sm:size-4" aria-hidden="true" />
               </span>
-              <span className="min-w-0 flex-1 overflow-hidden">
-                <span className="home-summary-copy block overflow-hidden whitespace-nowrap">
+              <span className="min-w-0 flex-1 overflow-hidden text-center">
+                <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">
                   <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
                     Group
                   </span>
                 </span>
-                <span className="mt-0.5 block min-w-0 text-left tabular-nums">
+                <span className="mt-0.5 block min-w-0 tabular-nums">
                   {ownBalances.length ? (
                     <span className="grid gap-0.5">
                       {ownBalances.map((balance) => {
@@ -171,13 +171,13 @@ export default async function HouseholdHome({
                   <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] sm:size-8">
                     <House className="size-3.5 sm:size-4" aria-hidden="true" />
                   </span>
-                  <span className="min-w-0 flex-1 overflow-hidden">
-                    <span className="home-summary-copy block overflow-hidden whitespace-nowrap">
+                  <span className="min-w-0 flex-1 overflow-hidden text-center">
+                    <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">
                       <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
                         Landlord
                       </span>
                     </span>
-                    <span className="mt-0.5 block min-w-0 text-left tabular-nums">
+                    <span className="mt-0.5 block min-w-0 tabular-nums">
                       {landlordTotals.length ? (
                         <span className="grid gap-0.5">
                           {landlordTotals.map((row) => (
