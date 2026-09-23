@@ -67,14 +67,14 @@ describe("invitation sharing", () => {
     const payload = share.mock.calls[0][0];
     expect(payload.files[0]).toBeInstanceOf(File);
     expect(payload.files[0].type).toBe("image/png");
-    expect(payload.text).toContain("Weekend group");
-    expect(payload.text).toContain("/join#code=FROSKO-2847&pin=654321");
+    const invitationUrl = (screen.getByLabelText("Invitation link") as HTMLInputElement).value;
+    const expectedText = `Join Weekend group on Froskolin!\n\nGroup code: FROSKO-2847\nGroup pin: 654321\n\n${invitationUrl}`;
+    expect(payload.text).toBe(expectedText);
     await screen.findByRole("button", { name: "Share invitation text" });
     expect(share).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Share invitation text" }));
     await waitFor(() => expect(share).toHaveBeenCalledTimes(2));
-    expect(share.mock.calls[1][0].text).toContain("Weekend group");
-    expect(share.mock.calls[1][0].text).toContain("/join#code=FROSKO-2847&pin=654321");
+    expect(share.mock.calls[1][0].text).toBe(expectedText);
     expect(share.mock.calls[1][0].files).toBeUndefined();
     expect(screen.queryByText(/localhost link/)).toBeNull();
   });
@@ -90,13 +90,21 @@ describe("invitation sharing", () => {
       expect(screen.getByRole("status").textContent).toContain("Save the invitation image");
       const download = screen.getByRole("link", { name: "Download invitation image" });
       expect(download.getAttribute("download")).toBe("froskolin-invitation.png");
-      expect(
-        screen
-          .getByRole("link", {
-            name: `Open ${target}${target === "Instagram" ? "" : " with link"}`,
-          })
-          .getAttribute("rel"),
-      ).toBe("noopener noreferrer");
+      const fallbackLink = screen.getByRole("link", {
+        name: `Open ${target}${target === "Instagram" ? "" : " with link"}`,
+      });
+      expect(fallbackLink.getAttribute("rel")).toBe("noopener noreferrer");
+      const fallbackUrl = new URL(fallbackLink.getAttribute("href")!);
+      const invitationUrl = (screen.getByLabelText("Invitation link") as HTMLInputElement).value;
+      const intro =
+        "Join Weekend group on Froskolin!\n\nGroup code: FROSKO-2847\nGroup pin: 654321";
+      if (target === "WhatsApp") {
+        expect(fallbackUrl.searchParams.get("text")).toBe(`${intro}\n\n${invitationUrl}`);
+      }
+      if (target === "Telegram") {
+        expect(fallbackUrl.searchParams.get("text")).toBe(intro);
+        expect(fallbackUrl.searchParams.get("url")).toBe(invitationUrl);
+      }
     },
   );
 

@@ -52,7 +52,8 @@ function InvitationDialog({
   const [sharing, setSharing] = useState(false);
   const [textTarget, setTextTarget] = useState<SocialTarget | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const shareText = `Join ${groupName} on Froskolin!\n${invitationUrl}`;
+  const shareIntro = `Join ${groupName} on Froskolin!\n\nGroup code: ${houseCode}\nGroup pin: ${joinPin}`;
+  const shareText = `${shareIntro}\n\n${invitationUrl}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +149,7 @@ function InvitationDialog({
     fallback === "WhatsApp"
       ? `https://wa.me/?text=${encodeURIComponent(shareText)}`
       : fallback === "Telegram"
-        ? `https://t.me/share/url?url=${encodeURIComponent(invitationUrl)}&text=${encodeURIComponent(`Join ${groupName} on Froskolin!`)}`
+        ? `https://t.me/share/url?url=${encodeURIComponent(invitationUrl)}&text=${encodeURIComponent(shareIntro)}`
         : fallback === "Facebook"
           ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(invitationUrl)}`
           : fallback === "Instagram"
