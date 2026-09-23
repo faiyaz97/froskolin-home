@@ -34,7 +34,9 @@ describe("model extraction contract", () => {
     );
     const request = generateContent.mock.calls[0][0];
     expect(request.config.temperature).toBe(0);
-    expect(request.config.thinkingConfig).toEqual({ thinkingLevel: "HIGH" });
+    expect(request.model).toBe("gemini-3.8-flash");
+    expect(request.config.thinkingConfig).toEqual({ thinkingLevel: "MEDIUM" });
+    expect(request.config.httpOptions).toEqual({ timeout: 75_000 });
     expect(request.config.responseJsonSchema).toEqual(repairSchema);
     expect(request.contents[0].parts[0].text).toContain("TARGETED REPAIR, NOT A NEW EXTRACTION");
     expect(request.contents[0].parts[0].text).toContain(JSON.stringify(rawBill()));
@@ -85,7 +87,7 @@ describe("model extraction contract", () => {
       "[bill-extraction] failed",
       JSON.stringify({
         provider: "gemini",
-        model: status === 503 ? "gemini-3.5-flash-lite" : "gemini-3.1-flash-lite",
+        model: status === 503 ? "gemini-3.5-flash-lite" : "gemini-3.8-flash",
         phase: "request",
         status,
       }),
@@ -103,19 +105,64 @@ describe("model extraction contract", () => {
 
     expect(result).toEqual(rawBill());
     expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
-      "gemini-3.1-flash-lite",
+      "gemini-3.8-flash",
       "gemini-3.5-flash-lite",
     ]);
     expect(console.warn).toHaveBeenCalledWith(
       "[bill-extraction] provider-fallback",
       JSON.stringify({
-        from: "gemini-3.1-flash-lite",
+        from: "gemini-3.8-flash",
         to: "gemini-3.5-flash-lite",
         pass: "initial",
         status: 503,
       }),
     );
     expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain("private bill data");
+  });
+  it("repairs with the model that completed initial extraction", async () => {
+    generateContent
+      .mockRejectedValueOnce({ status: 503 })
+      .mockResolvedValueOnce({ text: JSON.stringify(rawBill()) })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          lineUpdates: [],
+          vatUpdates: [],
+          addedLines: [],
+          addedVat: [],
+          coverage: null,
+        }),
+      });
+    const extractor = new GeminiBillExtractor("test-key");
+
+    await extractor.extract(document);
+    await extractor.repair(document, rawBill(), ["VAT references need review."]);
+
+    expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.5-flash-lite",
+    ]);
+    expect(generateContent.mock.calls[2][0].config.thinkingConfig).toEqual({
+      thinkingLevel: "MEDIUM",
+    });
+  });
+  it("falls back when the primary model is unavailable during repair", async () => {
+    generateContent.mockRejectedValueOnce({ status: 503 }).mockResolvedValueOnce({
+      text: JSON.stringify({
+        lineUpdates: [],
+        vatUpdates: [],
+        addedLines: [],
+        addedVat: [],
+        coverage: null,
+      }),
+    });
+
+    await new GeminiBillExtractor("test-key").repair(document, rawBill(), ["VAT review"]);
+
+    expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+    ]);
   });
   it.each([undefined, "not json", "{}"])(
     "distinguishes invalid responses from quota errors",

@@ -36,8 +36,9 @@ Explicit previous/current rounding remains separate accounting lineItems, even i
 Read the signs of previous and current rounding independently: both may contribute to the payable total with opposite signs. A combined tax summary is excluded when its detailed excise and VAT rows are present, regardless of where they appear in the document. Taxable bases may include small consumption recalculations and consumption-linked excise; reference them only when supported by the source. For a total-only mismatch, re-check payable inclusion and parent relationships, with source evidence for every correction, rather than changing printed amounts. Preserve excluded summaries and sub-breakdowns as informational rows.
 Return only structured extraction facts, never final fixedCents or consumptionCents.`;
 
-const MODEL = "gemini-3.1-flash-lite";
+const MODEL = "gemini-3.8-flash";
 const FALLBACK_MODEL = "gemini-3.5-flash-lite";
+const PROVIDER_TIMEOUT_MS = 75_000;
 
 function providerStatus(error: unknown): number | null {
   const candidate =
@@ -88,6 +89,8 @@ function extractionFailure(
 }
 
 export class GeminiBillExtractor implements BillExtractor {
+  private activeModel = MODEL;
+
   constructor(
     private readonly apiKey = process.env.GEMINI_API_KEY,
     private readonly debug?: BillExtractionDebugger,
@@ -122,7 +125,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
       throw new BillExtractionError("Bill extraction is not configured. Enter the bill manually.");
 
     let phase: "request" | "response" | "validation" = "request";
-    let model = MODEL;
+    let model = this.activeModel;
     try {
       const ai = new GoogleGenAI({ apiKey: this.apiKey });
       this.debug?.geminiInput(document, repairOriginal ? "repair" : "initial");
@@ -157,7 +160,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
             ];
       const providerStartedAt = performance.now();
       const pass = repairOriginal ? "repair" : "initial";
-      const thinkingLevel = repairOriginal ? "HIGH" : "MEDIUM";
+      const thinkingLevel = "MEDIUM";
       const request = {
         model,
         contents: [
@@ -174,6 +177,7 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
         config: {
           temperature: 0,
           thinkingConfig: { thinkingLevel: thinkingLevel as ThinkingLevel },
+          httpOptions: { timeout: PROVIDER_TIMEOUT_MS },
           responseMimeType: "application/json",
           responseJsonSchema: repairOriginal ? repairSchema : extractionSchema,
         },
@@ -182,14 +186,15 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
       try {
         response = await ai.models.generateContent(request);
       } catch (error) {
-        if (providerStatus(error) !== 503) throw error;
+        if (providerStatus(error) !== 503 || model === FALLBACK_MODEL) throw error;
         model = FALLBACK_MODEL;
         console.warn(
           "[bill-extraction] provider-fallback",
-          JSON.stringify({ from: MODEL, to: model, pass, status: 503 }),
+          JSON.stringify({ from: this.activeModel, to: model, pass, status: 503 }),
         );
         response = await ai.models.generateContent({ ...request, model });
       }
+      this.activeModel = model;
       console.info(
         "[bill-extraction] provider-call",
         JSON.stringify({

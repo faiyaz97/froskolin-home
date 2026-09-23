@@ -42,7 +42,7 @@ function repairIssues(raw: StructuredBillExtraction, issues: string[]) {
   ];
 }
 
-/** One initial extraction and at most one targeted repair. No cache or retries. */
+/** One initial extraction and at most one targeted repair; the provider may use a fallback model. */
 export async function analyzeBill(
   document: PreparedBillDocument,
   extractor: RepairExtractor,
