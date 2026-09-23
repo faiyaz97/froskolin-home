@@ -10,6 +10,7 @@ import {
   updateExpenseAction,
   updateRecurringExpenseRuleAction,
 } from "@/lib/actions";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { StatusNote } from "../ui/page";
@@ -253,6 +254,7 @@ export function ExpenseForm({
           setError(savedRule.error);
           return;
         }
+        announceSaveComplete(initialRecurring ? "Changes saved" : "Recurring expense added");
         router.replace(initialRecurring ? `/h/${householdId}/settings` : `/h/${householdId}`);
         router.refresh();
         return;
@@ -281,6 +283,7 @@ export function ExpenseForm({
         );
         return;
       }
+      announceSaveComplete(initial ? "Changes saved" : "Expense added");
       router.replace(initial ? `/h/${householdId}/expenses/${expenseId}` : `/h/${householdId}`);
       router.refresh();
     });

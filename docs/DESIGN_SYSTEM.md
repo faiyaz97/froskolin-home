@@ -109,6 +109,7 @@ Canonical shell: `src/components/household/app-shell.tsx`.
 - `>=768px`: a sticky white brand header appears; page content gains desktop padding. Forms expose their desktop Cancel/Save buttons.
 - `>=1024px`: the primary navigation becomes a centered floating rounded bar near the bottom.
 - Any form controlled by the shell Save icon must have `data-mobile-submit` and a semantic submit button.
+- The mobile shell changes its Save icon to a spinner and its title to “Saving…” while that form is busy, disables repeat submission, and briefly confirms a successful save after navigation. Desktop form buttons keep their existing pending labels.
 - Canonical navigation component: `src/components/household/app-navigation.tsx`.
 - On mobile, primary navigation is a compact white bar attached to the bottom screen edge and extending through the safe area. The selected icon and label turn sky blue, with a short blue underline that glides between destinations; the account avatar receives a matching ring. The sleeping cat touches the bar's top edge with no visible gap. From `md` upward, navigation remains a white floating dock but uses the same selected colors and sliding underline. Icons lift slightly on hover. The global reduced-motion rule shortens these transitions.
 - Keep Home's floating action stack above the dock at both standard and phone safe-area insets.

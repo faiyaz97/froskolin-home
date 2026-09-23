@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { saveRecurringExpenseRuleAction, updateRecurringExpenseRuleAction } from "@/lib/actions";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import { Button } from "../ui/button";
 import { DateInput } from "../ui/date-input";
 import {
@@ -112,6 +113,7 @@ export function RecurringForm({
         setError(result.error);
         return;
       }
+      announceSaveComplete(initial ? "Changes saved" : "Recurring expense added");
       router.replace(initial ? `/h/${householdId}/settings` : `/h/${householdId}`);
       router.refresh();
     });

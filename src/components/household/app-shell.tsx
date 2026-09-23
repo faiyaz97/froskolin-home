@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, CircleCheck, LoaderCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import { cn } from "../ui/cn";
 import { CatMark } from "../ui/brand";
@@ -39,6 +39,9 @@ export function AppShell({
   const router = useRouter();
   const root = `/h/${householdId}`;
   const [mobileTitleOverride, setMobileTitleOverride] = useState<string | null>(null);
+  const [mobileSaving, setMobileSaving] = useState(false);
+  const [saveComplete, setSaveComplete] = useState<string | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const primaryPaths = [root, `${root}/calendar`, `${root}/activity`, `${root}/account`];
   const isPrimaryPage = primaryPaths.includes(pathname);
   const isHome = pathname === root;
@@ -48,6 +51,38 @@ export function AppShell({
   useEffect(() => {
     if (mustChangePin && pathname !== `${root}/account`) router.replace(`${root}/account`);
   }, [mustChangePin, pathname, root, router]);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const readSaving = () =>
+      setMobileSaving(
+        main.querySelector<HTMLFormElement>('form[data-mobile-submit][aria-busy="true"]') !== null,
+      );
+    readSaving();
+    const observer = new MutationObserver(readSaving);
+    observer.observe(main, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-busy"],
+    });
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const onSaved = (event: Event) => {
+      setSaveComplete((event as CustomEvent<string>).detail);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setSaveComplete(null), 3000);
+    };
+    window.addEventListener("froskolin:save-complete", onSaved);
+    return () => {
+      window.removeEventListener("froskolin:save-complete", onSaved);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   function goBack() {
     if (/\/expenses\/[^/]+\/attachment$/.test(pathname)) {
@@ -61,7 +96,7 @@ export function AppShell({
   function submitCurrentForm() {
     const form = document.querySelector<HTMLFormElement>("form[data-mobile-submit]");
     const submitter = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
-    if (!form || submitter?.disabled) return;
+    if (!form || submitter?.disabled || mobileSaving) return;
     form.requestSubmit(submitter ?? undefined);
   }
 
@@ -86,17 +121,32 @@ export function AppShell({
                 >
                   <ArrowLeft className="size-5" strokeWidth={2.4} aria-hidden="true" />
                 </button>
-                <h1 className="truncate text-center text-[15px] font-black tracking-[-0.02em]">
-                  {mobileTitle}
+                <h1
+                  className="truncate text-center text-[15px] font-black tracking-[-0.02em]"
+                  aria-live="polite"
+                >
+                  {mobileSaving ? "Saving…" : mobileTitle}
                 </h1>
                 {mobileSubmitLabel ? (
                   <button
                     type="button"
                     onClick={submitCurrentForm}
-                    className={iconActionClass({ tone: "brand", className: "size-10" })}
-                    aria-label={mobileSubmitLabel}
+                    className={iconActionClass({
+                      tone: "brand",
+                      className: cn("size-10", mobileSaving && "disabled:opacity-100"),
+                    })}
+                    aria-label={mobileSaving ? "Saving" : mobileSubmitLabel}
+                    disabled={mobileSaving}
                   >
-                    <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+                    {mobileSaving ? (
+                      <LoaderCircle
+                        className="size-5 motion-safe:animate-spin"
+                        strokeWidth={2.5}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+                    )}
                   </button>
                 ) : (
                   <span aria-hidden="true" />
@@ -106,6 +156,7 @@ export function AppShell({
           )}
 
           <main
+            ref={mainRef}
             className={cn(
               "mx-auto w-full max-w-[980px] min-w-0 md:px-6 md:pt-7 md:pb-36 lg:px-8 lg:pt-8",
               isHome ? "px-0 pt-0" : "px-3 pt-3",
@@ -115,6 +166,21 @@ export function AppShell({
             {children}
           </main>
         </div>
+
+        {saveComplete && (
+          <div
+            role="status"
+            className={cn(
+              "pointer-events-none fixed inset-x-3 z-50 mx-auto flex w-fit max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full bg-[var(--positive)] px-4 py-2.5 text-sm font-bold text-white shadow-[var(--shadow-float)] md:hidden",
+              isPrimaryPage
+                ? "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+                : "bottom-[calc(1rem+env(safe-area-inset-bottom))]",
+            )}
+          >
+            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
+            {saveComplete}
+          </div>
+        )}
 
         <AppNavigation
           householdId={householdId}

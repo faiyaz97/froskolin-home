@@ -8,6 +8,7 @@ import { confirmUtilityBillAction, updateUtilityBillAction } from "@/lib/actions
 import { determineBillEntryMode, type BillFinancialBaseline } from "@/lib/bills/entry-mode";
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import type { ExtractedBill } from "@/lib/validation";
 import { CurrencyMark } from "../expenses/expense-sharing-controls";
 import { ExpenseTools } from "../expenses/expense-tools";
@@ -269,6 +270,7 @@ export function BillConfirmation({
         }
         expenseId = result.data.expenseId;
       }
+      announceSaveComplete(existing ? "Changes saved" : "Bill added");
       router.replace(existing ? `/h/${householdId}/expenses/${expenseId}` : `/h/${householdId}`);
       router.refresh();
     });

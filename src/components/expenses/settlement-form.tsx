@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { saveSettlementAction, updateSettlementAction } from "@/lib/actions";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import { MemberAvatar, resolveAvatarColor, type AvatarColor } from "../household/member-avatar";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
@@ -142,6 +143,7 @@ export function SettlementForm({
         setError(result.error);
         return;
       }
+      announceSaveComplete(initial ? "Changes saved" : "Payment recorded");
       router.replace(
         initial ? `/h/${householdId}/settlements/${initial.settlementId}` : `/h/${householdId}`,
       );
