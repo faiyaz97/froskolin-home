@@ -82,6 +82,33 @@ describe("targeted extraction repair", () => {
     ).toBe("ready");
     expect(repair).not.toHaveBeenCalled();
   });
+  it("keeps a reconciling breakdown in review until repair confirms source coverage", async () => {
+    const incomplete = rawBill({ coverageComplete: false });
+    const unresolved = await analyzeBill(document, { extract: async () => incomplete });
+    expect(unresolved.analysis?.status).toBe("needs_review");
+    expect(unresolved.charges.fixedCents).toBeNull();
+
+    const confirmed = await analyzeBill(document, {
+      extract: async () => incomplete,
+      repair: async () => ({ ...incomplete, coverageComplete: true }),
+    });
+    expect(confirmed.analysis?.status).toBe("ready");
+  });
+  it("does not discard a same-amount outside-VAT adjustment without source confirmation", async () => {
+    const bill = gas();
+    bill.lineItems.push(
+      charge("outside-vat", -2, "unknown", {
+        originalLabel: "Importo fuori campo IVA",
+        adjustsChargeIds: ["usage"],
+      }),
+    );
+    const result = await analyzeBill(document, { extract: async () => bill });
+    expect(result.analysis?.status).toBe("needs_review");
+    expect(result.structuredData?.lineItems.find((row) => row.id === "outside-vat")).toMatchObject({
+      includedInPayableTotal: true,
+      amountCents: -2,
+    });
+  });
   it("sends existing facts, exact issues and original document for one VAT repair", async () => {
     const { correct, broken } = cases();
     const repair = vi.fn().mockResolvedValue(correct);
