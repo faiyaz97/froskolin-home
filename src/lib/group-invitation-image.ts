@@ -160,9 +160,9 @@ export async function createGroupInvitationImage({
   if (!context) throw new Error("Unable to create invitation image canvas.");
 
   // A single paper ticket keeps the title and joining details visually connected.
-  context.fillStyle = "#ccebe2";
+  context.fillStyle = "#dceeff";
   context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  context.shadowColor = "rgba(17, 70, 61, 0.10)";
+  context.shadowColor = "rgba(7, 89, 133, 0.10)";
   context.shadowBlur = 40;
   context.shadowOffsetY = 14;
   drawRoundedRect(context, 64, 64, 952, 952, 48, "#fffdf8");
@@ -176,14 +176,14 @@ export async function createGroupInvitationImage({
   context.save();
   context.translate(540, 326);
   context.rotate(-0.055);
-  drawRoundedRect(context, -94, -43, 188, 86, 28, "#d7eee4");
-  context.fillStyle = "#0f766e";
+  drawRoundedRect(context, -94, -43, 188, 86, 28, "#e0f2fe");
+  context.fillStyle = "#0369a1";
   context.font = '700 43px "Arial", sans-serif';
   context.textAlign = "center";
   context.fillText("Join", 0, 15);
   context.restore();
 
-  context.fillStyle = "#172f32";
+  context.fillStyle = "#172033";
   context.textAlign = "center";
   let fontSize = 92;
   const maxNameLines = normalizedGroupName.length > 42 ? 3 : 2;
@@ -203,7 +203,7 @@ export async function createGroupInvitationImage({
 
   // Ticket perforation and side notches separate the credentials from the title.
   const dividerY = 708;
-  context.strokeStyle = "#d4ddd5";
+  context.strokeStyle = "#d5e0e7";
   context.lineWidth = 2;
   context.setLineDash([8, 10]);
   context.beginPath();
@@ -211,7 +211,7 @@ export async function createGroupInvitationImage({
   context.lineTo(968, dividerY);
   context.stroke();
   context.setLineDash([]);
-  context.fillStyle = "#ccebe2";
+  context.fillStyle = "#dceeff";
   for (const x of [64, 1016]) {
     context.beginPath();
     context.arc(x, dividerY, 23, 0, Math.PI * 2);
@@ -226,7 +226,7 @@ export async function createGroupInvitationImage({
     context.font = '800 42px "Arial", sans-serif';
     context.fillText(normalizedJoinPin, 400, 922, 536);
   } else {
-    context.strokeStyle = "#dce4dd";
+    context.strokeStyle = "#d5e0e7";
     context.lineWidth = 2;
     context.beginPath();
     context.moveTo(540, 800);

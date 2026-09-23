@@ -39,8 +39,8 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
       style.setProperty("--home-divider-opacity", `${progress}`);
       style.setProperty("--home-divider-height", `${28 * progress}px`);
       style.setProperty("--home-surface-radius", `${14 * progress}px`);
-      style.setProperty("--home-group-bg", `rgb(227 245 239 / ${expanded})`);
-      style.setProperty("--home-group-border", `rgb(188 229 216 / ${expanded})`);
+      style.setProperty("--home-group-bg", `rgb(227 242 253 / ${expanded})`);
+      style.setProperty("--home-group-border", `rgb(191 222 244 / ${expanded})`);
       style.setProperty("--home-landlord-bg", `rgb(255 240 231 / ${expanded})`);
       style.setProperty("--home-landlord-border", `rgb(247 212 192 / ${expanded})`);
       dataset.collapsed = progress >= 0.98 ? "true" : "false";

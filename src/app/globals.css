@@ -9,11 +9,11 @@
   --line: #e2e8f0;
   --soft-line: #f1f5f9;
   --row-hover: #f5f6f7;
-  --brand: #0f766e;
-  --brand-strong: #115e59;
-  --brand-soft: #ccfbf1;
-  --brand-icon-soft: #ecf4f3;
-  --brand-icon-hover: #dbeceb;
+  --brand: #0369a1;
+  --brand-strong: #075985;
+  --brand-soft: #e0f2fe;
+  --brand-icon-soft: #eaf5ff;
+  --brand-icon-hover: #dcecf8;
   --violet: #7c3aed;
   --violet-strong: #6d28d9;
   --violet-soft: #ede9fe;
@@ -27,9 +27,9 @@
   --negative-soft: #fee2e2;
   --warning: #a16207;
   --warning-soft: #fef3c7;
-  --pastel-mint: #e3f5ef;
-  --pastel-mint-line: #bce5d8;
-  --pastel-mint-hover: #d4ede5;
+  --pastel-mint: #e3f2fd;
+  --pastel-mint-line: #bfdef4;
+  --pastel-mint-hover: #d5eafa;
   --pastel-lavender: #f0edff;
   --pastel-lavender-line: #d9d1fa;
   --pastel-peach: #fff0e7;
@@ -41,12 +41,12 @@
   --home-header-blue: #dceeff;
   --control-line: #d5e0e7;
   --control-line-hover: #b8c8d2;
-  --control-ring: rgb(15 118 110 / 0.14);
+  --control-ring: rgb(3 105 161 / 0.14);
   --control-disabled: #f4f7f9;
   --radius-surface: 1.25rem;
   --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow: 0 14px 40px rgb(15 23 42 / 0.09);
-  --shadow-float: 0 14px 28px rgb(15 118 110 / 0.24);
+  --shadow-float: 0 14px 28px rgb(3 105 161 / 0.24);
 }
 
 * {
@@ -93,11 +93,11 @@ a {
 
 ::selection {
   color: var(--ink);
-  background: #99f6e4;
+  background: #bae6fd;
 }
 
 :focus-visible {
-  outline: 3px solid #2dd4bf;
+  outline: 3px solid #0ea5e9;
   outline-offset: 3px;
 }
 

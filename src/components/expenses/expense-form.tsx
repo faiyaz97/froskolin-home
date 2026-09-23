@@ -455,7 +455,7 @@ export function ExpenseForm({
           <Button
             type="submit"
             tone="pastel"
-            className="min-w-32 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(15_118_110/0.12)]"
+            className="min-w-32 rounded-full border-0 px-5 shadow-[0_10px_24px_rgb(3_105_161/0.12)]"
             disabled={pending}
           >
             {initial || initialRecurring ? (

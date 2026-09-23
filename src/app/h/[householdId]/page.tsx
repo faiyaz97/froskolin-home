@@ -113,7 +113,7 @@ export default async function HouseholdHome({
               href={`/h/${householdId}/balances`}
               className="home-summary-card home-summary-card-group group flex min-w-0 items-center px-2 py-2 text-[var(--ink)] no-underline sm:px-4"
             >
-              <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#c9eadf] text-[var(--brand)] sm:size-8">
+              <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] sm:size-8">
                 <Users className="size-3.5 sm:size-4" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1 overflow-hidden">

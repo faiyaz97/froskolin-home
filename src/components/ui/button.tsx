@@ -21,7 +21,7 @@ const base =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-transparent px-4 py-2.5 text-sm font-extrabold no-underline transition-[background-color,color,border-color,transform,box-shadow,filter] disabled:cursor-not-allowed disabled:opacity-50 active:translate-y-px";
 const tones: Record<Tone, string> = {
   primary:
-    "bg-[var(--brand)] text-white shadow-[0_6px_16px_rgb(15_118_110/0.2)] hover:bg-[var(--brand-strong)] hover:shadow-[0_8px_20px_rgb(15_118_110/0.24)]",
+    "bg-[var(--brand)] text-white shadow-[0_6px_16px_rgb(3_105_161/0.2)] hover:bg-[var(--brand-strong)] hover:shadow-[0_8px_20px_rgb(3_105_161/0.24)]",
   secondary:
     "border-[var(--line)] bg-white text-[var(--ink)] shadow-[var(--shadow-sm)] hover:border-[#cbd5e1] hover:bg-[var(--soft-line)]",
   quiet:
@@ -31,7 +31,7 @@ const tones: Record<Tone, string> = {
   danger:
     "border-[#fecaca] bg-white text-[var(--negative)] hover:border-[var(--negative)] hover:bg-[var(--negative-soft)]",
   pastel:
-    "bg-[var(--brand)] text-white shadow-[0_6px_16px_rgb(15_118_110/0.18)] hover:bg-[var(--brand-strong)] hover:shadow-[0_8px_20px_rgb(15_118_110/0.22)]",
+    "bg-[var(--brand)] text-white shadow-[0_6px_16px_rgb(3_105_161/0.18)] hover:bg-[var(--brand-strong)] hover:shadow-[0_8px_20px_rgb(3_105_161/0.22)]",
   pastelAccent:
     "bg-[var(--violet)] text-white shadow-[0_6px_16px_rgb(124_58_237/0.16)] hover:bg-[var(--violet-strong)]",
   pastelWarm:
@@ -42,7 +42,7 @@ const tones: Record<Tone, string> = {
 
 const floatingTones: Record<Tone, string> = {
   primary:
-    "bg-[var(--brand)] text-white shadow-[0_8px_18px_rgb(15_118_110/0.18)] hover:bg-[var(--brand-strong)]",
+    "bg-[var(--brand)] text-white shadow-[0_8px_18px_rgb(3_105_161/0.18)] hover:bg-[var(--brand-strong)]",
   secondary:
     "border-[var(--line)] bg-white text-[var(--ink)] shadow-[var(--shadow-sm)] hover:border-[#cbd5e1] hover:bg-[#f8fafc]",
   quiet: "text-[var(--brand)] hover:bg-[var(--brand-icon-hover)]",
@@ -50,7 +50,7 @@ const floatingTones: Record<Tone, string> = {
     "bg-[var(--violet)] text-white shadow-[0_8px_18px_rgb(124_58_237/0.18)] hover:bg-[var(--violet-strong)]",
   danger: "border-[#fecaca] bg-white text-[var(--negative)] hover:bg-[var(--negative-soft)]",
   pastel:
-    "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand-strong)] shadow-[0_8px_18px_rgb(15_118_110/0.14)] hover:bg-[var(--pastel-mint-hover)] hover:shadow-[0_12px_24px_rgb(15_118_110/0.22)]",
+    "border-[var(--pastel-mint-line)] bg-[var(--pastel-mint)] text-[var(--brand-strong)] shadow-[0_8px_18px_rgb(3_105_161/0.14)] hover:bg-[var(--pastel-mint-hover)] hover:shadow-[0_12px_24px_rgb(3_105_161/0.22)]",
   pastelAccent:
     "border-[var(--pastel-lavender-line)] bg-[var(--pastel-lavender)] text-[var(--violet-strong)] shadow-[0_8px_18px_rgb(124_58_237/0.1)] hover:brightness-[0.97] hover:shadow-[0_12px_24px_rgb(124_58_237/0.2)]",
   pastelWarm:

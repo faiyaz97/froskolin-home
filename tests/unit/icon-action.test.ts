@@ -19,7 +19,7 @@ describe("icon action styling", () => {
     expect(className).toContain("hover:bg-[var(--violet-soft)]");
   });
 
-  it("uses teal-derived fills for brand actions instead of the mint surface palette", () => {
+  it("uses blue-derived fills for brand actions instead of the pastel surface palette", () => {
     const className = iconActionClass({ tone: "brand", active: true });
 
     expect(className).toContain("bg-[var(--brand-icon-soft)]");
