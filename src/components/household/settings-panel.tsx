@@ -175,9 +175,6 @@ export function SettingsPanel({
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="relative -mx-3 -mt-3 overflow-hidden rounded-b-[28px] bg-[linear-gradient(135deg,var(--pastel-sky),var(--pastel-mint))] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 shadow-[var(--shadow-sm)] md:mx-0 md:mt-0 md:rounded-[28px] md:p-7">
         <div className="flex items-center gap-4">
-          <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white/75 text-[var(--brand)] shadow-[var(--shadow-sm)] sm:size-20">
-            <UsersRound className="size-8 sm:size-9" strokeWidth={2.2} aria-hidden="true" />
-          </span>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black tracking-[0.14em] text-[var(--brand-strong)] uppercase">
               Your group
