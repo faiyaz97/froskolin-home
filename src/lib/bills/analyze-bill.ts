@@ -56,6 +56,10 @@ export async function analyzeBill(
   if (initial.analysis?.status === "ready" || !issues.length || !extractor.repair) return initial;
   try {
     const targetedIssues = repairIssues(raw, issues);
+    console.info(
+      "[bill-analysis] repair-started",
+      JSON.stringify({ initialIssueCount: issues.length }),
+    );
     debug?.repairIssues(targetedIssues);
     const repaired = structuredBillExtractionSchema.parse(
       await extractor.repair(document, raw, targetedIssues),

@@ -146,6 +146,8 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
                 },
               },
             ];
+      const providerStartedAt = performance.now();
+      const pass = repairOriginal ? "repair" : "initial";
       const response = await ai.models.generateContent({
         model: MODEL,
         contents: [
@@ -166,6 +168,15 @@ REPAIR OUTPUT OVERRIDE: Return ONLY the repair patch schema, never a complete ex
           responseJsonSchema: repairOriginal ? repairSchema : extractionSchema,
         },
       });
+      console.info(
+        "[bill-extraction] provider-call",
+        JSON.stringify({
+          model: MODEL,
+          pass,
+          durationMs: Math.round(performance.now() - providerStartedAt),
+          thoughtsTokens: response.usageMetadata?.thoughtsTokenCount ?? null,
+        }),
+      );
       phase = "response";
       if (!response.text) throw new Error("Empty response");
       const json: unknown = JSON.parse(response.text);

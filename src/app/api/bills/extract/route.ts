@@ -13,6 +13,7 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const startedAt = performance.now();
   let stage: "request" | "authorization" | "preparation" | "analysis" = "request";
   try {
     const formData = await request.formData();
@@ -29,7 +30,9 @@ export async function POST(request: Request) {
     stage = "authorization";
     await requireHouseholdMutation(householdId);
     stage = "preparation";
+    const preparationStartedAt = performance.now();
     const prepared = await prepareBillUpload(file);
+    const preparationMs = Math.round(performance.now() - preparationStartedAt);
     const debug = createDevelopmentBillExtractionDebugger("/api/bills/extract");
     debug?.preparation(prepared);
     stage = "analysis";
@@ -55,6 +58,8 @@ export async function POST(request: Request) {
         issueCount: extraction.analysis?.issues.length ?? 0,
         hasFixed: extraction.charges.fixedCents !== null,
         hasConsumption: extraction.charges.consumptionCents !== null,
+        preparationMs,
+        totalMs: Math.round(performance.now() - startedAt),
       }),
     );
     return NextResponse.json({ extraction, pageCount: prepared.pageCount });
