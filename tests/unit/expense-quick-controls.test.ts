@@ -50,7 +50,8 @@ describe("expense quick controls", () => {
     const currencyMark = screen.getByRole("img", { name: "Group currency: EUR" });
     expect(currencyMark.textContent).toBe("€");
     expect(currencyMark.className).toContain("rounded-xl");
-    expect(currencyMark.className).toContain("bg-[var(--brand-icon-soft)]");
+    expect(currencyMark.className).toContain("bg-[var(--currency-icon-bg)]");
+    expect(currencyMark.className).toContain("text-[var(--currency-icon-text)]");
     expect(screen.queryByRole("button", { name: "Currency" })).toBeNull();
   });
 

@@ -77,7 +77,7 @@ export function CurrencyMark({ value }: { value: string }) {
       role="img"
       aria-label={`Group currency: ${value}`}
       title={`Group currency: ${value}`}
-      className="grid size-11 shrink-0 place-items-center self-center rounded-xl bg-[var(--brand-icon-soft)] text-[var(--brand)]"
+      className="grid size-11 shrink-0 place-items-center self-center rounded-xl bg-[var(--currency-icon-bg)] text-[var(--currency-icon-text)]"
     >
       <span className="block text-2xl leading-none font-semibold" aria-hidden="true">
         {currency?.symbol ?? value}

@@ -271,7 +271,7 @@ export function SettingsPanel({
               setCurrencyDialogOpen(true);
             }}
           >
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--currency-icon-bg)] text-[var(--currency-icon-text)]">
               <Banknote className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">Group currency</span>

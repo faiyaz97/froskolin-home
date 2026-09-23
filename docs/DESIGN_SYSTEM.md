@@ -158,7 +158,7 @@ Canonical primitive: `src/components/ui/button.tsx` (`Button`, `ButtonLink`).
 - Icon-only buttons need a minimum 40–44px hit area and an `aria-label`; compact inline edit controls may use a 28px target when attached directly to a heading.
 - A control that represents present content, such as a saved note, attachment, bill document, or selected date, keeps a very light circular tint at rest. Its hover tint must be visibly stronger than its persistent content tint. The icon itself may fill to reinforce the content-present state.
 - The Home header settings control is a deliberate visibility exception: it keeps a translucent white circular surface over the sky header and becomes solid white on hover.
-- `CurrencyMark` is a static form indicator. Keep its persistent light blue surface and 12px rounded-square shape so the group currency symbol remains visually attached to the amount input. It must not open a picker; Group Settings is the only currency control.
+- `CurrencyMark` is a static form indicator. Keep its persistent soft green surface and dark green symbol, matching the Group currency setting icon, with a 12px rounded-square shape so the group currency symbol remains visually attached to the amount input. It must not open a picker; Group Settings is the only currency control.
 - Hover changes the surface softly; active state moves down 1px; disabled state reduces opacity and blocks interaction. Semantic display icons and record-type tiles are not icon controls and may retain their pastel tile backgrounds.
 
 ### Inputs and textareas
