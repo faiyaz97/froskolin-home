@@ -141,7 +141,7 @@ a {
   --home-balance-height: 68px;
   --home-detail-opacity: 1;
   --home-detail-width: 76px;
-  --home-detail-height: 28px;
+  --home-detail-height: 16px;
   --home-member-height: 20px;
   --home-summary-gap: 8px;
   --home-header-pad: 14px;
@@ -192,7 +192,7 @@ a {
 
 .home-summary-card {
   min-height: var(--home-balance-height);
-  gap: var(--home-summary-gap);
+  gap: calc(var(--home-summary-gap) * 0.65);
   justify-content: center;
   border-radius: var(--home-card-radius);
 }
@@ -220,6 +220,12 @@ a {
   max-width: var(--home-detail-width);
   max-height: var(--home-detail-height);
   opacity: var(--home-detail-opacity);
+}
+
+.home-summary-amount {
+  font-size: clamp(0.9rem, 4.6vw, 1.5rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .bottom-mascot-image {

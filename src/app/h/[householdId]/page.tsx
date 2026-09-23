@@ -111,9 +111,9 @@ export default async function HouseholdHome({
           >
             <Link
               href={`/h/${householdId}/balances`}
-              className="home-summary-card home-summary-card-group group flex min-w-0 items-center px-2 py-2 text-[var(--ink)] no-underline sm:px-4"
+              className="home-summary-card home-summary-card-group group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
             >
-              <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] sm:size-8">
+              <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] sm:size-8">
                 <Users className="size-3.5 sm:size-4" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1 overflow-hidden">
@@ -121,15 +121,6 @@ export default async function HouseholdHome({
                   <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
                     Group
                   </span>
-                  {ownBalances.length ? (
-                    <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                      {Number(ownBalances[0]?.net_cents ?? 0) > 0 ? "You are owed" : "You owe"}
-                    </span>
-                  ) : (
-                    <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                      All settled
-                    </span>
-                  )}
                 </span>
                 <span className="mt-0.5 block min-w-0 text-left tabular-nums">
                   {ownBalances.length ? (
@@ -139,15 +130,26 @@ export default async function HouseholdHome({
                         return (
                           <span
                             key={balance.currency}
-                            className={`block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] ${netCents > 0 ? "text-[var(--positive)]" : "text-[var(--negative)]"}`}
+                            className={`home-summary-amount block font-black ${netCents > 0 ? "text-[var(--positive)]" : netCents < 0 ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}
                           >
+                            <span className="screen-reader-only">
+                              {netCents > 0
+                                ? "You are owed "
+                                : netCents < 0
+                                  ? "You owe "
+                                  : "All settled: "}
+                            </span>
+                            <span aria-hidden="true">
+                              {netCents > 0 ? "+" : netCents < 0 ? "−" : ""}
+                            </span>
                             {formatMoney(Math.abs(netCents), balance.currency, locale)}
                           </span>
                         );
                       })}
                     </span>
                   ) : (
-                    <span className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--ink)]">
+                    <span className="home-summary-amount block font-black text-[var(--ink)]">
+                      <span className="screen-reader-only">All settled: </span>
                       {formatMoney(0, home?.default_currency ?? "EUR", locale)}
                     </span>
                   )}
@@ -164,18 +166,15 @@ export default async function HouseholdHome({
                 <span className="home-summary-divider block w-px" aria-hidden="true" />
                 <Link
                   href={`/h/${householdId}/landlord`}
-                  className="home-summary-card home-summary-card-landlord group flex min-w-0 items-center px-2 py-2 text-[var(--ink)] no-underline sm:px-4"
+                  className="home-summary-card home-summary-card-landlord group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
                 >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] sm:size-8">
+                  <span className="grid size-5 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] sm:size-8">
                     <House className="size-3.5 sm:size-4" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1 overflow-hidden">
                     <span className="home-summary-copy block overflow-hidden whitespace-nowrap">
                       <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
                         Landlord
-                      </span>
-                      <span className="block truncate text-[9px] leading-3 font-bold text-[var(--muted)] sm:text-[10px]">
-                        {landlordTotals.length ? "You owe" : "All settled"}
                       </span>
                     </span>
                     <span className="mt-0.5 block min-w-0 text-left tabular-nums">
@@ -184,14 +183,17 @@ export default async function HouseholdHome({
                           {landlordTotals.map((row) => (
                             <span
                               key={row.currency}
-                              className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--negative)]"
+                              className="home-summary-amount block font-black text-[var(--negative)]"
                             >
+                              <span className="screen-reader-only">You owe </span>
+                              <span aria-hidden="true">−</span>
                               {formatMoney(row.amountCents, row.currency, locale)}
                             </span>
                           ))}
                         </span>
                       ) : (
-                        <span className="block text-[clamp(.75rem,3.2vw,1.1rem)] leading-5 font-black [overflow-wrap:anywhere] text-[var(--ink)]">
+                        <span className="home-summary-amount block font-black text-[var(--ink)]">
+                          <span className="screen-reader-only">All settled: </span>
                           {formatMoney(0, home?.default_currency ?? "EUR", locale)}
                         </span>
                       )}

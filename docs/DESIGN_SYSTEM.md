@@ -116,7 +116,7 @@ Canonical shell: `src/components/household/app-shell.tsx`.
 
 Special page behavior:
 
-- Home’s summary morph is mobile-only and follows scroll position directly, with one paint per animation frame and no trailing catch-up animation; desktop stays expanded. Each balance half stacks its label/context above the amount so the full label and large values have their own horizontal space on narrow screens. The label/context collapses during the morph while the amount remains visible. Canonical component: `src/components/household/home-summary-motion.tsx` plus the `home-summary-*` rules in `globals.css`.
+- Home’s summary morph is mobile-only and follows scroll position directly, with one paint per animation frame and no trailing catch-up animation; desktop stays expanded. Each balance half stacks its label above a larger signed amount: positive Group balances use a green `+`, debts use a red `−`, and zero remains neutral. Do not show separate “You are owed” or “You owe” lines; keep that context available to screen readers. The label collapses during the morph while the amount remains visible. Canonical component: `src/components/household/home-summary-motion.tsx` plus the `home-summary-*` rules in `globals.css`.
 - User Settings owns a sticky mobile profile header and a static rounded desktop header.
 - Group Settings header scrolls with page content; it must not be sticky.
 
