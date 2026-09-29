@@ -34,8 +34,9 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
       style.setProperty("--home-member-height", `${20 * expanded}px`);
       style.setProperty("--home-summary-gap", `${8 - 4 * progress}px`);
       style.setProperty("--home-header-pad", `${14 - 7 * progress}px`);
-      style.setProperty("--home-balances-pad", `${8 - 6 * progress}px`);
-      style.setProperty("--home-card-radius", `${15 * expanded}px`);
+      style.setProperty("--home-balances-pad", `${8 - progress}px`);
+      style.setProperty("--home-card-radius", `${15 - 7 * progress}px`);
+      style.setProperty("--home-mascot-bottom", `${-12 + 12 * progress}px`);
       style.setProperty("--home-divider-opacity", `${progress}`);
       style.setProperty("--home-divider-height", `${28 * progress}px`);
       style.setProperty("--home-surface-radius", `${14 * progress}px`);

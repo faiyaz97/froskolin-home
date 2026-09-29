@@ -5,6 +5,11 @@ import type { BillExtractor, PreparedBillDocument } from "./bill-extractor";
 import type { BillExtractionDebugger } from "./debug";
 
 type RepairExtractor = BillExtractor & {
+  optimized?: boolean;
+  extractDetailed?: (
+    document: PreparedBillDocument,
+    issues: string[],
+  ) => Promise<StructuredBillExtraction>;
   repair?: (
     document: PreparedBillDocument,
     extraction: StructuredBillExtraction,
@@ -42,7 +47,7 @@ function repairIssues(raw: StructuredBillExtraction, issues: string[]) {
   ];
 }
 
-/** One initial extraction and at most one targeted repair; the provider may use a fallback model. */
+/** One initial extraction and at most one targeted repair using the same model. */
 export async function analyzeBill(
   document: PreparedBillDocument,
   extractor: RepairExtractor,
@@ -53,7 +58,32 @@ export async function analyzeBill(
   const initial = calculateBillTotals(raw);
   debug?.calculation("initial", initial);
   const issues = initial.analysis?.issues ?? [];
-  if (initial.analysis?.status === "ready" || !issues.length || !extractor.repair) return initial;
+  if (initial.analysis?.status === "ready" || !issues.length) return initial;
+  if (extractor.optimized && extractor.extractDetailed) {
+    console.info(
+      "[bill-analysis] detailed-review-started",
+      JSON.stringify({ issueCount: issues.length }),
+    );
+    try {
+      const detailed = structuredBillExtractionSchema.parse(
+        await extractor.extractDetailed(document, repairIssues(raw, issues)),
+      );
+      for (const field of ["servicePeriod", "totalDueCents", "currency"] as const) {
+        if (JSON.stringify(raw[field]) !== JSON.stringify(detailed[field])) {
+          debug?.repairRejected(`identity-field-changed:${field}`);
+          return initial;
+        }
+      }
+      const reviewed = calculateBillTotals(detailed);
+      debug?.structured("repair-accepted", detailed);
+      debug?.calculation("after-repair", reviewed);
+      return reviewed.analysis?.status === "ready" ? reviewed : initial;
+    } catch (error) {
+      debug?.repairFailed(error);
+      return initial;
+    }
+  }
+  if (!extractor.repair) return initial;
   try {
     const targetedIssues = repairIssues(raw, issues);
     console.info(

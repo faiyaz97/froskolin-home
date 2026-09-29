@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { GroupBalancesView } from "@/components/expenses/group-balances-view";
 
 afterEach(cleanup);
-beforeEach(() => window.localStorage.clear());
 
 const props = {
   householdId: "group-one",
@@ -40,37 +39,25 @@ const props = {
 };
 
 describe("group balance modes", () => {
-  it("uses the selected breakdown for both rows and settlement links", () => {
+  it("uses the persisted simplified strategy for member suggestions", () => {
     render(
       React.createElement(GroupBalancesView, {
         ...props,
+        strategy: "simplified",
       }),
     );
-
-    const modeSwitch = screen.getByRole("switch", { name: "Use simplified balances" });
-    expect(modeSwitch.getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("link", { name: "Settle up" }).getAttribute("href")).toContain(
       "receivingMemberId=member-a",
     );
-
-    fireEvent.click(modeSwitch);
-
-    expect(modeSwitch.getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByText("Actual")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Settle up" }).getAttribute("href")).toContain(
-      "receivingMemberId=member-c",
-    );
-    expect(window.localStorage.getItem("froskolin:balance-mode:group-one:member-b")).toBe("actual");
   });
 
-  it("restores the last mode for the current member and group", () => {
-    window.localStorage.setItem("froskolin:balance-mode:group-one:member-b", "actual");
-
-    render(React.createElement(GroupBalancesView, props));
-
-    expect(
-      screen.getByRole("switch", { name: "Use simplified balances" }).getAttribute("aria-checked"),
-    ).toBe("false");
-    expect(screen.getByText("Actual")).toBeTruthy();
-  });
+  it.each(["default", "super_simplified"] as const)(
+    "keeps real group debts under %s strategy",
+    (strategy) => {
+      render(React.createElement(GroupBalancesView, { ...props, strategy }));
+      expect(screen.getByRole("link", { name: "Settle up" }).getAttribute("href")).toContain(
+        "receivingMemberId=member-c",
+      );
+    },
+  );
 });

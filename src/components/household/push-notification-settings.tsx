@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/push";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
+import { ErrorDialog } from "../ui/error-dialog";
 import { StatusNote } from "../ui/page";
 
 type SupportState = "checking" | "ready" | "unsupported" | "insecure" | "ios-home-screen";
@@ -26,6 +27,23 @@ type PushSubscriptionDetails = {
 
 const subscribeToHydration = () => () => undefined;
 const promptedAccounts = new Set<string>();
+
+function savedNotificationState(userId: string): boolean | null {
+  try {
+    const value = localStorage.getItem(`froskolin:push-enabled:${userId}`);
+    return value === "1" ? true : value === "0" ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberNotificationState(userId: string, enabled: boolean) {
+  try {
+    localStorage.setItem(`froskolin:push-enabled:${userId}`, enabled ? "1" : "0");
+  } catch {
+    // The live subscription check still works when storage is unavailable.
+  }
+}
 
 function wasPrompted(key: string) {
   if (promptedAccounts.has(key)) return true;
@@ -121,7 +139,8 @@ export function PushNotificationSettings({
   const [configurationChecked, setConfigurationChecked] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const [configurationError, setConfigurationError] = useState("");
-  const [enabled, setEnabled] = useState(false);
+  const [configurationErrorDismissed, setConfigurationErrorDismissed] = useState(false);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -139,9 +158,11 @@ export function PushNotificationSettings({
         const publicKey = result.data.publicKey;
         if (publicKey) {
           setSubscriptionChecked(false);
+          setEnabled(savedNotificationState(result.data.userId));
           setConfiguration({ publicKey, userId: result.data.userId });
         } else {
           setConfiguration(null);
+          setEnabled(false);
           setSubscriptionChecked(true);
         }
         setConfigurationChecked(true);
@@ -172,7 +193,9 @@ export function PushNotificationSettings({
           setConfigurationError(result.error);
           return;
         }
-        setEnabled(result !== null && result.data.enabled);
+        const verifiedEnabled = result !== null && result.data.enabled;
+        setEnabled(verifiedEnabled);
+        rememberNotificationState(configuration.userId, verifiedEnabled);
         setSubscriptionChecked(true);
       })
       .catch(() => {
@@ -251,6 +274,7 @@ export function PushNotificationSettings({
         return;
       }
       setEnabled(true);
+      rememberNotificationState(configuration.userId, true);
       setPromptOpen(false);
       setMessage("");
     } catch {
@@ -276,6 +300,7 @@ export function PushNotificationSettings({
         await subscription.unsubscribe();
       }
       setEnabled(false);
+      rememberNotificationState(configuration.userId, false);
       setMessage("Notifications are off on this device.");
     } catch {
       setMessage("We couldn't turn off notifications. Please try again.");
@@ -286,7 +311,7 @@ export function PushNotificationSettings({
 
   const unavailableMessage =
     support === "checking"
-      ? "Checking notification support…"
+      ? ""
       : support === "insecure"
         ? "Open Froskolin over HTTPS on this device to enable notifications."
         : support === "ios-home-screen"
@@ -294,7 +319,7 @@ export function PushNotificationSettings({
           : support === "unsupported"
             ? "Notifications aren't supported in this browser."
             : !configurationChecked
-              ? "Checking notification setup…"
+              ? ""
               : configurationError ||
                 (configuration ? "" : "Push notifications aren't configured for this app yet.");
 
@@ -322,9 +347,9 @@ export function PushNotificationSettings({
       <button
         type="button"
         role="switch"
-        aria-checked={enabled}
+        aria-checked={enabled === true}
         aria-label="Notifications on this device"
-        aria-busy={busy}
+        aria-busy={busy || enabled === null}
         disabled={!canInteract || busy}
         onClick={enabled ? disableNotifications : enableNotifications}
         className="group flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--surface-soft)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70 sm:px-5"
@@ -332,7 +357,7 @@ export function PushNotificationSettings({
         <span
           className={`grid size-10 shrink-0 place-items-center rounded-xl ${enabled ? "bg-[var(--brand-soft)] text-[var(--brand)]" : "bg-[var(--pastel-sky)] text-[var(--sky)]"}`}
         >
-          {enabled ? (
+          {enabled !== false ? (
             <Bell className="size-5" aria-hidden="true" />
           ) : (
             <BellOff className="size-5" aria-hidden="true" />
@@ -347,12 +372,18 @@ export function PushNotificationSettings({
           </p>
         </div>
         <span className="relative h-6 w-11 shrink-0" aria-hidden="true">
-          <span
-            className={`absolute inset-0 rounded-full transition-colors ${enabled ? "bg-[var(--brand)]" : "bg-[var(--line)]"}`}
-          />
-          <span
-            className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`}
-          />
+          {enabled === null ? (
+            <span className="absolute inset-0 animate-pulse rounded-full bg-[var(--surface-soft)]" />
+          ) : (
+            <>
+              <span
+                className={`absolute inset-0 rounded-full transition-colors ${enabled ? "bg-[var(--brand)]" : "bg-[var(--line)]"}`}
+              />
+              <span
+                className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`}
+              />
+            </>
+          )}
           {busy && (
             <span className="absolute inset-0 grid place-items-center rounded-full bg-white/75">
               <LoaderCircle className="size-4 animate-spin text-[var(--brand)]" />
@@ -360,12 +391,12 @@ export function PushNotificationSettings({
           )}
         </span>
       </button>
-      {!enabled && unavailableMessage && (
+      {unavailableMessage && !configurationError && enabled !== true && (
         <div className="border-t border-[var(--soft-line)] px-4 py-3 sm:px-5">
-          <StatusNote tone={configurationError ? "error" : "info"} title={unavailableMessage} />
+          <StatusNote tone="info" title={unavailableMessage} />
         </div>
       )}
-      {message && (
+      {message === "Notifications are off on this device." && (
         <div
           className="border-t border-[var(--soft-line)] px-4 py-3 text-sm font-bold text-[var(--brand-strong)] sm:px-5"
           role="status"
@@ -373,6 +404,14 @@ export function PushNotificationSettings({
           {message}
         </div>
       )}
+      <ErrorDialog
+        error={configurationErrorDismissed ? null : configurationError}
+        onClose={() => setConfigurationErrorDismissed(true)}
+      />
+      <ErrorDialog
+        error={message !== "Notifications are off on this device." ? message : null}
+        onClose={() => setMessage("")}
+      />
       {permission === "denied" && !enabled && !message && (
         <p className="px-4 pb-4 text-xs text-[var(--muted)] sm:px-5">
           Your browser has blocked notifications for this site.

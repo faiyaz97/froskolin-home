@@ -4,6 +4,24 @@ import { structuredBillExtractionSchema, extractedBillSchema } from "@/lib/valid
 import { charge, rawBill, vat, gasSummaryReference } from "../fixtures/bill-analysis";
 
 describe("deterministic bill analysis", () => {
+  it("classifies confident detailed late interest as fixed but keeps uncertain facts for review", () => {
+    const interest = charge("interest", 3, "unknown", {
+      originalLabel: "Late payment interest",
+    });
+    const input = rawBill({
+      totalDueCents: 10003,
+      lineItems: [...rawBill().lineItems, interest],
+    });
+    const ready = normalizeExtractedBillBuckets(input);
+    expect(ready.analysis?.status).toBe("ready");
+    expect(ready.charges.fixedCents).toBe(4003);
+    expect(ready.structuredData?.lineItems.at(-1)?.classification).toBe("fixed");
+    interest.classification = "usage";
+    expect(normalizeExtractedBillBuckets(input).charges.fixedCents).toBe(4003);
+    interest.confidence = 0;
+    expect(normalizeExtractedBillBuckets(input).analysis?.status).toBe("needs_review");
+  });
+
   it("does not disguise a material unknown adjustment as rounding", () => {
     const result = normalizeExtractedBillBuckets(
       rawBill({

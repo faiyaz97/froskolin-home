@@ -107,13 +107,18 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
   await expect(billForm.getByLabel("Title")).toHaveValue(billTitle);
   await expect(billForm.getByLabel("Total due")).toHaveValue("20.00");
 
-  await billForm.getByLabel("Notes (optional)").fill("Unsaved note");
+  await page.getByRole("button", { name: "Add notes" }).click();
+  const notesDialog = page.getByRole("dialog", { name: "Notes" });
+  await notesDialog.getByRole("textbox", { name: "Notes" }).fill("Unsaved note");
+  await notesDialog.getByRole("button", { name: "Done" }).click();
   await billForm.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page).toHaveURL(detailUrl);
   await page.goto(billEditHref!);
-  await expect(billForm.getByLabel("Notes (optional)")).toHaveValue("");
+  await page.getByRole("button", { name: "Add notes" }).click();
+  await expect(notesDialog.getByRole("textbox", { name: "Notes" })).toHaveValue("");
 
-  await billForm.getByLabel("Notes (optional)").fill("Saved note");
+  await notesDialog.getByRole("textbox", { name: "Notes" }).fill("Saved note");
+  await notesDialog.getByRole("button", { name: "Done" }).click();
   await page.locator('input[type="file"]').setInputFiles({
     name: "replacement.png",
     mimeType: "image/png",
@@ -125,7 +130,7 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
   await expect(page.getByText("replacement.png", { exact: true })).toBeVisible();
   await billForm.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page).toHaveURL(detailUrl, { timeout: 20_000 });
-  await expect(page.getByText("Bill document", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View bill document" })).toBeVisible();
   await page.goto(billEditHref!);
   await expect(page.getByText("Current bill document", { exact: true })).toBeVisible();
   await expect(page.getByText("Private uploaded bill", { exact: true })).toHaveCount(0);
@@ -134,8 +139,9 @@ test("utility bill editing reuses the add form and preserves cancelled changes",
     .click();
   await expect(page.getByRole("button", { name: "View", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Replace", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Remove", exact: true })).toBeVisible();
-  await expect(billForm.getByLabel("Notes (optional)")).toHaveValue("Saved note");
+  await expect(page.getByRole("button", { name: "Remove bill document" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit notes" }).click();
+  await expect(notesDialog.getByRole("textbox", { name: "Notes" })).toHaveValue("Saved note");
 });
 
 test("recurring rule editing uses the expense form", async ({ page }) => {
@@ -164,7 +170,7 @@ test("recurring rule editing uses the expense form", async ({ page }) => {
   const recurringSection = page.locator("section", { hasText: "Recurring expenses" });
   await expect(recurringSection.getByText(new RegExp(`^${originalTitle}`))).toBeVisible();
   const editUrl = await recurringSection
-    .getByRole("link", { name: "Edit", exact: true })
+    .getByRole("link", { name: `Edit ${originalTitle}` })
     .getAttribute("href");
   expect(editUrl).toBeTruthy();
   await page.goto(editUrl!);

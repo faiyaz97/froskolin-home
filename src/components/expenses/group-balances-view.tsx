@@ -1,12 +1,13 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 
 import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { simplifyDebts } from "@/lib/domain";
+import type { BalanceStrategy } from "@/lib/domain/balance-strategy";
 import { formatMoney } from "@/lib/format";
 
 type Member = { id: string; name: string; avatarColor: AvatarColor | null };
@@ -24,21 +25,6 @@ type Suggestion = {
   amountCents: number;
 };
 
-function balanceModeStorageKey(householdId: string, memberId: string) {
-  return `froskolin:balance-mode:${householdId}:${memberId}`;
-}
-
-const balanceModeEvent = "froskolin:balance-mode-change";
-
-function subscribeToBalanceMode(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(balanceModeEvent, onStoreChange);
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(balanceModeEvent, onStoreChange);
-  };
-}
-
 export function GroupBalancesView({
   householdId,
   currentMemberId,
@@ -46,6 +32,7 @@ export function GroupBalancesView({
   balances,
   pairBalances,
   locale,
+  strategy,
 }: {
   householdId: string;
   currentMemberId: string;
@@ -53,26 +40,9 @@ export function GroupBalancesView({
   balances: Balance[];
   pairBalances: PairBalance[];
   locale: string;
+  strategy: BalanceStrategy;
 }) {
-  const storageKey = balanceModeStorageKey(householdId, currentMemberId);
-  const getStoredMode = useCallback(() => {
-    try {
-      return window.localStorage.getItem(storageKey) === "actual" ? "actual" : "simplified";
-    } catch {
-      return "simplified";
-    }
-  }, [storageKey]);
-  const mode = useSyncExternalStore(subscribeToBalanceMode, getStoredMode, () => "simplified");
-  const simplified = mode === "simplified";
-
-  function toggleBalanceMode() {
-    try {
-      window.localStorage.setItem(storageKey, simplified ? "actual" : "simplified");
-      window.dispatchEvent(new Event(balanceModeEvent));
-    } catch {
-      // Keep the current selection when browser storage is unavailable.
-    }
-  }
+  const simplified = strategy === "simplified";
 
   const names = useMemo(
     () => new Map(members.map((member) => [member.id, member.name])),
@@ -103,36 +73,18 @@ export function GroupBalancesView({
           <h2 id="members-balance-title" className="text-sm font-black tracking-[-0.01em]">
             Members
           </h2>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={simplified}
-            aria-label="Use simplified balances"
-            className="group flex items-center gap-2 rounded-full px-1 py-1 text-xs font-bold text-[var(--ink-soft)] transition-colors outline-none hover:text-[var(--ink)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2"
-            onClick={toggleBalanceMode}
-          >
-            <span>{simplified ? "Simplified" : "Actual"}</span>
-            <span
-              className={cn(
-                "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                simplified ? "bg-[var(--brand)]" : "bg-[#cbd5e1]",
-              )}
-              aria-hidden="true"
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform",
-                  simplified ? "translate-x-4" : "translate-x-0",
-                )}
-              />
-            </span>
-          </button>
         </div>
+        {strategy === "super_simplified" && (
+          <p className="mb-3 px-1 text-xs leading-5 text-[var(--muted)]">
+            These are direct debts between members. All balances offers a shorter payment plan;
+            follow one plan to avoid extra transfers.
+          </p>
+        )}
 
         <div className="space-y-3">
           {currencies.map((currency) => {
             const ledger = balances.filter((row) => row.currency === currency);
-            const currencySuggestions = suggestions.filter(
+            const currencySuggestions = actualSuggestions.filter(
               (suggestion) => suggestion.currency === currency,
             );
 
@@ -243,7 +195,7 @@ export function GroupBalancesView({
         <section className="mt-6" aria-labelledby="settle-up-title">
           <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
             <h2 id="settle-up-title" className="text-sm font-black">
-              Settle up
+              {strategy === "super_simplified" ? "Direct payments" : "Settle up"}
             </h2>
             <span className="text-xs text-[var(--muted)]">
               {suggestions.length} {suggestions.length === 1 ? "payment" : "payments"}

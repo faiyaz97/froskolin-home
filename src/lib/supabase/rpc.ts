@@ -1,4 +1,7 @@
-export type RpcResponse<T = unknown> = { data: T | null; error: { message?: string } | null };
+export type RpcResponse<T = unknown> = {
+  data: T | null;
+  error: { code?: string; message?: string } | null;
+};
 
 type RpcCapableClient = {
   rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResponse>;

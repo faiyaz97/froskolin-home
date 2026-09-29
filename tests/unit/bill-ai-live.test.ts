@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import { GeminiBillExtractor } from "@/lib/bills/gemini-extractor";
 import { calculateBillTotals } from "@/lib/domain/bill-analysis";
 import { analyzeBill } from "@/lib/bills/analyze-bill";
+import { prepareBillUpload } from "@/lib/bills/preprocessing";
 import { rawBill, vat } from "../fixtures/bill-analysis";
 
 // Explicit opt-in only: this test spends API quota, using synthetic data, never user files.
@@ -9,6 +11,7 @@ it.skipIf(process.env.BILL_AI_LIVE_TEST !== "1")(
   "extracts and calculates a synthetic bill through the live Gemini API",
   async () => {
     process.loadEnvFile(".env.local");
+    process.env.BILL_AI_OPTIMIZED = "1";
     const raw = await new GeminiBillExtractor().extract({
       mimeType: "image/png",
       bytes: new Uint8Array(),
@@ -27,6 +30,83 @@ All dates and amounts are clearly printed and unambiguous.`,
     expect(calculated.totalDueCents).toBe(11000);
   },
   90000,
+);
+
+// Local diagnostic only; no document is checked into the repository.
+it.skipIf(!process.env.BILL_AI_DIAGNOSTIC_PDF_PATH || process.env.BILL_AI_LIVE_TEST !== "1")(
+  "prints the classified payable rows for a consented local bill",
+  async () => {
+    process.loadEnvFile(".env.local");
+    process.env.BILL_AI_OPTIMIZED = "1";
+    const file = new File([await readFile(process.env.BILL_AI_DIAGNOSTIC_PDF_PATH!)], "bill.pdf", {
+      type: "application/pdf",
+    });
+    const document = await prepareBillUpload(file);
+    const extractor = new GeminiBillExtractor();
+    const facts =
+      process.env.BILL_AI_DIAGNOSTIC_MODE === "detailed"
+        ? await extractor.extractDetailed(document, ["Diagnostic baseline."])
+        : await extractor.extract(document);
+    const result = calculateBillTotals(facts);
+    console.info(
+      "[bill-diagnostic]",
+      JSON.stringify({
+        model: extractor.model,
+        status: result.analysis?.status,
+        issues: result.analysis?.issues,
+        fixed: result.charges.fixedCents,
+        usage: result.charges.consumptionCents,
+        rows: facts.lineItems
+          .filter((row) => row.includedInPayableTotal)
+          .map((row) => ({
+            label: row.originalLabel,
+            amount: row.amountCents,
+            classification: row.classification,
+            kind: row.kind,
+          })),
+      }),
+    );
+  },
+  180_000,
+);
+
+// Opt in with a locally held, consented PDF and expected amounts. Never commit the document.
+it.skipIf(!process.env.BILL_AI_TEST_PDF_PATH || process.env.BILL_AI_LIVE_TEST !== "1")(
+  "extracts the same real PDF consistently across three independent attempts",
+  async () => {
+    process.loadEnvFile(".env.local");
+    const path = process.env.BILL_AI_TEST_PDF_PATH!;
+    process.env.BILL_AI_OPTIMIZED = "1";
+    const expectedFixed = Number(process.env.BILL_AI_EXPECTED_FIXED_CENTS);
+    const expectedUsage = Number(process.env.BILL_AI_EXPECTED_USAGE_CENTS);
+    expect(Number.isSafeInteger(expectedFixed)).toBe(true);
+    expect(Number.isSafeInteger(expectedUsage)).toBe(true);
+    const file = new File([await readFile(path)], "bill.pdf", { type: "application/pdf" });
+    const document = await prepareBillUpload(file);
+    if (process.env.BILL_AI_TEST_SKIP_BASELINE !== "1") {
+      const baseline = calculateBillTotals(
+        await new GeminiBillExtractor().extractDetailed(document, [
+          "Baseline detailed extraction.",
+        ]),
+      );
+      console.info(
+        "[bill-live-comparison]",
+        JSON.stringify({
+          path: "detailed",
+          status: baseline.analysis?.status,
+          fixedMatches: baseline.charges.fixedCents === expectedFixed,
+          usageMatches: baseline.charges.consumptionCents === expectedUsage,
+        }),
+      );
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await analyzeBill(document, new GeminiBillExtractor());
+      expect(result.analysis?.status).toBe("ready");
+      expect(result.charges.fixedCents).toBe(expectedFixed);
+      expect(result.charges.consumptionCents).toBe(expectedUsage);
+    }
+  },
+  600_000,
 );
 
 it.skipIf(process.env.BILL_AI_LIVE_TEST !== "1")(

@@ -68,6 +68,7 @@ export function BillMetaControls({
   landlordEnabled,
   locale,
   disabled,
+  disabledParticipantIds,
 }: {
   utilityType: UtilityType;
   onUtilityTypeChange: (value: UtilityType) => void;
@@ -84,6 +85,7 @@ export function BillMetaControls({
   landlordEnabled: boolean;
   locale: string;
   disabled?: boolean;
+  disabledParticipantIds?: ReadonlySet<string>;
 }) {
   const [dialog, setDialog] = useState<"type" | "period" | "payer" | "participants" | null>(null);
   const [draftType, setDraftType] = useState(utilityType);
@@ -275,6 +277,7 @@ export function BillMetaControls({
                 key={member.id}
                 multiple
                 selected={draftSelected.has(member.id)}
+                disabled={disabledParticipantIds?.has(member.id)}
                 onClick={() =>
                   setDraftSelected((current) => {
                     const next = new Set(current);

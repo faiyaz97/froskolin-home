@@ -35,6 +35,7 @@ import {
   promoteMemberSchema,
   demoteAdminSchema,
   updateHouseholdSchema,
+  updateBalanceStrategySchema,
   updateHouseholdAccessSchema,
   updatePersonalSettingsSchema,
 } from "@/lib/validation";
@@ -298,6 +299,24 @@ export async function updateHouseholdAction(input: unknown): Promise<ActionResul
   }
 }
 
+export async function updateBalanceStrategyAction(input: unknown): Promise<ActionResult> {
+  const parsed = updateBalanceStrategySchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { user } = await requireHouseholdOwnerMutation(parsed.data.householdId);
+    const { error } = await callRpc(createAdminClient(), "set_balance_strategy", {
+      p_household_id: parsed.data.householdId,
+      p_strategy: parsed.data.balanceStrategy,
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    revalidatePath(`/h/${parsed.data.householdId}`, "layout");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
 export async function updatePersonalSettingsAction(input: unknown): Promise<ActionResult> {
   const parsed = updatePersonalSettingsSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
@@ -362,33 +381,8 @@ export async function demoteAdminAction(input: unknown): Promise<ActionResult> {
 export async function removeMemberAction(input: unknown): Promise<ActionResult> {
   const parsed = removeMemberSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
-  try {
-    const { supabase, user } = await requireHouseholdOwnerMutation(parsed.data.householdId);
-    const { data: target, error: targetError } = await supabase
-      .from("household_members")
-      .select("user_id, role")
-      .eq("id", parsed.data.memberId)
-      .eq("household_id", parsed.data.householdId)
-      .is("removed_at", null)
-      .maybeSingle();
-    if (targetError || !target) throw targetError ?? new AuthorizationError("Member not found.");
-    if (target.user_id === user.id || target.role === "owner") {
-      return { ok: false, error: "Admins cannot be removed from the group." };
-    }
-    const { error } = await supabase
-      .from("household_members")
-      .update({
-        removed_at: new Date().toISOString(),
-        removed_by: user.id,
-      })
-      .eq("id", parsed.data.memberId)
-      .eq("household_id", parsed.data.householdId);
-    if (error) throw error;
-    revalidatePath(`/h/${parsed.data.householdId}`, "layout");
-    return { ok: true, data: undefined };
-  } catch (error) {
-    return actionFailure(error);
-  }
+  const { removeMemberWithBillingAction } = await import("./member-billing");
+  return removeMemberWithBillingAction(parsed.data);
 }
 
 export async function resetMemberPinAction(

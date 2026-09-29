@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 
 import { requireHouseholdMutation } from "@/lib/auth";
 import {
+  BillExtractionError,
   GeminiBillExtractor,
+  BILL_AI_MODEL,
   analyzeBill,
   prepareBillUpload,
   sanitizeBillError,
+  toBillAutofill,
 } from "@/lib/bills";
 
 export const runtime = "nodejs";
@@ -26,6 +29,16 @@ export async function POST(request: Request, { params }: Context) {
       );
     }
     const { supabase } = await requireHouseholdMutation(body.householdId);
+    const { data: group, error: groupError } = await supabase
+      .from("households")
+      .select("default_currency")
+      .eq("id", body.householdId)
+      .single();
+    if (groupError || !group)
+      return NextResponse.json(
+        { error: "Group currency is unavailable. Try again later." },
+        { status: 400 },
+      );
     const { data: document, error } = await supabase
       .from("bill_documents")
       .select("id, household_id, storage_path, detected_mime, byte_count, status")
@@ -41,7 +54,7 @@ export async function POST(request: Request, { params }: Context) {
         status: "extracting",
         gemini_consent_at: consentAt,
         provider: "gemini",
-        model: "gemini-3.1-flash-lite",
+        model: BILL_AI_MODEL,
         extraction_schema_version: "2",
         sanitized_error: null,
       })
@@ -59,7 +72,12 @@ export async function POST(request: Request, { params }: Context) {
         type: document.detected_mime,
       });
       const prepared = await prepareBillUpload(file);
-      const extracted = await analyzeBill(prepared, new GeminiBillExtractor());
+      const extractor = new GeminiBillExtractor();
+      const extracted = await analyzeBill(prepared, extractor);
+      if (extracted.currency !== group.default_currency)
+        throw new BillExtractionError(
+          `This bill uses ${extracted.currency}, but the group uses ${group.default_currency}. Enter a bill in the group currency.`,
+        );
       const { error: updateError } = await supabase
         .from("bill_documents")
         .update({
@@ -67,12 +85,13 @@ export async function POST(request: Request, { params }: Context) {
           extraction: extracted,
           confidence: extracted.extractionConfidence,
           evidence: extracted.evidence,
+          model: extractor.model,
           sanitized_error: null,
         })
         .eq("id", documentId)
         .eq("household_id", body.householdId);
       if (updateError) throw updateError;
-      return NextResponse.json({ extraction: extracted });
+      return NextResponse.json({ extraction: toBillAutofill(extracted) });
     } catch (error) {
       const message = sanitizeBillError(error);
       await supabase

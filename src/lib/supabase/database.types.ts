@@ -416,7 +416,9 @@ export type Database = {
           display_name_normalized: string | null;
           household_id: string;
           id: string;
+          in_date: string;
           joined_at: string;
+          out_date: string | null;
           removed_at: string | null;
           removed_by: string | null;
           role: Database["public"]["Enums"]["member_role"];
@@ -430,7 +432,9 @@ export type Database = {
           display_name_normalized?: string | null;
           household_id: string;
           id?: string;
+          in_date: string;
           joined_at?: string;
+          out_date?: string | null;
           removed_at?: string | null;
           removed_by?: string | null;
           role?: Database["public"]["Enums"]["member_role"];
@@ -444,7 +448,9 @@ export type Database = {
           display_name_normalized?: string | null;
           household_id?: string;
           id?: string;
+          in_date?: string;
           joined_at?: string;
+          out_date?: string | null;
           removed_at?: string | null;
           removed_by?: string | null;
           role?: Database["public"]["Enums"]["member_role"];
@@ -465,6 +471,7 @@ export type Database = {
         Row: {
           access_code_digest: string;
           archived_at: string | null;
+          balance_strategy: string;
           created_at: string;
           created_by: string;
           default_currency: string;
@@ -481,6 +488,7 @@ export type Database = {
         Insert: {
           access_code_digest: string;
           archived_at?: string | null;
+          balance_strategy?: string;
           created_at?: string;
           created_by: string;
           default_currency?: string;
@@ -497,6 +505,7 @@ export type Database = {
         Update: {
           access_code_digest?: string;
           archived_at?: string | null;
+          balance_strategy?: string;
           created_at?: string;
           created_by?: string;
           default_currency?: string;
@@ -514,45 +523,64 @@ export type Database = {
       };
       landlord_payments: {
         Row: {
+          all_payment_id: string | null;
           amount_cents: number;
           created_at: string;
           created_by: string;
           expense_id: string;
           household_id: string;
           id: string;
+          linked_settlement_id: string | null;
           member_id: string;
+          note: string | null;
+          paid_by_member_id: string | null;
           payment_date: string;
           void_reason: string | null;
           voided_at: string | null;
           voided_by: string | null;
         };
         Insert: {
+          all_payment_id?: string | null;
           amount_cents: number;
           created_at?: string;
           created_by: string;
           expense_id: string;
           household_id: string;
           id?: string;
+          linked_settlement_id?: string | null;
           member_id: string;
+          note?: string | null;
+          paid_by_member_id?: string | null;
           payment_date: string;
           void_reason?: string | null;
           voided_at?: string | null;
           voided_by?: string | null;
         };
         Update: {
+          all_payment_id?: string | null;
           amount_cents?: number;
           created_at?: string;
           created_by?: string;
           expense_id?: string;
           household_id?: string;
           id?: string;
+          linked_settlement_id?: string | null;
           member_id?: string;
+          note?: string | null;
+          paid_by_member_id?: string | null;
           payment_date?: string;
           void_reason?: string | null;
           voided_at?: string | null;
           voided_by?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "landlord_payments_actual_payer_fk";
+            columns: ["paid_by_member_id", "household_id"];
+            isOneToOne: false;
+            referencedRelation: "household_members";
+            referencedColumns: ["id", "household_id"];
+          },
           {
             foreignKeyName: "landlord_payments_expense_id_household_id_fkey";
             columns: ["expense_id", "household_id"];
@@ -566,6 +594,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "households";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "landlord_payments_linked_settlement_fk";
+            columns: ["linked_settlement_id", "household_id"];
+            isOneToOne: false;
+            referencedRelation: "settlements";
+            referencedColumns: ["id", "household_id"];
           },
           {
             foreignKeyName: "landlord_payments_member_id_household_id_fkey";
@@ -943,6 +978,20 @@ export type Database = {
       };
     };
     Functions: {
+      apply_member_billing_dates: {
+        Args: {
+          p_actor_user_id: string;
+          p_expected_in_date: string;
+          p_expected_out_date: string;
+          p_household_id: string;
+          p_in_date: string;
+          p_member_id: string;
+          p_out_date: string;
+          p_remove: boolean;
+          p_utility_updates: Json;
+        };
+        Returns: undefined;
+      };
       create_expense_with_landlord_support: {
         Args: {
           p_actor_user_id: string;
@@ -1060,6 +1109,31 @@ export type Database = {
       promote_group_member: {
         Args: { p_household_id: string; p_member_id: string };
         Returns: undefined;
+      };
+      record_bill_landlord_payment: {
+        Args: {
+          p_actor_user_id: string;
+          p_allocations: Json;
+          p_currency: string;
+          p_expense_id: string;
+          p_household_id: string;
+          p_paying_member_id: string;
+          p_payment_date: string;
+        };
+        Returns: string;
+      };
+      record_landlord_balance_payment: {
+        Args: {
+          p_actor_user_id: string;
+          p_allocate_others: boolean;
+          p_amount_cents: number;
+          p_currency: string;
+          p_household_id: string;
+          p_note: string;
+          p_paying_member_id: string;
+          p_payment_date: string;
+        };
+        Returns: number;
       };
       record_landlord_payment: {
         Args: {
@@ -1218,6 +1292,14 @@ export type Database = {
         };
         Returns: string;
       };
+      set_balance_strategy: {
+        Args: {
+          p_actor_user_id: string;
+          p_household_id: string;
+          p_strategy: string;
+        };
+        Returns: string;
+      };
       update_household_access: {
         Args: {
           p_access_code_digest: string;
@@ -1225,6 +1307,24 @@ export type Database = {
           p_house_code: string;
           p_household_id: string;
           p_join_pin_digest: string;
+        };
+        Returns: undefined;
+      };
+      void_landlord_payment_group: {
+        Args: {
+          p_actor_user_id: string;
+          p_household_id: string;
+          p_payment_id: string;
+          p_reason: string;
+        };
+        Returns: undefined;
+      };
+      void_linked_all_payment: {
+        Args: {
+          p_actor_user_id: string;
+          p_household_id: string;
+          p_reason: string;
+          p_settlement_id: string;
         };
         Returns: undefined;
       };

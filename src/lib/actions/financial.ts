@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import {
   notifyExpense,
@@ -10,6 +11,17 @@ import {
 } from "@/lib/push/expense-events";
 import { schedulePush } from "@/lib/push/delivery";
 import { formatMoney } from "@/lib/format";
+import { LANDLORD_BALANCE_ID } from "@/lib/domain/all-balances";
+import { calculateConstrainedAllBalances } from "@/lib/domain/constrained-all-balances";
+import { projectBillPaymentPlan } from "@/lib/domain/bill-payment-plan";
+import {
+  getAllLandlordShareBalances,
+  getBalances,
+  getHouseholdMembers,
+  getPairBalances,
+} from "@/lib/queries";
+import { simplifyDebts } from "@/lib/domain/balances";
+import { routeDepartedSuggestions } from "@/lib/domain/balance-exit";
 
 import { requireHouseholdMutation } from "@/lib/auth";
 import {
@@ -17,6 +29,7 @@ import {
   calculateExactShares,
   calculatePercentageShares,
   calculateUtilityShares,
+  activeBillPeriod,
   dateOnlyToEpochDay,
   enumerateDueOccurrences,
   epochDayToDateOnly,
@@ -28,7 +41,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   expenseInputSchema,
   landlordPaymentSchema,
+  landlordBalancePaymentSchema,
   reopenLandlordBillSchema,
+  voidLandlordPaymentSchema,
   archiveRecurringExpenseRuleSchema,
   recurringExpenseRuleSchema,
   replaceAbsencesSchema,
@@ -42,7 +57,7 @@ import {
   voidExpenseSchema,
   voidSettlementSchema,
 } from "@/lib/validation";
-import { uuidSchema } from "@/lib/validation/common";
+import { positiveCentsSchema, uuidSchema } from "@/lib/validation/common";
 
 import { actionFailure, type ActionResult, validationFailure } from "./result";
 
@@ -64,6 +79,7 @@ function refreshHousehold(householdId: string) {
   revalidatePath(`/h/${householdId}/activity`);
   revalidatePath(`/h/${householdId}/calendar`);
   revalidatePath(`/h/${householdId}/landlord`);
+  revalidatePath(`/h/${householdId}/all`);
 }
 
 function localDateOnly(timezone: string): string {
@@ -278,6 +294,15 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
           .is("voided_at", null)
       : { data: [], error: null };
     if (absencesError) throw absencesError;
+    const { data: billingMembers, error: billingError } = participantIds.length
+      ? await supabase
+          .from("household_members")
+          .select("id, in_date, out_date")
+          .eq("household_id", parsed.data.householdId)
+          .in("id", participantIds)
+      : { data: [], error: null };
+    if (billingError) throw billingError;
+    const billingByMember = new Map((billingMembers ?? []).map((row) => [row.id, row]));
     const absenceByMember = new Map<string, DateRange[]>();
     for (const row of (absences ?? []) as Array<{
       member_id: string;
@@ -305,6 +330,8 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
         participants: participants.map((participant) => ({
           memberId: participant.member_id,
           absenceRanges: absenceByMember.get(participant.member_id),
+          inDate: billingByMember.get(participant.member_id)?.in_date,
+          outDate: billingByMember.get(participant.member_id)?.out_date,
         })),
       });
       return {
@@ -342,6 +369,15 @@ export async function replaceAbsencesAction(input: unknown): Promise<ActionResul
         })),
       p_actor_user_id: user.id,
     });
+    if (
+      error?.code === "23514" &&
+      error.message === "reverse landlord payments before changing bill shares"
+    ) {
+      return {
+        ok: false,
+        error: "A bill has recorded payments. Undo them before changing days off.",
+      };
+    }
     if (error) throw error;
     await Promise.all(
       utilityUpdates.map(async (update, index) => {
@@ -383,6 +419,26 @@ export async function confirmUtilityBillAction(
     if (householdError || !household) throw householdError ?? new Error("Household not found.");
     const currency = String(household.default_currency);
     const ids = parsed.data.participants.map((participant) => participant.memberId);
+    const { data: billingMembers, error: billingError } = await supabase
+      .from("household_members")
+      .select("id, in_date, out_date")
+      .eq("household_id", parsed.data.householdId)
+      .in("id", ids);
+    if (billingError) throw billingError;
+    const billingByMember = new Map((billingMembers ?? []).map((row) => [row.id, row]));
+    const eligibleParticipants = parsed.data.participants.filter((participant) => {
+      const member = billingByMember.get(participant.memberId);
+      return (
+        member &&
+        activeBillPeriod(
+          { startDate: parsed.data.serviceStart, endDate: parsed.data.serviceEnd },
+          member.in_date,
+          member.out_date,
+        )
+      );
+    });
+    if (eligibleParticipants.length === 0)
+      return { ok: false, error: "No selected member was in the group during this bill period." };
     const { data: absenceRows, error: absenceError } = await supabase
       .from("absence_periods")
       .select("member_id, start_date, end_date")
@@ -407,9 +463,11 @@ export async function confirmUtilityBillAction(
       fixedCents: parsed.data.fixedCents,
       variableCents: parsed.data.variableCents,
       servicePeriod: { startDate: parsed.data.serviceStart, endDate: parsed.data.serviceEnd },
-      participants: parsed.data.participants.map((participant) => ({
+      participants: eligibleParticipants.map((participant) => ({
         memberId: participant.memberId,
         absenceRanges: absenceByMember.get(participant.memberId),
+        inDate: billingByMember.get(participant.memberId)?.in_date,
+        outDate: billingByMember.get(participant.memberId)?.out_date,
       })),
     });
     const { data, error } = await callRpc<string>(createAdminClient(), rpc.createUtility, {
@@ -424,7 +482,12 @@ export async function confirmUtilityBillAction(
       p_split_config: {
         method: "utility",
         entryMode: parsed.data.entryMode,
-        participants: parsed.data.participants,
+        participants: eligibleParticipants,
+        billingDates: eligibleParticipants.map((participant) => ({
+          memberId: participant.memberId,
+          inDate: billingByMember.get(participant.memberId)!.in_date,
+          outDate: billingByMember.get(participant.memberId)!.out_date,
+        })),
         fixedCents: parsed.data.fixedCents,
         variableCents: parsed.data.variableCents,
       },
@@ -492,6 +555,13 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
     if (expenseError || !existingExpense)
       throw expenseError ?? new Error("Utility bill not found.");
     const ids = parsed.data.participants.map((participant) => participant.memberId);
+    const { data: billingMembers, error: billingError } = await supabase
+      .from("household_members")
+      .select("id, in_date, out_date")
+      .eq("household_id", parsed.data.householdId)
+      .in("id", ids);
+    if (billingError) throw billingError;
+    const billingByMember = new Map((billingMembers ?? []).map((row) => [row.id, row]));
     const { data: absenceRows, error: absenceError } = await supabase
       .from("absence_periods")
       .select("member_id, start_date, end_date")
@@ -519,6 +589,8 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
       participants: parsed.data.participants.map((participant) => ({
         memberId: participant.memberId,
         absenceRanges: absenceByMember.get(participant.memberId),
+        inDate: billingByMember.get(participant.memberId)?.in_date,
+        outDate: billingByMember.get(participant.memberId)?.out_date,
       })),
     });
     const { error } = await callRpc(
@@ -537,6 +609,11 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
           method: "utility",
           entryMode: parsed.data.entryMode,
           participants: parsed.data.participants,
+          billingDates: parsed.data.participants.map((participant) => ({
+            memberId: participant.memberId,
+            inDate: billingByMember.get(participant.memberId)!.in_date,
+            outDate: billingByMember.get(participant.memberId)!.out_date,
+          })),
           fixedCents: parsed.data.fixedCents,
           variableCents: parsed.data.variableCents,
         },
@@ -563,6 +640,9 @@ export async function updateUtilityBillAction(input: unknown): Promise<ActionRes
         p_actor_user_id: user.id,
       },
     );
+    if (error?.message?.includes("reverse landlord payments")) {
+      return { ok: false, error: "Reverse the landlord payments before editing this bill." };
+    }
     if (error) throw error;
     await notifyExpense({
       householdId: parsed.data.householdId,
@@ -635,6 +715,111 @@ export async function saveSettlementAction(
   }
 }
 
+const suggestedPaymentSchema = z.object({
+  householdId: uuidSchema,
+  receivingMemberId: z.union([uuidSchema, z.literal(LANDLORD_BALANCE_ID)]),
+  amountCents: positiveCentsSchema,
+  currency: z.string().length(3),
+});
+
+/** Records only the current user's still-current balance suggestion. */
+export async function recordSuggestedPaymentAction(input: unknown): Promise<ActionResult> {
+  const parsed = suggestedPaymentSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const { data: home, error: homeError } = await supabase
+      .from("households")
+      .select("default_currency, timezone, balance_strategy, landlord_enabled")
+      .eq("id", parsed.data.householdId)
+      .single();
+    if (homeError || !home) throw homeError ?? new Error("Group is unavailable.");
+    if (parsed.data.currency !== home.default_currency)
+      return { ok: false, error: "The balance changed. Refresh and try again." };
+
+    const groupRows = await getBalances(parsed.data.householdId);
+    const groupBalances = groupRows.map((row) => ({
+      memberId: row.member_id,
+      currency: row.currency,
+      amountCents: Number(row.net_cents),
+    }));
+    const superSimplified = home.balance_strategy === "super_simplified" && home.landlord_enabled;
+    const shares = home.landlord_enabled
+      ? await getAllLandlordShareBalances(parsed.data.householdId)
+      : [];
+    const departedIds = new Set(
+      (await getHouseholdMembers(parsed.data.householdId))
+        .filter((member) => member.removed_at)
+        .map((member) => member.id),
+    );
+    const baseSuggestions = superSimplified
+      ? calculateConstrainedAllBalances(groupBalances, shares).suggestions
+      : [
+          ...(home.balance_strategy === "simplified"
+            ? simplifyDebts(groupBalances)
+            : (await getPairBalances(parsed.data.householdId)).map((row) => ({
+                fromMemberId: row.paying_member_id,
+                toMemberId: row.receiving_member_id,
+                currency: row.currency,
+                amountCents: Number(row.amount_cents),
+              }))),
+          ...shares
+            .filter((row) => row.remainingCents > 0)
+            .map((row) => ({
+              fromMemberId: row.memberId,
+              toMemberId: LANDLORD_BALANCE_ID,
+              currency: row.currency,
+              amountCents: row.remainingCents,
+            })),
+        ];
+    const routedDepartedLandlord = baseSuggestions.some(
+      (row) =>
+        row.fromMemberId === membership.id &&
+        departedIds.has(row.toMemberId) &&
+        baseSuggestions.some(
+          (other) =>
+            other.fromMemberId === row.toMemberId &&
+            other.toMemberId === LANDLORD_BALANCE_ID &&
+            other.currency === parsed.data.currency &&
+            other.amountCents > 0,
+        ),
+    );
+    const suggestions = routeDepartedSuggestions(baseSuggestions, departedIds);
+    const stillSuggested = suggestions.some(
+      (row) =>
+        row.fromMemberId === membership.id &&
+        row.toMemberId === parsed.data.receivingMemberId &&
+        row.currency === parsed.data.currency &&
+        row.amountCents === parsed.data.amountCents,
+    );
+    if (!stillSuggested) return { ok: false, error: "The balance changed. Refresh and try again." };
+    const settlementDate = localDateOnly(home.timezone);
+    if (parsed.data.receivingMemberId === LANDLORD_BALANCE_ID) {
+      const ownOutstanding = shares
+        .filter((row) => row.memberId === membership.id && row.currency === parsed.data.currency)
+        .reduce((sum, row) => sum + row.remainingCents, 0);
+      return recordLandlordBalancePaymentAction({
+        householdId: parsed.data.householdId,
+        payingMemberId: membership.id,
+        amountCents: parsed.data.amountCents,
+        settlementDate,
+        allocateOthers:
+          superSimplified || routedDepartedLandlord || parsed.data.amountCents > ownOutstanding,
+      });
+    }
+    const result = await saveSettlementAction({
+      householdId: parsed.data.householdId,
+      payingMemberId: membership.id,
+      receivingMemberId: parsed.data.receivingMemberId,
+      amountCents: parsed.data.amountCents,
+      settlementDate,
+    });
+    return result.ok ? { ok: true, data: undefined } : result;
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
 export async function recordLandlordPaymentAction(input: unknown): Promise<ActionResult> {
   const parsed = landlordPaymentSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
@@ -665,6 +850,184 @@ export async function recordLandlordPaymentAction(input: unknown): Promise<Actio
   }
 }
 
+export async function recordLandlordBalancePaymentAction(input: unknown): Promise<ActionResult> {
+  const parsed = landlordBalancePaymentSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    if (membership.id !== parsed.data.payingMemberId)
+      return { ok: false, error: "You can only record your own payment." };
+    const { data: home, error: homeError } = await supabase
+      .from("households")
+      .select("default_currency")
+      .eq("id", parsed.data.householdId)
+      .single();
+    if (homeError || !home) throw homeError ?? new Error("Group is unavailable.");
+    const currency = home.default_currency;
+    const shares = await getAllLandlordShareBalances(parsed.data.householdId);
+    if (parsed.data.allocateOthers) {
+      const balances = await getBalances(parsed.data.householdId);
+      const groupBalances = balances.map((row) => ({
+        memberId: row.member_id,
+        currency: row.currency,
+        amountCents: Number(row.net_cents),
+      }));
+      const { data: groupMode, error: modeError } = await supabase
+        .from("households")
+        .select("balance_strategy, landlord_enabled")
+        .eq("id", parsed.data.householdId)
+        .single();
+      if (modeError || !groupMode) throw modeError ?? new Error("Group is unavailable.");
+      const departedIds = new Set(
+        (await getHouseholdMembers(parsed.data.householdId))
+          .filter((member) => member.removed_at)
+          .map((member) => member.id),
+      );
+      const baseSuggestions =
+        groupMode.balance_strategy === "super_simplified" && groupMode.landlord_enabled
+          ? calculateConstrainedAllBalances(groupBalances, shares).suggestions
+          : [
+              ...(groupMode.balance_strategy === "default"
+                ? (await getPairBalances(parsed.data.householdId)).map((row) => ({
+                    fromMemberId: row.paying_member_id,
+                    toMemberId: row.receiving_member_id,
+                    currency: row.currency,
+                    amountCents: Number(row.amount_cents),
+                  }))
+                : simplifyDebts(groupBalances)),
+              ...shares
+                .filter((row) => row.remainingCents > 0)
+                .map((row) => ({
+                  fromMemberId: row.memberId,
+                  toMemberId: LANDLORD_BALANCE_ID,
+                  currency: row.currency,
+                  amountCents: row.remainingCents,
+                })),
+            ];
+      const suggestions = routeDepartedSuggestions(baseSuggestions, departedIds);
+      if (
+        !suggestions.some(
+          (row) =>
+            row.fromMemberId === membership.id &&
+            row.toMemberId === LANDLORD_BALANCE_ID &&
+            row.currency === currency &&
+            parsed.data.amountCents <= row.amountCents,
+        )
+      )
+        return { ok: false, error: "That suggestion changed. Refresh All balances and try again." };
+    } else {
+      const outstanding = shares
+        .filter((row) => row.memberId === membership.id && row.currency === currency)
+        .reduce((sum, row) => sum + row.remainingCents, 0);
+      if (parsed.data.amountCents > outstanding)
+        return { ok: false, error: "That amount exceeds your landlord balance." };
+    }
+    const { error } = await callRpc(createAdminClient(), "record_landlord_balance_payment", {
+      p_household_id: parsed.data.householdId,
+      p_paying_member_id: membership.id,
+      p_amount_cents: parsed.data.amountCents,
+      p_currency: currency,
+      p_payment_date: parsed.data.settlementDate,
+      p_note: parsed.data.note ?? null,
+      p_allocate_others: parsed.data.allocateOthers,
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    refreshHousehold(parsed.data.householdId);
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+const billQuickPaymentSchema = z.object({
+  householdId: uuidSchema,
+  expenseId: uuidSchema,
+  amountCents: positiveCentsSchema,
+});
+
+/** Pays only the live projected portion of one bill, including linked covers. */
+export async function recordBillQuickPaymentAction(input: unknown): Promise<ActionResult> {
+  const parsed = billQuickPaymentSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { supabase, user, membership } = await requireHouseholdMutation(parsed.data.householdId);
+    const { data: home, error: homeError } = await supabase
+      .from("households")
+      .select("default_currency, timezone, balance_strategy, landlord_enabled")
+      .eq("id", parsed.data.householdId)
+      .single();
+    if (homeError || !home) throw homeError ?? new Error("Group is unavailable.");
+    if (!home.landlord_enabled)
+      return { ok: false, error: "Landlord payments are unavailable for this group." };
+
+    const shares = await getAllLandlordShareBalances(parsed.data.householdId);
+    const billShares = shares.filter((share) => share.expenseId === parsed.data.expenseId);
+    if (!billShares.length || billShares.some((share) => share.currency !== home.default_currency))
+      return { ok: false, error: "The bill changed. Refresh and try again." };
+    const plan =
+      home.balance_strategy === "super_simplified"
+        ? await (async () => {
+            const departedIds = new Set(
+              (await getHouseholdMembers(parsed.data.householdId))
+                .filter((member) => member.removed_at)
+                .map((member) => member.id),
+            );
+            const suggestions = calculateConstrainedAllBalances(
+              (await getBalances(parsed.data.householdId)).map((row) => ({
+                memberId: row.member_id,
+                currency: row.currency,
+                amountCents: Number(row.net_cents),
+              })),
+              shares,
+            ).suggestions;
+            return projectBillPaymentPlan(
+              shares,
+              routeDepartedSuggestions(suggestions, departedIds),
+              departedIds,
+            ).filter((share) => share.expenseId === parsed.data.expenseId);
+          })()
+        : billShares.map((share) => ({
+            ...share,
+            plannedPayers: share.remainingCents
+              ? [{ memberId: share.memberId, amountCents: share.remainingCents }]
+              : [],
+          }));
+    const byBeneficiary = new Map<string, number>();
+    for (const share of plan) {
+      for (const payer of share.plannedPayers) {
+        if (payer.memberId !== membership.id) continue;
+        byBeneficiary.set(
+          share.memberId,
+          (byBeneficiary.get(share.memberId) ?? 0) + payer.amountCents,
+        );
+      }
+    }
+    const allocations = [...byBeneficiary].map(([memberId, amountCents]) => ({
+      member_id: memberId,
+      amount_cents: amountCents,
+    }));
+    const liveAmount = allocations.reduce((sum, row) => sum + row.amount_cents, 0);
+    if (!liveAmount || liveAmount !== parsed.data.amountCents)
+      return { ok: false, error: "The bill payment changed. Refresh and try again." };
+    const { error } = await callRpc(createAdminClient(), "record_bill_landlord_payment", {
+      p_household_id: parsed.data.householdId,
+      p_expense_id: parsed.data.expenseId,
+      p_paying_member_id: membership.id,
+      p_allocations: allocations,
+      p_currency: home.default_currency,
+      p_payment_date: localDateOnly(home.timezone),
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    refreshHousehold(parsed.data.householdId);
+    revalidatePath(`/h/${parsed.data.householdId}/expenses/${parsed.data.expenseId}`);
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
 export async function reopenLandlordBillAction(input: unknown): Promise<ActionResult> {
   const parsed = reopenLandlordBillSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
@@ -683,11 +1046,43 @@ export async function reopenLandlordBillAction(input: unknown): Promise<ActionRe
   }
 }
 
+export async function voidLandlordPaymentAction(input: unknown): Promise<ActionResult> {
+  const parsed = voidLandlordPaymentSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  try {
+    const { user } = await requireHouseholdMutation(parsed.data.householdId);
+    const { error } = await callRpc(createAdminClient(), "void_landlord_payment_group", {
+      p_household_id: parsed.data.householdId,
+      p_payment_id: parsed.data.paymentId,
+      p_reason: parsed.data.reason,
+      p_actor_user_id: user.id,
+    });
+    if (error) throw error;
+    refreshHousehold(parsed.data.householdId);
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
 export async function updateSettlementAction(input: unknown): Promise<ActionResult> {
   const parsed = updateSettlementSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const { data: linked, error: linkedError } = await supabase
+      .from("landlord_payments")
+      .select("id")
+      .eq("household_id", parsed.data.householdId)
+      .eq("linked_settlement_id", parsed.data.settlementId)
+      .is("voided_at", null)
+      .limit(1);
+    if (linkedError) throw linkedError;
+    if (linked?.length)
+      return {
+        ok: false,
+        error: "This payment is linked to a landlord bill. Void it to reverse both records.",
+      };
     const currency = await readGroupCurrency(supabase, parsed.data.householdId);
     const { data, error } = await supabase
       .from("settlements")
@@ -718,6 +1113,25 @@ export async function voidSettlementAction(input: unknown): Promise<ActionResult
   if (!parsed.success) return validationFailure(parsed.error);
   try {
     const { supabase, user } = await requireHouseholdMutation(parsed.data.householdId);
+    const { data: linked, error: linkedError } = await supabase
+      .from("landlord_payments")
+      .select("id")
+      .eq("household_id", parsed.data.householdId)
+      .eq("linked_settlement_id", parsed.data.settlementId)
+      .is("voided_at", null)
+      .limit(1);
+    if (linkedError) throw linkedError;
+    if (linked?.length) {
+      const { error } = await callRpc(createAdminClient(), "void_linked_all_payment", {
+        p_household_id: parsed.data.householdId,
+        p_settlement_id: parsed.data.settlementId,
+        p_reason: parsed.data.reason,
+        p_actor_user_id: user.id,
+      });
+      if (error) throw error;
+      refreshHousehold(parsed.data.householdId);
+      return { ok: true, data: undefined };
+    }
     const { data, error } = await supabase
       .from("settlements")
       .update({
@@ -945,6 +1359,9 @@ export async function voidExpenseAction(input: unknown): Promise<ActionResult> {
       .is("voided_at", null)
       .select("id")
       .maybeSingle();
+    if (error?.code === "23514" && error.message.includes("reverse landlord payments")) {
+      return { ok: false, error: "Reverse the landlord payments before deleting this bill." };
+    }
     if (error || !data) throw error ?? new Error("Expense is unavailable.");
     refreshHousehold(parsed.data.householdId);
     return { ok: true, data: undefined };

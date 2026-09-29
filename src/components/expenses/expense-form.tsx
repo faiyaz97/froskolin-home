@@ -13,7 +13,7 @@ import {
 import { announceSaveComplete } from "@/lib/save-feedback";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { StatusNote } from "../ui/page";
+import { ErrorDialog } from "../ui/error-dialog";
 import type { AvatarColor } from "../household/member-avatar";
 import {
   ExpenseAttachmentAction,
@@ -297,11 +297,11 @@ export function ExpenseForm({
       aria-busy={pending}
       noValidate
     >
-      {error && (
-        <StatusNote tone="error" title={error}>
-          Check the amounts and selected roommates.
-        </StatusNote>
-      )}
+      <ErrorDialog
+        error={error}
+        onClose={() => setError("")}
+        hint="Check the amounts and selected members."
+      />
 
       <section className="flex w-full min-w-0 flex-1 flex-col px-1 py-2 sm:px-4 sm:py-4">
         <div className="my-auto w-full min-w-0 py-4 md:py-6">

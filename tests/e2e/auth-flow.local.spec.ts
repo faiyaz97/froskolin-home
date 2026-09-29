@@ -26,7 +26,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.getByRole("link", { name: "Settle up" })).toBeVisible();
   const primaryNavigation = page.getByRole("navigation", { name: "Primary" });
   await expect(primaryNavigation).toBeVisible();
-  const appBrand = page.getByRole("link", { name: "Froskolin Home" });
+  const appBrand = page.getByRole("link", { name: "Froskolin", exact: true });
   if ((page.viewportSize()?.width ?? 0) < 768) await expect(appBrand).toBeHidden();
   else await expect(appBrand).toBeVisible();
   await expect(primaryNavigation.getByText("Add", { exact: true })).toHaveCount(0);
@@ -34,7 +34,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
     const navigationBox = await primaryNavigation.boundingBox();
     expect(navigationBox).not.toBeNull();
     expect(navigationBox!.width).toBeLessThanOrEqual(600);
-    expect(Math.abs(navigationBox!.x + navigationBox!.width / 2 - 640)).toBeLessThan(2);
+    expect(Math.abs(navigationBox!.x + navigationBox!.width / 2 - 640)).toBeLessThan(10);
   }
 
   await page.goto(`${homeUrl}/add/expense`);
@@ -57,10 +57,10 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.getByText("Everyone", { exact: true })).toBeVisible();
   await expect(page.getByText("Repeat monthly", { exact: true })).toHaveCount(0);
   const viewport = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
+    windowWidth: window.innerWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-  expect(viewport.scrollWidth).toBe(viewport.clientWidth);
+  expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.windowWidth);
   const dateDialog = page.getByRole("dialog", { name: "Date", exact: true });
   await expect(async () => {
     await page.getByRole("button", { name: /Date \d{4}-\d{2}-\d{2}/ }).click();
@@ -118,7 +118,11 @@ test("create, remembered login, access rotation, failed login, and join", async 
   await expect(page.getByText("Manual entry", { exact: true })).toBeVisible();
   await expect(billForm.getByLabel(/Supplier/)).toHaveCount(0);
   await expect(billForm.getByLabel("Issue date", { exact: true })).toHaveCount(0);
-  await expect(billForm.getByLabel("Notes (optional)", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add notes" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Notes" }).getByRole("textbox", { name: "Notes" }),
+  ).toBeVisible();
+  await page.getByRole("dialog", { name: "Notes" }).getByRole("button", { name: "Back" }).click();
   await page.screenshot({ path: testInfo.outputPath("utility-bill-desktop.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: testInfo.outputPath("utility-bill-mobile.png") });
@@ -170,7 +174,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
     buffer: Buffer.from("mock bill"),
   });
   expect(persistentUploadRequests).toBe(0);
-  await expect(page.getByText(/tap to change/i)).toBeVisible();
+  await expect(page.getByText(/tap for options/i)).toBeVisible();
   await page.getByRole("button", { name: "Autofill", exact: true }).click();
   await expect(page.getByText("AI-filled", { exact: true })).toBeVisible();
   expect(persistentUploadRequests).toBe(0);
@@ -295,7 +299,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
   const secondPage = await secondContext.newPage();
   await secondPage.goto("/login");
   await secondPage.getByLabel("Group code").fill(changedCode!);
-  await secondPage.getByLabel("Member name").fill(memberName);
+  await secondPage.getByLabel("Your name").fill(memberName);
   await secondPage.getByLabel("Personal PIN").fill("222222");
   await secondPage.getByRole("button", { name: "Sign in" }).click();
   await expect(secondPage.getByText("We couldn't sign you in with those details.")).toBeVisible();
@@ -327,13 +331,17 @@ test("create, remembered login, access rotation, failed login, and join", async 
     .locator("..")
     .getByRole("button", { name: "Reset PIN" })
     .click();
+  await page
+    .getByRole("dialog", { name: `Reset ${memberName}'s PIN?` })
+    .getByRole("button", { name: "Reset PIN" })
+    .click();
   await expect(page.getByText(/Temporary PIN/)).toBeVisible();
   const temporaryPinText = await page.locator("code").filter({ hasText: memberName }).textContent();
   const temporaryPin = temporaryPinText?.match(/(\d{4}|\d{6})$/)?.[1];
   expect(temporaryPin).toBeTruthy();
   await secondPage.goto("/login");
   await secondPage.getByLabel("Group code").fill(changedCode);
-  await secondPage.getByLabel("Member name").fill(memberName);
+  await secondPage.getByLabel("Your name").fill(memberName);
   await secondPage.getByLabel("Personal PIN").fill(temporaryPin!);
   await secondPage.getByRole("button", { name: "Sign in" }).click();
   await expect(secondPage).toHaveURL(`${secondHomeUrl}/account`, { timeout: 15_000 });

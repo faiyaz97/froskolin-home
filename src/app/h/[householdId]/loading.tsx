@@ -10,21 +10,10 @@ export default function Loading() {
           <div className="h-3 w-24 rounded-full bg-[var(--line)]" />
           <div className="h-8 w-2/3 max-w-72 rounded-lg bg-[var(--line)]" />
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-3">
-          <div className="flex h-20 items-center gap-3 rounded-[18px] bg-[var(--pastel-mint)] px-3">
-            <div className="size-8 shrink-0 rounded-lg bg-white/70" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-2.5 w-2/3 rounded-full bg-white/80" />
-              <div className="h-3 w-4/5 rounded-full bg-white/80" />
-            </div>
-          </div>
-          <div className="flex h-20 items-center gap-3 rounded-[18px] bg-[var(--pastel-peach)] px-3">
-            <div className="size-8 shrink-0 rounded-lg bg-white/70" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-2.5 w-2/3 rounded-full bg-white/80" />
-              <div className="h-3 w-4/5 rounded-full bg-white/80" />
-            </div>
-          </div>
+        <div className="flex h-17 shrink-0 items-center gap-3 rounded-[18px] bg-[var(--pastel-lavender)] px-3">
+          <div className="size-8 shrink-0 rounded-lg bg-white/70" />
+          <div className="h-3 w-24 rounded-full bg-white/80" />
+          <div className="ml-auto h-4 w-20 rounded-full bg-white/80" />
         </div>
         <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] bg-white px-4 py-4 shadow-[var(--shadow-sm)] sm:px-5">
           <div className="h-3 w-28 rounded-full bg-[var(--line)]" />

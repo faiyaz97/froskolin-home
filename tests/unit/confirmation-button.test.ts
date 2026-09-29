@@ -20,16 +20,15 @@ afterEach(cleanup);
 describe("ConfirmationButton", () => {
   it("requires an explicit confirmation before running a sensitive action", async () => {
     const action = vi.fn();
-    render(
-      React.createElement(ConfirmationButton, {
-        title: "Remove this item?",
-        description: "This item will be removed.",
-        confirmLabel: "Remove",
-        triggerLabel: "Remove item",
-        onConfirmAction: action,
-        children: "Open",
-      }),
-    );
+    const props = {
+      title: "Remove this item?",
+      description: "This item will be removed.",
+      confirmLabel: "Remove",
+      triggerLabel: "Remove item",
+      onConfirmAction: action,
+      children: "Open",
+    };
+    render(React.createElement(ConfirmationButton, props));
 
     fireEvent.click(screen.getByRole("button", { name: "Remove item" }));
     expect(screen.getByRole("dialog", { name: "Remove this item?" })).toBeTruthy();

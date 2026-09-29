@@ -33,6 +33,8 @@ describe("HomeSummaryMotion", () => {
     );
     const summary = container.querySelector<HTMLElement>(".home-summary-motion")!;
     expect(summary.style.getPropertyValue("--home-detail-opacity")).toBe("1");
+    expect(summary.style.getPropertyValue("--home-balance-height")).toBe("68px");
+    expect(summary.style.getPropertyValue("--home-mascot-bottom")).toBe("-12px");
 
     vi.stubGlobal("scrollY", 48);
     fireEvent.scroll(window);
@@ -45,6 +47,9 @@ describe("HomeSummaryMotion", () => {
     frames.shift()!(16);
     expect(summary.dataset.collapsed).toBe("true");
     expect(summary.style.getPropertyValue("--home-detail-opacity")).toBe("0");
+    expect(summary.style.getPropertyValue("--home-balance-height")).toBe("42px");
+    expect(summary.style.getPropertyValue("--home-balances-pad")).toBe("7px");
+    expect(summary.style.getPropertyValue("--home-mascot-bottom")).toBe("0px");
     expect(frames).toHaveLength(0);
 
     vi.stubGlobal("scrollY", 0);

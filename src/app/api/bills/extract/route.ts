@@ -8,6 +8,7 @@ import {
   createDevelopmentBillExtractionDebugger,
   prepareBillUpload,
   sanitizeBillError,
+  toBillAutofill,
 } from "@/lib/bills";
 
 export const runtime = "nodejs";
@@ -28,7 +29,17 @@ export async function POST(request: Request) {
     }
 
     stage = "authorization";
-    await requireHouseholdMutation(householdId);
+    const { supabase } = await requireHouseholdMutation(householdId);
+    const { data: group, error: groupError } = await supabase
+      .from("households")
+      .select("default_currency")
+      .eq("id", householdId)
+      .single();
+    if (groupError || !group)
+      return NextResponse.json(
+        { error: "Group currency is unavailable. Try again later." },
+        { status: 400 },
+      );
     stage = "preparation";
     const preparationStartedAt = performance.now();
     const prepared = await prepareBillUpload(file);
@@ -41,6 +52,16 @@ export async function POST(request: Request) {
       new GeminiBillExtractor(undefined, debug),
       debug,
     );
+    if (extraction.currency !== group.default_currency) {
+      console.info("[bill-analysis] currency-mismatch", JSON.stringify({ route: "upload" }));
+      return NextResponse.json(
+        {
+          error: `This bill uses ${extraction.currency}, but the group uses ${group.default_currency}. Enter a bill in the group currency.`,
+        },
+        { status: 422 },
+      );
+    }
+    const autofill = toBillAutofill(extraction);
     console.info(
       "[bill-analysis] completed",
       JSON.stringify({
@@ -60,9 +81,10 @@ export async function POST(request: Request) {
         hasConsumption: extraction.charges.consumptionCents !== null,
         preparationMs,
         totalMs: Math.round(performance.now() - startedAt),
+        responseBytes: Buffer.byteLength(JSON.stringify(autofill)),
       }),
     );
-    return NextResponse.json({ extraction, pageCount: prepared.pageCount });
+    return NextResponse.json({ extraction: autofill, pageCount: prepared.pageCount });
   } catch (error) {
     if (!(error instanceof BillExtractionError)) {
       console.error(

@@ -1,9 +1,45 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GeminiBillExtractor, extractionSchema } from "@/lib/bills/gemini-extractor";
+import {
+  expandLeanExtraction,
+  leanBillExtractionSchema,
+  leanGenerationSchema,
+} from "@/lib/bills/lean-extraction";
 import { rawBill } from "../fixtures/bill-analysis";
 import { repairSchema } from "@/lib/bills/repair-patch";
 
 const { generateContent } = vi.hoisted(() => ({ generateContent: vi.fn() }));
+function leanBill() {
+  const bill = rawBill();
+  return {
+    schemaVersion: 3 as const,
+    utilityType: bill.utilityType,
+    servicePeriod: bill.servicePeriod,
+    totalDueCents: bill.totalDueCents,
+    currency: bill.currency,
+    consumption: bill.consumption,
+    coverageComplete: bill.coverageComplete === true,
+    charges: bill.lineItems
+      .filter((row) => row.includedInPayableTotal)
+      .map((row) => ({
+        id: row.id,
+        label: row.originalLabel,
+        amountCents: row.amountCents,
+        classification: row.classification,
+        kind: row.kind,
+        adjustsChargeIds: row.adjustsChargeIds,
+      })),
+    vat: bill.vatLines
+      .filter((row) => row.includedInPayableTotal)
+      .map((row) => ({
+        id: row.id,
+        amountCents: row.amountCents,
+        rateBasisPoints: row.rateBasisPoints,
+        taxableBaseCents: row.taxableBaseCents,
+        appliesToChargeIds: row.appliesToChargeIds,
+      })),
+  };
+}
 vi.mock("@google/genai", () => ({
   GoogleGenAI: class {
     models = { generateContent };
@@ -11,12 +47,39 @@ vi.mock("@google/genai", () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("BILL_AI_OPTIMIZED", "1");
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("model extraction contract", () => {
+  it("allows rollback to the existing detailed extractor", async () => {
+    vi.stubEnv("BILL_AI_OPTIMIZED", "0");
+    generateContent.mockResolvedValue({ text: JSON.stringify(rawBill()) });
+    const result = await new GeminiBillExtractor("test-key").extract({
+      bytes: new Uint8Array([1]),
+      mimeType: "image/png",
+      filename: "test",
+    });
+    expect(result).toEqual(rawBill());
+    expect(generateContent.mock.calls[0][0].config.responseJsonSchema).toEqual(extractionSchema);
+  });
+  it("uses compact extraction when no override is configured", async () => {
+    vi.stubEnv("BILL_AI_OPTIMIZED", "");
+    generateContent.mockResolvedValue({ text: JSON.stringify(leanBill()) });
+    await new GeminiBillExtractor("test-key").extract({
+      bytes: new Uint8Array([1]),
+      mimeType: "image/png",
+      filename: "test",
+    });
+    expect(generateContent.mock.calls[0][0].config.responseJsonSchema).toEqual(
+      leanGenerationSchema,
+    );
+  });
   it("repairs with the original document, existing facts and exact issues rather than re-extracting", async () => {
     generateContent.mockResolvedValue({
       text: JSON.stringify({
@@ -48,7 +111,8 @@ describe("model extraction contract", () => {
     expect(generateContent).toHaveBeenCalledTimes(1);
   });
   it("sends a compact Gemini schema but retains all fields and literal version", () => {
-    const schema = JSON.stringify(extractionSchema);
+    const schema = JSON.stringify(leanGenerationSchema);
+    expect(schema.length).toBeLessThan(JSON.stringify(extractionSchema).length * 0.7);
     for (const keyword of [
       "$schema",
       "const",
@@ -60,9 +124,9 @@ describe("model extraction contract", () => {
       "maxItems",
     ])
       expect(schema).not.toContain(`"${keyword}":`);
-    expect((extractionSchema.properties as Record<string, unknown>).schemaVersion).toEqual({
+    expect((leanGenerationSchema.properties as Record<string, unknown>).schemaVersion).toEqual({
       type: "number",
-      enum: [2],
+      enum: [3],
     });
   });
   const document = {
@@ -71,7 +135,7 @@ describe("model extraction contract", () => {
     filename: "test.png",
   };
   it.each([
-    [429, "rate or quota limit"],
+    [429, "Google did not provide a reset time"],
     [403, "couldn't access the API"],
     [400, "configuration problem"],
     [404, "configuration problem"],
@@ -87,42 +151,18 @@ describe("model extraction contract", () => {
       "[bill-extraction] failed",
       JSON.stringify({
         provider: "gemini",
-        model: status === 503 ? "gemini-3.5-flash-lite" : "gemini-3.8-flash",
+        model: "gemini-3.8-flash",
         phase: "request",
         status,
       }),
     );
-    expect(generateContent).toHaveBeenCalledTimes(status === 503 ? 2 : 1);
+    expect(generateContent).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("secret-key");
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private");
   });
-  it("uses the newer Flash-Lite model when the primary is unavailable", async () => {
+  it("uses Gemini 3.8 Flash for both extraction and repair", async () => {
     generateContent
-      .mockRejectedValueOnce({ status: 503, message: "private bill data" })
-      .mockResolvedValueOnce({ text: JSON.stringify(rawBill()) });
-
-    const result = await new GeminiBillExtractor("test-key").extract(document);
-
-    expect(result).toEqual(rawBill());
-    expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
-      "gemini-3.8-flash",
-      "gemini-3.5-flash-lite",
-    ]);
-    expect(console.warn).toHaveBeenCalledWith(
-      "[bill-extraction] provider-fallback",
-      JSON.stringify({
-        from: "gemini-3.8-flash",
-        to: "gemini-3.5-flash-lite",
-        pass: "initial",
-        status: 503,
-      }),
-    );
-    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain("private bill data");
-  });
-  it("repairs with the model that completed initial extraction", async () => {
-    generateContent
-      .mockRejectedValueOnce({ status: 503 })
-      .mockResolvedValueOnce({ text: JSON.stringify(rawBill()) })
+      .mockResolvedValueOnce({ text: JSON.stringify(leanBill()) })
       .mockResolvedValueOnce({
         text: JSON.stringify({
           lineUpdates: [],
@@ -139,30 +179,45 @@ describe("model extraction contract", () => {
 
     expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
       "gemini-3.8-flash",
-      "gemini-3.5-flash-lite",
-      "gemini-3.5-flash-lite",
+      "gemini-3.8-flash",
     ]);
-    expect(generateContent.mock.calls[2][0].config.thinkingConfig).toEqual({
+    expect(generateContent.mock.calls[1][0].config.thinkingConfig).toEqual({
       thinkingLevel: "MEDIUM",
     });
   });
-  it("falls back when the primary model is unavailable during repair", async () => {
-    generateContent.mockRejectedValueOnce({ status: 503 }).mockResolvedValueOnce({
-      text: JSON.stringify({
-        lineUpdates: [],
-        vatUpdates: [],
-        addedLines: [],
-        addedVat: [],
-        coverage: null,
+  it("reports provider unavailability during repair without another model call", async () => {
+    generateContent.mockRejectedValue({ status: 503 });
+    await expect(
+      new GeminiBillExtractor("test-key").repair(document, rawBill(), ["VAT review"]),
+    ).rejects.toThrow("temporarily unavailable");
+    expect(generateContent).toHaveBeenCalledTimes(1);
+    expect(generateContent.mock.calls[0][0].model).toBe("gemini-3.8-flash");
+  });
+  it("shows Google's retry time for a quota error without exposing its raw response", async () => {
+    vi.setSystemTime(new Date("2026-09-29T23:30:00Z"));
+    generateContent.mockRejectedValue({
+      status: 429,
+      message: JSON.stringify({
+        error: {
+          message: "private bill user@example.com",
+          details: [
+            {
+              "@type": "type.googleapis.com/google.rpc.RetryInfo",
+              retryDelay: "3600s",
+            },
+          ],
+        },
       }),
     });
-
-    await new GeminiBillExtractor("test-key").repair(document, rawBill(), ["VAT review"]);
-
-    expect(generateContent.mock.calls.map(([request]) => request.model)).toEqual([
-      "gemini-3.8-flash",
-      "gemini-3.5-flash-lite",
-    ]);
+    try {
+      await expect(new GeminiBillExtractor("test-key").extract(document)).rejects.toThrow(
+        "Try again after 30/09/26 at 00:30 UTC",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private bill");
+    expect(generateContent).toHaveBeenCalledTimes(1);
   });
   it.each([undefined, "not json", "{}"])(
     "distinguishes invalid responses from quota errors",
@@ -173,6 +228,17 @@ describe("model extraction contract", () => {
       );
     },
   );
+  it("uses one detailed pass when the compact response is invalid", async () => {
+    generateContent
+      .mockResolvedValueOnce({ text: "{}" })
+      .mockResolvedValueOnce({ text: JSON.stringify(rawBill()) });
+    const result = await new GeminiBillExtractor("test-key").extract(document);
+    expect(result).toEqual(rawBill());
+    expect(generateContent).toHaveBeenCalledTimes(2);
+    expect(generateContent.mock.calls[1][0].config.responseJsonSchema).not.toEqual(
+      leanGenerationSchema,
+    );
+  });
   it("does not interpret arbitrary upstream text as a quota error", async () => {
     generateContent.mockRejectedValue(new Error("429 secret-key"));
     await expect(new GeminiBillExtractor("test-key").extract(document)).rejects.toThrow(
@@ -180,25 +246,27 @@ describe("model extraction contract", () => {
     );
   });
   it("requests structured facts only and does not let the model calculate financial buckets", async () => {
-    const input = rawBill();
-    generateContent.mockResolvedValue({ text: JSON.stringify(input) });
+    generateContent.mockResolvedValue({ text: JSON.stringify(leanBill()) });
     const raw = await new GeminiBillExtractor("test-key").extract({
       bytes: new Uint8Array([1]),
       mimeType: "image/png",
       filename: "test.png",
     });
-    expect(raw).toEqual(input);
+    expect(raw).toEqual(expandLeanExtraction(leanBillExtractionSchema.parse(leanBill())));
     expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
       thinkingLevel: "MEDIUM",
     });
     expect(raw).not.toHaveProperty("charges");
-    const properties = extractionSchema.properties as Record<string, unknown>;
-    expect(properties).toHaveProperty("lineItems");
-    expect(properties).toHaveProperty("vatLines");
-    expect(properties).not.toHaveProperty("charges");
+    const properties = leanGenerationSchema.properties as Record<string, unknown>;
+    expect(properties).toHaveProperty("charges");
+    expect(properties).toHaveProperty("vat");
+    expect(properties).not.toHaveProperty("supplier");
     expect(generateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        config: expect.objectContaining({ temperature: 0, responseJsonSchema: extractionSchema }),
+        config: expect.objectContaining({
+          temperature: 0,
+          responseJsonSchema: leanGenerationSchema,
+        }),
       }),
     );
   });
@@ -215,16 +283,14 @@ describe("model extraction contract", () => {
     ).rejects.toThrow("AI returned incomplete or invalid bill data");
   });
   it("sanitizes evidence and labels before returning structured extraction", async () => {
-    const input = rawBill();
-    input.lineItems[0].evidence = "Contact user@example.com";
-    input.lineItems[0].originalLabel = "Service user@example.com";
-    generateContent.mockResolvedValue({ text: JSON.stringify(input) });
+    const lean = leanBill();
+    lean.charges[0].label = "Service user@example.com";
+    generateContent.mockResolvedValue({ text: JSON.stringify(lean) });
     const raw = await new GeminiBillExtractor("test-key").extract({
       bytes: new Uint8Array([1]),
       mimeType: "image/png",
       filename: "test.png",
     });
-    expect(raw.lineItems[0].evidence).not.toContain("user@example.com");
     expect(raw.lineItems[0].originalLabel).not.toContain("user@example.com");
   });
 });

@@ -4,13 +4,23 @@ import { ArrowRight, Check, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
-import { saveSettlementAction, updateSettlementAction } from "@/lib/actions";
+import {
+  recordLandlordBalancePaymentAction,
+  saveSettlementAction,
+  updateSettlementAction,
+} from "@/lib/actions";
+import { LANDLORD_BALANCE_ID } from "@/lib/domain/all-balances";
 import { announceSaveComplete } from "@/lib/save-feedback";
-import { MemberAvatar, resolveAvatarColor, type AvatarColor } from "../household/member-avatar";
+import {
+  LandlordAvatar,
+  MemberAvatar,
+  resolveAvatarColor,
+  type AvatarColor,
+} from "../household/member-avatar";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
-import { StatusNote } from "../ui/page";
+import { ErrorDialog } from "../ui/error-dialog";
 import { ExpenseDateAction } from "./expense-date-action";
 import { ChoiceRow, CurrencyMark } from "./expense-sharing-controls";
 import { ExpenseTools } from "./expense-tools";
@@ -39,7 +49,12 @@ function MemberAction({
   disabled?: boolean;
   onClick: () => void;
 }) {
-  const background = member ? resolveAvatarColor(member.name, member.avatarColor) : "#e2e8f0";
+  const isLandlord = member?.id === LANDLORD_BALANCE_ID;
+  const background = isLandlord
+    ? "var(--pastel-peach)"
+    : member
+      ? resolveAvatarColor(member.name, member.avatarColor)
+      : "#e2e8f0";
   return (
     <button
       type="button"
@@ -52,11 +67,15 @@ function MemberAction({
     >
       {member ? (
         <>
-          <MemberAvatar
-            name={member.name}
-            color={member.avatarColor}
-            className="size-10 border-0 shadow-none"
-          />
+          {isLandlord ? (
+            <LandlordAvatar className="size-10" />
+          ) : (
+            <MemberAvatar
+              name={member.name}
+              color={member.avatarColor}
+              className="size-10 border-0 shadow-none"
+            />
+          )}
           <span className="min-w-0 truncate text-sm font-extrabold text-[var(--ink)]">
             {member.name}
           </span>
@@ -75,6 +94,8 @@ export function SettlementForm({
   defaultReceivingMemberId,
   defaultAmountCents,
   members,
+  landlordEnabled = false,
+  source,
   initial,
   cancelHref,
 }: {
@@ -84,6 +105,8 @@ export function SettlementForm({
   defaultReceivingMemberId?: string;
   defaultAmountCents?: number;
   members: MemberOption[];
+  landlordEnabled?: boolean;
+  source?: "all" | "landlord";
   cancelHref?: string;
   initial?: {
     settlementId: string;
@@ -117,7 +140,10 @@ export function SettlementForm({
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [error, setError] = useState("");
   const payerMember = members.find((member) => member.id === payer);
-  const receiverMember = members.find((member) => member.id === receiver);
+  const receiverMember =
+    receiver === LANDLORD_BALANCE_ID
+      ? { id: LANDLORD_BALANCE_ID, name: "Landlord" }
+      : members.find((member) => member.id === receiver);
   const amountCents = Math.round(Number(amount) * 100);
   const amountValid = amount !== "" && Number.isSafeInteger(amountCents) && amountCents > 0;
   const partiesValid = Boolean(payer && receiver && payer !== receiver);
@@ -136,16 +162,28 @@ export function SettlementForm({
         settlementDate: paymentDate,
         note: note || undefined,
       };
-      const result = initial
-        ? await updateSettlementAction({ ...input, settlementId: initial.settlementId })
-        : await saveSettlementAction(input);
+      const result =
+        !initial && receiver === LANDLORD_BALANCE_ID
+          ? await recordLandlordBalancePaymentAction({
+              householdId,
+              payingMemberId: payer,
+              amountCents,
+              settlementDate: paymentDate,
+              note: note || undefined,
+              allocateOthers: source === "all",
+            })
+          : initial
+            ? await updateSettlementAction({ ...input, settlementId: initial.settlementId })
+            : await saveSettlementAction(input);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       announceSaveComplete(initial ? "Changes saved" : "Payment recorded");
       router.replace(
-        initial ? `/h/${householdId}/settlements/${initial.settlementId}` : `/h/${householdId}`,
+        initial
+          ? `/h/${householdId}/settlements/${initial.settlementId}`
+          : `/h/${householdId}/balances`,
       );
       router.refresh();
     });
@@ -159,7 +197,7 @@ export function SettlementForm({
       aria-busy={pending}
       noValidate
     >
-      {error && <StatusNote tone="error" title={error} />}
+      <ErrorDialog error={error} onClose={() => setError("")} />
 
       <section className="flex w-full min-w-0 flex-1 flex-col px-1 py-2 sm:px-4 sm:py-4">
         <div className="my-auto w-full min-w-0 py-4 md:py-6">
@@ -287,7 +325,12 @@ export function SettlementForm({
               if (draftMemberId === receiver) setReceiver(payer);
               setPayer(draftMemberId);
             } else {
-              if (draftMemberId === payer) setPayer(receiver);
+              if (draftMemberId === payer)
+                setPayer(
+                  receiver !== LANDLORD_BALANCE_ID
+                    ? receiver
+                    : (members.find((member) => member.id !== draftMemberId)?.id ?? ""),
+                );
               setReceiver(draftMemberId);
             }
             setDialog(null);
@@ -299,6 +342,7 @@ export function SettlementForm({
             className="grid gap-1"
           >
             {members.map((member) => {
+              if (dialog === "payer" && member.id === LANDLORD_BALANCE_ID) return null;
               return (
                 <ChoiceRow
                   key={member.id}
@@ -316,6 +360,17 @@ export function SettlementForm({
                 </ChoiceRow>
               );
             })}
+            {dialog === "receiver" && landlordEnabled && (
+              <ChoiceRow
+                selected={draftMemberId === LANDLORD_BALANCE_ID}
+                onClick={() => setDraftMemberId(LANDLORD_BALANCE_ID)}
+              >
+                <span className="flex items-center gap-3">
+                  <LandlordAvatar className="size-9" />
+                  <span className="font-semibold">Landlord</span>
+                </span>
+              </ChoiceRow>
+            )}
           </div>
         </Dialog>
       )}

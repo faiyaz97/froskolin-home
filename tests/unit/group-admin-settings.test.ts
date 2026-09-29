@@ -5,13 +5,25 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPanel } from "@/components/household/settings-panel";
 
-const { promote, demote, refresh } = vi.hoisted(() => ({
-  promote: vi.fn(),
-  demote: vi.fn(),
-  refresh: vi.fn(),
+const { promote, demote, updateGroup, updateDates, leaveGroup, refresh, replace } = vi.hoisted(
+  () => ({
+    promote: vi.fn(),
+    demote: vi.fn(),
+    updateGroup: vi.fn(),
+    updateDates: vi.fn(),
+    leaveGroup: vi.fn(),
+    refresh: vi.fn(),
+    replace: vi.fn(),
+  }),
+);
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
+vi.mock("@/lib/actions", () => ({
+  promoteMemberAction: promote,
+  demoteAdminAction: demote,
+  updateHouseholdAction: updateGroup,
+  updateMemberBillingDatesAction: updateDates,
+  leaveGroupAction: leaveGroup,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
-vi.mock("@/lib/actions", () => ({ promoteMemberAction: promote, demoteAdminAction: demote }));
 
 const props = {
   householdId: "group-one",
@@ -23,6 +35,7 @@ const props = {
     joinPin: "123456",
     joiningEnabled: true,
     landlordEnabled: false,
+    balanceStrategy: "simplified" as const,
   },
   currentUserId: "user-one",
   isOwner: true,
@@ -34,6 +47,8 @@ const props = {
       role: "owner" as const,
       removed: false,
       avatarColor: null,
+      inDate: "2026-01-02",
+      outDate: null,
     },
     {
       id: "two",
@@ -42,6 +57,8 @@ const props = {
       role: "member" as const,
       removed: false,
       avatarColor: null,
+      inDate: "2026-01-02",
+      outDate: null,
     },
     {
       id: "three",
@@ -50,6 +67,8 @@ const props = {
       role: "owner" as const,
       removed: false,
       avatarColor: null,
+      inDate: "2026-01-02",
+      outDate: "2026-03-31",
     },
     {
       id: "four",
@@ -58,6 +77,8 @@ const props = {
       role: "member" as const,
       removed: true,
       avatarColor: null,
+      inDate: "2026-01-02",
+      outDate: "2026-02-01",
     },
   ],
   rules: [],
@@ -67,6 +88,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   promote.mockResolvedValue({ ok: true, data: undefined });
   demote.mockResolvedValue({ ok: true, data: undefined });
+  updateGroup.mockResolvedValue({ ok: true, data: undefined });
+  updateDates.mockResolvedValue({ ok: true, data: undefined });
+  leaveGroup.mockResolvedValue({ ok: true, data: undefined });
   HTMLDialogElement.prototype.showModal = function () {
     this.setAttribute("open", "");
   };
@@ -75,6 +99,34 @@ beforeEach(() => {
   };
 });
 afterEach(cleanup);
+
+describe("Balance Mode defaults", () => {
+  it("follows the Landlord toggle from Simplified to Combined and back", async () => {
+    render(React.createElement(SettingsPanel, props));
+    expect(screen.getByText("Balance Mode").closest("button")?.textContent).toContain("Simplified");
+
+    fireEvent.click(screen.getByRole("switch", { name: "Landlord mode" }));
+    await waitFor(() =>
+      expect(screen.getByText("Balance Mode").closest("button")?.textContent).toContain("Combined"),
+    );
+    expect(updateGroup).toHaveBeenCalledWith(expect.objectContaining({ landlordEnabled: true }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Landlord mode" }).hasAttribute("disabled")).toBe(
+        false,
+      ),
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "Landlord mode" }));
+    await waitFor(() =>
+      expect(screen.getByText("Balance Mode").closest("button")?.textContent).toContain(
+        "Simplified",
+      ),
+    );
+    expect(updateGroup).toHaveBeenLastCalledWith(
+      expect.objectContaining({ landlordEnabled: false }),
+    );
+  });
+});
 
 describe("group admin promotion", () => {
   it("confirms demotion and allows stepping down only while another admin remains", async () => {
@@ -116,5 +168,60 @@ describe("group admin promotion", () => {
       React.createElement(SettingsPanel, { ...props, isOwner: false, currentUserId: "user-two" }),
     );
     expect(screen.queryByRole("button", { name: /Make .* admin/ })).toBeNull();
+  });
+});
+
+describe("member bill dates and departure", () => {
+  it("shows each member's in/out dates and lets an admin edit them", async () => {
+    render(React.createElement(SettingsPanel, props));
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Admin · in 02/01/26"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        (_, element) => element?.textContent === "Admin · in 02/01/26 and out 31/03/26",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit billing dates for Third" }));
+    fireEvent.click(screen.getByRole("button", { name: "Out date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(updateDates).toHaveBeenCalledWith({
+        householdId: "group-one",
+        memberId: "three",
+        inDate: "2026-01-02",
+        outDate: null,
+      }),
+    );
+  });
+
+  it("confirms before leaving the group", async () => {
+    render(React.createElement(SettingsPanel, props));
+    fireEvent.click(screen.getByRole("button", { name: "Leave group" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Leave group" })[1]);
+    await waitFor(() => expect(leaveGroup).toHaveBeenCalledWith({ householdId: "group-one" }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("shows a failed leave action in a dismissible dialog", async () => {
+    leaveGroup.mockResolvedValue({
+      ok: false,
+      error: "Settle every balance before leaving this group.",
+    });
+    render(React.createElement(SettingsPanel, props));
+    fireEvent.click(screen.getByRole("button", { name: "Leave group" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Leave group" })[1]);
+
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: "Something went wrong" })).toBeTruthy(),
+    );
+    expect(screen.getByRole("alert").textContent).toContain("Settle every balance");
+    expect(replace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Something went wrong" })).toBeNull(),
+    );
   });
 });

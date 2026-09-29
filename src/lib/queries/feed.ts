@@ -34,7 +34,7 @@ export async function getActivityUtilityTypes(householdId: string, expenseIds: s
 export async function getHouseholdTransactions(householdId: string, limit = 50) {
   const { supabase } = await requireHouseholdMembership(householdId);
   const rowLimit = Math.min(Math.max(limit, 1), 100);
-  const [expensesResult, settlementsResult] = await Promise.all([
+  const [expensesResult, settlementsResult, landlordPaymentsResult] = await Promise.all([
     supabase
       .from("expenses")
       .select(
@@ -42,9 +42,6 @@ export async function getHouseholdTransactions(householdId: string, limit = 50) 
       )
       .eq("household_id", householdId)
       .is("voided_at", null)
-      // Fetch by insertion time so a newly added bill is not excluded merely
-      // because its issue date is old. The UI still displays normal expenses
-      // by expense date and utilities by the date they were added.
       .order("created_at", { ascending: false })
       .limit(rowLimit),
     supabase
@@ -57,13 +54,115 @@ export async function getHouseholdTransactions(householdId: string, limit = 50) 
       .order("settlement_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(rowLimit),
+    supabase
+      .from("landlord_payments")
+      .select(
+        "id, all_payment_id, linked_settlement_id, expense_id, paid_by_member_id, amount_cents, payment_date, created_at, expenses!inner(title, currency, utility_bills(utility_type)), payer:household_members!landlord_payments_actual_payer_fk(display_name)",
+      )
+      .eq("household_id", householdId)
+      .is("voided_at", null)
+      .order("payment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      // A physical transfer can span several bill shares. Read a bounded
+      // window large enough to keep recent transfers together.
+      .limit(Math.min(rowLimit * 10, 100)),
   ]);
   if (expensesResult.error) throw expensesResult.error;
   if (settlementsResult.error) throw settlementsResult.error;
+  if (landlordPaymentsResult.error) throw landlordPaymentsResult.error;
+
+  const landlordPaymentRows = (landlordPaymentsResult.data ??
+    []) as unknown as RawLandlordPayment[];
+  const linkedSettlementIds = new Set(
+    landlordPaymentRows
+      .map((payment) => payment.linked_settlement_id)
+      .filter((id): id is string => Boolean(id)),
+  );
   return {
     expenses: expensesResult.data ?? [],
-    settlements: settlementsResult.data ?? [],
+    settlements: (settlementsResult.data ?? []).filter(
+      (settlement) => !linkedSettlementIds.has(settlement.id),
+    ),
+    settlementReadCount: (settlementsResult.data ?? []).length,
+    settlementHasMore: (settlementsResult.data ?? []).length > rowLimit - 1,
+    landlordLinkedSettlementIds: [...linkedSettlementIds],
+    landlordPayments: groupLandlordPayments(landlordPaymentRows),
   };
+}
+
+type UtilityType = "electricity" | "gas" | "water" | "internet" | "other";
+
+type RawLandlordBill = {
+  title: string;
+  currency: string;
+  utility_bills: { utility_type: UtilityType } | { utility_type: UtilityType }[] | null;
+};
+
+export type RawLandlordPayment = {
+  id: string;
+  all_payment_id: string | null;
+  linked_settlement_id: string | null;
+  expense_id: string;
+  paid_by_member_id: string | null;
+  amount_cents: number;
+  payment_date: string;
+  created_at: string;
+  expenses: RawLandlordBill | RawLandlordBill[] | null;
+  payer: { display_name: string } | { display_name: string }[] | null;
+};
+
+export type HouseholdLandlordPayment = {
+  id: string;
+  expenseId: string;
+  title: string;
+  utilityType: UtilityType | null;
+  currency: string;
+  amountCents: number;
+  paymentDate: string;
+  createdAt: string;
+  paidByMemberId: string | null;
+  paidByName: string | null;
+  affectedBillCount: number;
+};
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+/** Groups allocation rows into the physical landlord transfers shown on Home. */
+export function groupLandlordPayments(rows: RawLandlordPayment[]): HouseholdLandlordPayment[] {
+  const groups = new Map<string, RawLandlordPayment[]>();
+  for (const row of rows) {
+    const key = row.all_payment_id ?? row.id;
+    const entries = groups.get(key) ?? [];
+    entries.push(row);
+    groups.set(key, entries);
+  }
+
+  return [...groups.entries()]
+    .map(([id, entries]) => {
+      const first = entries[0]!;
+      const bill = firstRelation(first.expenses);
+      const payer = entries.map((entry) => firstRelation(entry.payer)).find(Boolean) ?? null;
+      const affectedBillIds = new Set(entries.map((entry) => entry.expense_id));
+      return {
+        id,
+        expenseId: first.expense_id,
+        title: bill?.title ?? "Landlord bill",
+        utilityType: firstRelation(bill?.utility_bills ?? null)?.utility_type ?? null,
+        currency: bill?.currency ?? "EUR",
+        amountCents: entries.reduce((total, entry) => total + Number(entry.amount_cents), 0),
+        paymentDate: first.payment_date,
+        createdAt: first.created_at,
+        paidByMemberId: entries.find((entry) => entry.paid_by_member_id)?.paid_by_member_id ?? null,
+        paidByName: payer?.display_name ?? null,
+        affectedBillCount: affectedBillIds.size,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.paymentDate.localeCompare(a.paymentDate) || b.createdAt.localeCompare(a.createdAt),
+    );
 }
 
 export async function getExpenseDetail(householdId: string, expenseId: string) {

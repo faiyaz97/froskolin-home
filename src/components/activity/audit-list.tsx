@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { UtilityType } from "../bills/bill-meta-controls";
 import { MemberAvatar, type AvatarColor } from "../household/member-avatar";
 import { LoadMoreAction } from "../ui/load-more-action";
+import { ErrorDialog } from "../ui/error-dialog";
 import { ActivityTypeIcon } from "./activity-type-icon";
 
 type Member = ActivityMember & { avatarColor: AvatarColor | null };
@@ -158,11 +159,7 @@ export function AuditList({
       </ol>
 
       {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} />}
-      {loadError && (
-        <p role="alert" className="px-4 py-3 text-center text-xs font-bold text-[var(--negative)]">
-          {loadError}
-        </p>
-      )}
+      <ErrorDialog error={loadError} onClose={() => setLoadError("")} />
     </>
   );
 }

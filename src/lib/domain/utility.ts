@@ -1,11 +1,12 @@
 import { assertCents, assertSharesTotal, assertUniqueMemberIds, allocateByWeights } from "./money";
-import { calculatePresenceDays } from "./occupancy";
-import { calculateEqualShares } from "./splits";
+import { activeBillPeriod, calculatePresenceDays, inclusiveDays } from "./occupancy";
 import type { DateRange, UtilityShare, UtilityVariableMode } from "./types";
 
 export interface UtilityParticipant {
   memberId: string;
   absenceRanges?: readonly DateRange[];
+  inDate?: string;
+  outDate?: string | null;
 }
 
 export interface UtilitySplitInput {
@@ -31,14 +32,26 @@ export function calculateUtilityShares(input: UtilitySplitInput): UtilitySplitRe
   }
   const memberIds = input.participants.map((participant) => participant.memberId);
   assertUniqueMemberIds(memberIds);
-  const presenceDays = input.participants.map((participant) =>
-    calculatePresenceDays(input.servicePeriod, participant.absenceRanges ?? []),
+  const activePeriods = input.participants.map((participant) =>
+    activeBillPeriod(input.servicePeriod, participant.inDate, participant.outDate),
+  );
+  const activeDays = activePeriods.map((period) => (period ? inclusiveDays(period) : 0));
+  if (activeDays.every((days) => days === 0))
+    throw new RangeError("At least one member must be in the group during the bill period.");
+  const presenceDays = input.participants.map((participant, index) =>
+    activePeriods[index]
+      ? calculatePresenceDays(activePeriods[index], participant.absenceRanges ?? [])
+      : 0,
   );
   const totalPresenceDays = presenceDays.reduce((sum, days) => sum + days, 0);
-  const fixedShares = calculateEqualShares(input.fixedCents, memberIds);
+  const fixedShares = allocateByWeights(input.fixedCents, memberIds, activeDays);
   const variableShares =
     totalPresenceDays === 0
-      ? calculateEqualShares(input.variableCents, memberIds)
+      ? allocateByWeights(
+          input.variableCents,
+          memberIds,
+          activeDays.map((days) => (days > 0 ? 1 : 0)),
+        )
       : allocateByWeights(input.variableCents, memberIds, presenceDays);
   const shares = memberIds.map((memberId, index) => ({
     memberId,

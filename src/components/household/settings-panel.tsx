@@ -3,13 +3,16 @@
 import {
   Archive,
   Banknote,
+  CalendarDays,
   ChevronRight,
   House,
   KeyRound,
+  LogOut,
   Pause,
   Pencil,
   Play,
   RefreshCcw,
+  Scale,
   ShieldUser,
   UserMinus,
   UsersRound,
@@ -28,13 +31,22 @@ import {
   setRecurringExpenseRuleActiveAction,
   updateHouseholdAccessAction,
   updateHouseholdAction,
+  updateBalanceStrategyAction,
+  updateMemberBillingDatesAction,
+  leaveGroupAction,
 } from "@/lib/actions";
 import { updateRememberedHouseCode } from "@/lib/device-memory";
+import {
+  balanceStrategies as balanceStrategyValues,
+  type BalanceStrategy,
+} from "@/lib/domain/balance-strategy";
 import { formatMoney } from "@/lib/format";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { ConfirmationButton } from "../ui/confirmation-button";
+import { DateInput } from "../ui/date-input";
 import { Dialog } from "../ui/dialog";
+import { ErrorDialog } from "../ui/error-dialog";
 import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
 import { StatusNote } from "../ui/page";
@@ -42,6 +54,41 @@ import { GroupInvitationAction } from "./group-invitation-action";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
 type Currency = "EUR" | "GBP" | "USD";
+
+type Member = {
+  id: string;
+  userId: string;
+  name: string;
+  role: "owner" | "member";
+  removed: boolean;
+  avatarColor: AvatarColor | null;
+  inDate: string;
+  outDate: string | null;
+};
+
+function formatMemberDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
+const balanceStrategies: Array<{
+  value: BalanceStrategy;
+  label: string;
+  description: string;
+}> = balanceStrategyValues.map((value) => ({
+  value,
+  label: value === "default" ? "Standard" : value === "simplified" ? "Simplified" : "Combined",
+  description:
+    value === "default"
+      ? "Show the original debts between members."
+      : value === "simplified"
+        ? "Reduce the number of payments between members."
+        : "Combine member and landlord balances to reduce payments.",
+}));
 
 type Props = {
   householdId: string;
@@ -53,17 +100,11 @@ type Props = {
     joinPin: string | null;
     joiningEnabled: boolean;
     landlordEnabled: boolean;
+    balanceStrategy?: BalanceStrategy;
   };
   currentUserId: string;
   isOwner: boolean;
-  members: Array<{
-    id: string;
-    userId: string;
-    name: string;
-    role: "owner" | "member";
-    removed: boolean;
-    avatarColor: AvatarColor | null;
-  }>;
+  members: Member[];
   rules: Array<{
     id: string;
     title: string;
@@ -92,6 +133,9 @@ export function SettingsPanel({
   const [defaultCurrency, setDefaultCurrency] = useState(home.defaultCurrency as Currency);
   const [joiningEnabled, setJoiningEnabled] = useState(home.joiningEnabled);
   const [landlordEnabled, setLandlordEnabled] = useState(home.landlordEnabled);
+  const [balanceStrategy, setBalanceStrategy] = useState<BalanceStrategy>(
+    home.balanceStrategy ?? "simplified",
+  );
   const [houseCode, setHouseCode] = useState(home.houseCode);
   const [joinPin, setJoinPin] = useState(home.joinPin ?? "");
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
@@ -101,6 +145,12 @@ export function SettingsPanel({
   const [draftHouseCode, setDraftHouseCode] = useState(houseCode);
   const [draftJoinPin, setDraftJoinPin] = useState(joinPin);
   const [draftCurrency, setDraftCurrency] = useState(defaultCurrency);
+  const [balanceStrategyDialogOpen, setBalanceStrategyDialogOpen] = useState(false);
+  const [draftBalanceStrategy, setDraftBalanceStrategy] =
+    useState<BalanceStrategy>(balanceStrategy);
+  const [billingDatesMember, setBillingDatesMember] = useState<Member | null>(null);
+  const [draftInDate, setDraftInDate] = useState("");
+  const [draftOutDate, setDraftOutDate] = useState("");
   const [temporaryPin, setTemporaryPin] = useState("");
   const currentMemberName = members.find((member) => member.userId === currentUserId)?.name ?? "";
   const activeMembers = members.filter((member) => !member.removed);
@@ -124,6 +174,7 @@ export function SettingsPanel({
       defaultCurrency: Currency;
       joiningEnabled: boolean;
       landlordEnabled: boolean;
+      balanceStrategy: BalanceStrategy;
     }>,
     onSuccess?: () => void,
   ) {
@@ -144,8 +195,27 @@ export function SettingsPanel({
       if (next.defaultCurrency !== undefined) setDefaultCurrency(next.defaultCurrency);
       if (next.joiningEnabled !== undefined) setJoiningEnabled(next.joiningEnabled);
       if (next.landlordEnabled !== undefined) setLandlordEnabled(next.landlordEnabled);
+      if (next.balanceStrategy !== undefined) setBalanceStrategy(next.balanceStrategy);
       setMessage("Group settings saved.");
       onSuccess?.();
+      router.refresh();
+    });
+  }
+
+  function saveBalanceStrategy() {
+    setMessage("");
+    startTransition(async () => {
+      const result = await updateBalanceStrategyAction({
+        householdId,
+        balanceStrategy: draftBalanceStrategy,
+      });
+      if (!result.ok) {
+        setMessage(result.error);
+        return;
+      }
+      setBalanceStrategy(draftBalanceStrategy);
+      setBalanceStrategyDialogOpen(false);
+      setMessage("Balance Mode saved.");
       router.refresh();
     });
   }
@@ -167,6 +237,37 @@ export function SettingsPanel({
       updateRememberedHouseCode(result.data.houseCode, currentMemberName);
       setAccessDialogOpen(false);
       setMessage("Group access saved.");
+      router.refresh();
+    });
+  }
+
+  function openBillingDatesDialog(member: Member) {
+    setBillingDatesMember(member);
+    setDraftInDate(member.inDate);
+    setDraftOutDate(member.outDate ?? "");
+    setMessage("");
+  }
+
+  function saveBillingDates() {
+    if (!billingDatesMember) return;
+    if (draftOutDate && draftOutDate < draftInDate) {
+      setMessage("Out date must be on or after the in date.");
+      return;
+    }
+    setMessage("");
+    startTransition(async () => {
+      const result = await updateMemberBillingDatesAction({
+        householdId,
+        memberId: billingDatesMember.id,
+        inDate: draftInDate,
+        outDate: draftOutDate || null,
+      });
+      if (!result.ok) {
+        setMessage(result.error);
+        return;
+      }
+      setBillingDatesMember(null);
+      setMessage(`${billingDatesMember.name}'s billing dates were saved.`);
       router.refresh();
     });
   }
@@ -251,7 +352,11 @@ export function SettingsPanel({
         </div>
       </header>
 
-      {message && <StatusNote tone={messageIsSuccess ? "success" : "error"} title={message} />}
+      {message && messageIsSuccess && <StatusNote tone="success" title={message} />}
+      <ErrorDialog
+        error={message && !messageIsSuccess ? message : null}
+        onClose={() => setMessage("")}
+      />
 
       <section aria-labelledby="group-preferences-title">
         <h2
@@ -305,7 +410,18 @@ export function SettingsPanel({
             aria-checked={landlordEnabled}
             className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
             disabled={!isOwner || pending}
-            onClick={() => saveGroup({ landlordEnabled: !landlordEnabled })}
+            onClick={() => {
+              const nextLandlordEnabled = !landlordEnabled;
+              saveGroup({
+                landlordEnabled: nextLandlordEnabled,
+                balanceStrategy:
+                  !nextLandlordEnabled && balanceStrategy === "super_simplified"
+                    ? "simplified"
+                    : nextLandlordEnabled && balanceStrategy === "simplified"
+                      ? "super_simplified"
+                      : balanceStrategy,
+              });
+            }}
           >
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]">
               <House className="size-5" aria-hidden="true" />
@@ -313,6 +429,62 @@ export function SettingsPanel({
             <span className="min-w-0 flex-1">Landlord mode</span>
             <Switch checked={landlordEnabled} />
           </button>
+          <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
+          <button
+            type="button"
+            className="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-default disabled:opacity-70"
+            disabled={!isOwner || pending}
+            onClick={() => {
+              setDraftBalanceStrategy(balanceStrategy);
+              setMessage("");
+              setBalanceStrategyDialogOpen(true);
+            }}
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--violet-soft)] text-[var(--violet)]">
+              <Scale className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">Balance Mode</span>
+            <span className="text-right text-[var(--muted)]">
+              {balanceStrategies.find((strategy) => strategy.value === balanceStrategy)?.label}
+            </span>
+            {isOwner && (
+              <ChevronRight
+                className="size-5 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            )}
+          </button>
+          {!members.some((member) => member.userId === currentUserId && member.removed) && (
+            <>
+              <div className="mx-4 h-px bg-[var(--soft-line)]" aria-hidden="true" />
+              <ConfirmationButton
+                triggerLabel="Leave group"
+                title="Leave this group?"
+                description="You can leave once all of your balances are settled. Your existing transactions will remain."
+                confirmLabel="Leave group"
+                pendingLabel="Leaving…"
+                disabled={pending}
+                triggerClassName="group flex min-h-16 w-full items-center gap-3 px-4 text-left text-sm font-extrabold text-[var(--ink)] transition-colors hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                onConfirmAction={async () => {
+                  const result = await leaveGroupAction({ householdId });
+                  if (!result.ok) {
+                    setMessage(result.error);
+                    return;
+                  }
+                  router.replace("/");
+                }}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--negative-soft)] text-[var(--negative)] transition-[background-color,transform] group-hover:scale-[1.03] group-hover:bg-[#fee2e2] group-focus-visible:scale-[1.03] group-focus-visible:bg-[#fee2e2]">
+                  <LogOut className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">Leave group</span>
+                <ChevronRight
+                  className="size-5 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </ConfirmationButton>
+            </>
+          )}
         </div>
       </section>
 
@@ -336,11 +508,26 @@ export function SettingsPanel({
                 <MemberAvatar name={member.name} color={member.avatarColor} />
                 <p className="min-w-0 flex-1 text-sm">
                   <strong className="block truncate">{member.name}</strong>
-                  <span className="text-xs text-[var(--muted)] capitalize">
-                    {member.removed ? "Removed" : member.role === "owner" ? "Admin" : "Member"}
-                    {member.userId === currentUserId ? " · you" : ""}
+                  <span className="text-xs text-[var(--muted)]">
+                    <span className="capitalize">
+                      {member.removed ? "Removed" : member.role === "owner" ? "Admin" : "Member"}
+                    </span>
+                    {` · in ${formatMemberDate(member.inDate)}`}
+                    {member.outDate && ` and out ${formatMemberDate(member.outDate)}`}
                   </span>
                 </p>
+                {isOwner && !member.removed && (
+                  <button
+                    type="button"
+                    aria-label={`Edit billing dates for ${member.name}`}
+                    title={`Edit billing dates for ${member.name}`}
+                    disabled={pending}
+                    className={iconActionClass({ tone: "brand", className: "size-10" })}
+                    onClick={() => openBillingDatesDialog(member)}
+                  >
+                    <CalendarDays className="size-4" aria-hidden="true" />
+                  </button>
+                )}
                 {isOwner && !member.removed && member.role === "owner" && activeAdminCount > 1 && (
                   <ConfirmationButton
                     triggerLabel={`Remove admin access for ${member.name}`}
@@ -576,7 +763,6 @@ export function SettingsPanel({
           doneDisabled={pending || !draftName.trim() || draftName.trim() === name}
         >
           <div className="grid gap-4 px-2 pt-2 pb-3">
-            {message && !message.endsWith("saved.") && <StatusNote tone="error" title={message} />}
             <Field label="Group name">
               <Input
                 value={draftName}
@@ -603,7 +789,6 @@ export function SettingsPanel({
           }
         >
           <div className="grid gap-4 px-2 pt-2 pb-3">
-            {message && !message.endsWith("saved.") && <StatusNote tone="error" title={message} />}
             <Field label="Group code">
               <Input
                 value={draftHouseCode}
@@ -664,6 +849,96 @@ export function SettingsPanel({
                 </button>
               );
             })}
+          </div>
+        </Dialog>
+      )}
+
+      {balanceStrategyDialogOpen && (
+        <Dialog
+          title="Balance Mode"
+          onClose={() => !pending && setBalanceStrategyDialogOpen(false)}
+          onDone={saveBalanceStrategy}
+          doneDisabled={pending || draftBalanceStrategy === balanceStrategy}
+        >
+          <div className="grid gap-3 px-2 pt-1 pb-3">
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              Choose how balances are shown and settled for this group.
+            </p>
+            <div className="grid gap-2" role="radiogroup" aria-label="Balance Mode">
+              {balanceStrategies.map((strategy) => {
+                const selected = strategy.value === draftBalanceStrategy;
+                const disabled =
+                  pending || (strategy.value === "super_simplified" && !landlordEnabled);
+                return (
+                  <button
+                    key={strategy.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={disabled}
+                    className={cn(
+                      "flex min-h-16 items-center rounded-2xl px-4 py-2.5 text-left transition focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:cursor-default disabled:opacity-45",
+                      selected
+                        ? "bg-[var(--pastel-mint)] text-[var(--brand-strong)]"
+                        : "bg-[var(--canvas)] text-[var(--ink-soft)] hover:bg-[var(--brand-soft)]",
+                    )}
+                    onClick={() => setDraftBalanceStrategy(strategy.value)}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-black">{strategy.label}</span>
+                      <span className="mt-0.5 block text-xs font-medium text-[var(--muted)]">
+                        {strategy.description}
+                      </span>
+                    </span>
+                    {selected && <span aria-hidden="true">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {!landlordEnabled && (
+              <p className="text-xs font-semibold text-[var(--muted)]">
+                Combined requires Landlord mode.
+              </p>
+            )}
+          </div>
+        </Dialog>
+      )}
+
+      {billingDatesMember && (
+        <Dialog
+          title={`${billingDatesMember.name}'s bill dates`}
+          onClose={() => !pending && setBillingDatesMember(null)}
+          onDone={saveBillingDates}
+          doneDisabled={
+            pending ||
+            !draftInDate ||
+            Boolean(draftOutDate && draftOutDate < draftInDate) ||
+            (draftInDate === billingDatesMember.inDate &&
+              draftOutDate === (billingDatesMember.outDate ?? ""))
+          }
+        >
+          <div className="grid gap-4 px-2 pt-2 pb-3">
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              These dates only change how utility bills are shared. The out date is included in bill
+              calculations.
+            </p>
+            <Field label="In date">
+              <DateInput
+                ariaLabel="In date"
+                value={draftInDate}
+                onValueChange={setDraftInDate}
+                disabled={pending}
+              />
+            </Field>
+            <Field label="Out date" hint="Leave empty while this member is still in the group.">
+              <DateInput
+                ariaLabel="Out date"
+                value={draftOutDate}
+                onValueChange={setDraftOutDate}
+                allowClear
+                disabled={pending}
+              />
+            </Field>
           </div>
         </Dialog>
       )}

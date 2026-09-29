@@ -153,6 +153,31 @@ describe("push notification settings", () => {
     expect(serviceWorker.register).not.toHaveBeenCalled();
   });
 
+  it("shows the saved state while silently verifying the current subscription", async () => {
+    setupBrowser(makeSubscription());
+    let resolveStatus!: (result: { ok: true; data: { enabled: boolean } }) => void;
+    mocks.getStatus.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStatus = resolve;
+      }),
+    );
+    window.localStorage.setItem(`froskolin:push-enabled:user-${promptUser}`, "1");
+    render(React.createElement(PushNotificationSettings));
+
+    const toggle = screen.getByRole("switch", { name: "Notifications on this device" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(toggle.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText(/Checking notification/i)).toBeNull();
+
+    await waitFor(() => expect(mocks.getStatus).toHaveBeenCalledWith({ endpoint }));
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(toggle.hasAttribute("disabled")).toBe(true);
+
+    resolveStatus({ ok: true, data: { enabled: true } });
+    await waitFor(() => expect(toggle.hasAttribute("disabled")).toBe(false));
+    expect(window.localStorage.getItem(`froskolin:push-enabled:user-${promptUser}`)).toBe("1");
+  });
+
   it("unregisters and unsubscribes the current device when disabled", async () => {
     const subscription = makeSubscription();
     setupBrowser(subscription);

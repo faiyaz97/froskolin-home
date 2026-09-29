@@ -62,8 +62,13 @@ describe("AI bill loading dialog", () => {
     fireEvent.click(dialog);
     expect(screen.getByRole("dialog")).toBeTruthy();
     complete({ ok: false, json: async () => ({ error: "Could not read bill" }) });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Reading your bill" })).toBeNull(),
+    );
+    expect(screen.getByRole("dialog", { name: "Something went wrong" })).toBeTruthy();
     expect(screen.getByText("Could not read bill")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.body.style.overflow).not.toBe("hidden");
   });
 });

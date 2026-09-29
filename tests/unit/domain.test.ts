@@ -85,6 +85,59 @@ describe("inclusive occupancy calendar", () => {
 });
 
 describe("smart utility splitting", () => {
+  it("prorates fixed fees by inclusive membership days and usage by at-home days", () => {
+    const result = calculateUtilityShares({
+      totalCents: 18000,
+      fixedCents: 9000,
+      variableCents: 9000,
+      servicePeriod: { startDate: "2028-04-01", endDate: "2028-06-29" },
+      participants: [
+        { memberId: "a", inDate: "2028-04-01", outDate: "2028-04-30" },
+        {
+          memberId: "b",
+          inDate: "2028-04-01",
+          absenceRanges: [{ startDate: "2028-04-01", endDate: "2028-04-30" }],
+        },
+      ],
+    });
+    expect(result.shares[0]).toMatchObject({
+      fixedCents: 2250,
+      variableCents: 3000,
+      presenceDays: 30,
+    });
+    expect(result.shares[1]).toMatchObject({
+      fixedCents: 6750,
+      variableCents: 6000,
+      presenceDays: 60,
+    });
+  });
+
+  it("does not allocate fixed or usage costs outside a member's billing dates", () => {
+    const result = calculateUtilityShares({
+      totalCents: 101,
+      fixedCents: 51,
+      variableCents: 50,
+      servicePeriod: { startDate: "2028-01-01", endDate: "2028-01-02" },
+      participants: [
+        { memberId: "past", outDate: "2027-12-31" },
+        { memberId: "current", inDate: "2028-01-01" },
+      ],
+    });
+    expect(result.shares[0]).toMatchObject({ amountCents: 0, presenceDays: 0 });
+    expect(result.shares[1]).toMatchObject({ amountCents: 101, presenceDays: 2 });
+  });
+
+  it("rejects a bill with no member inside the billing period", () => {
+    expect(() =>
+      calculateUtilityShares({
+        totalCents: 100,
+        fixedCents: 50,
+        variableCents: 50,
+        servicePeriod: { startDate: "2028-01-01", endDate: "2028-01-31" },
+        participants: [{ memberId: "future", inDate: "2028-02-01" }],
+      }),
+    ).toThrow(/at least one member/i);
+  });
   it("splits fixed equally and variable by occupancy", () => {
     const result = calculateUtilityShares({
       totalCents: 10_000,

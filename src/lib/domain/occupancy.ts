@@ -54,6 +54,19 @@ export function inclusiveDays(range: DateRange): number {
   return end - start + 1;
 }
 
+/** Membership billing dates are inclusive and independent of days marked away. */
+export function activeBillPeriod(
+  servicePeriod: DateRange,
+  inDate?: DateOnly,
+  outDate?: DateOnly | null,
+): DateRange | null {
+  const service = validateRange(servicePeriod);
+  const start = Math.max(service.start, inDate ? dateOnlyToEpochDay(inDate) : service.start);
+  const end = Math.min(service.end, outDate ? dateOnlyToEpochDay(outDate) : service.end);
+  if (start > end) return null;
+  return { startDate: epochDayToDateOnly(start), endDate: epochDayToDateOnly(end) };
+}
+
 /** Counts days in servicePeriod where the member was not absent. Both boundaries are inclusive. */
 export function calculatePresenceDays(
   servicePeriod: DateRange,

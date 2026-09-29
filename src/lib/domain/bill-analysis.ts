@@ -1,4 +1,5 @@
 import { structuredBillExtractionSchema, type ExtractedBill } from "@/lib/validation";
+import { isLatePaymentInterestCharge } from "./bill-charge-classification";
 
 export const BILL_ROUNDING_TOLERANCE_CENTS = 2;
 export const MAX_EXPLICIT_ROUNDING_CENTS = 100;
@@ -24,7 +25,17 @@ function allocate(amount: bigint, fixed: bigint, usage: bigint) {
 
 /** Pure analysis: accepts model facts only, never AI-computed final buckets. */
 export function calculateBillTotals(input: unknown): ExtractedBill {
-  const data = structuredBillExtractionSchema.parse(input);
+  const parsed = structuredBillExtractionSchema.parse(input);
+  const data = {
+    ...parsed,
+    lineItems: parsed.lineItems.map((row) =>
+      row.classification !== "informational" &&
+      row.confidence >= 0.8 &&
+      isLatePaymentInterestCharge(row)
+        ? { ...row, classification: "fixed" as const }
+        : row,
+    ),
+  };
   const issues = new Set<string>();
   const issue = (message: string) => issues.add(message);
   const all = [...data.lineItems, ...data.vatLines];

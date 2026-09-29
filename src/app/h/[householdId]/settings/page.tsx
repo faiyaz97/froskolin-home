@@ -12,12 +12,14 @@ export default async function SettingsPage({
   const [homeResult, membersResult, rulesResult] = await Promise.all([
     supabase
       .from("households")
-      .select("name, default_currency, locale, house_code, joining_enabled, landlord_enabled")
+      .select(
+        "name, default_currency, locale, house_code, joining_enabled, landlord_enabled, balance_strategy",
+      )
       .eq("id", householdId)
       .single(),
     supabase
       .from("household_members")
-      .select("id, user_id, display_name, role, removed_at, avatar_color")
+      .select("id, user_id, display_name, role, removed_at, avatar_color, in_date, out_date")
       .eq("household_id", householdId)
       .order("joined_at"),
     supabase
@@ -42,6 +44,7 @@ export default async function SettingsPage({
         joinPin: joinPinResult?.ok ? joinPinResult.data.joinPin : null,
         joiningEnabled: homeResult.data.joining_enabled,
         landlordEnabled: homeResult.data.landlord_enabled,
+        balanceStrategy: homeResult.data.balance_strategy,
       }}
       currentUserId={user.id}
       isOwner={membership.role === "owner"}
@@ -52,6 +55,8 @@ export default async function SettingsPage({
         role: member.role,
         removed: Boolean(member.removed_at),
         avatarColor: member.avatar_color,
+        inDate: member.in_date,
+        outDate: member.out_date,
       }))}
       rules={(rulesResult.data ?? []).map((rule) => ({
         id: rule.id,

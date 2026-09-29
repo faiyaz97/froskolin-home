@@ -9,7 +9,7 @@ import { determineBillEntryMode, type BillFinancialBaseline } from "@/lib/bills/
 import { calculateUtilityShares, type DateRange } from "@/lib/domain";
 import { formatMoney, formatUtilityBillTitle } from "@/lib/format";
 import { announceSaveComplete } from "@/lib/save-feedback";
-import type { ExtractedBill } from "@/lib/validation";
+import type { BillAutofill } from "@/lib/validation";
 import { CurrencyMark } from "../expenses/expense-sharing-controls";
 import { ExpenseTools } from "../expenses/expense-tools";
 import { TransactionNoteAction } from "../expenses/transaction-note-action";
@@ -18,15 +18,30 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Field } from "../ui/field";
 import { MoneyInput } from "../ui/money-input";
+import { ErrorDialog } from "../ui/error-dialog";
 import { StatusNote } from "../ui/page";
 import { BillMetaControls, UtilityTypeIcon } from "./bill-meta-controls";
 
-type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
+type Member = {
+  id: string;
+  name: string;
+  avatarColor?: AvatarColor | null;
+  inDate?: string;
+  outDate?: string | null;
+};
 type Absence = { memberId: string; startDate: string; endDate: string };
+
+function hasServiceOverlap(member: Member, serviceStart: string, serviceEnd: string) {
+  return (
+    (!member.inDate || member.inDate <= serviceEnd) &&
+    (!member.outDate || member.outDate >= serviceStart)
+  );
+}
+
 export type ExistingUtility = {
   expenseId: string;
   title: string;
-  utilityType: ExtractedBill["utilityType"];
+  utilityType: BillAutofill["utilityType"];
   supplier: string | null;
   issueDate: string | null;
   serviceStart: string;
@@ -62,7 +77,7 @@ export function BillConfirmation({
   documentId?: string;
   defaultCurrency: string;
   locale: string;
-  initial?: ExtractedBill;
+  initial?: BillAutofill;
   existing?: ExistingUtility;
   uploadDocumentOnConfirm?: () => Promise<{ documentId: string; pageCount?: number }>;
   members: Member[];
@@ -74,6 +89,8 @@ export function BillConfirmation({
 }) {
   const router = useRouter();
   const initialUtilityType = initial?.utilityType ?? existing?.utilityType ?? "other";
+  const initialServiceStart = initial?.servicePeriod.start ?? existing?.serviceStart ?? "";
+  const initialServiceEnd = initial?.servicePeriod.end ?? existing?.serviceEnd ?? "";
   const [total, setTotal] = useState(
     initial
       ? (initial.totalDueCents / 100).toFixed(2)
@@ -99,12 +116,8 @@ export function BillConfirmation({
         ? (existing.variableCents / 100).toFixed(2)
         : "",
   );
-  const [serviceStart, setServiceStart] = useState(
-    initial?.servicePeriod.start ?? existing?.serviceStart ?? "",
-  );
-  const [serviceEnd, setServiceEnd] = useState(
-    initial?.servicePeriod.end ?? existing?.serviceEnd ?? "",
-  );
+  const [serviceStart, setServiceStart] = useState(initialServiceStart);
+  const [serviceEnd, setServiceEnd] = useState(initialServiceEnd);
   const [utilityType, setUtilityType] = useState(initialUtilityType);
   const [title, setTitle] = useState(
     initial
@@ -122,7 +135,18 @@ export function BillConfirmation({
     existing?.payerMemberId ?? (landlordEnabled ? "landlord" : currentMemberId),
   );
   const [selected, setSelected] = useState(
-    () => new Set(existing?.participantIds ?? members.map((member) => member.id)),
+    () =>
+      new Set(
+        existing?.participantIds ??
+          members
+            .filter(
+              (member) =>
+                !initialServiceStart ||
+                !initialServiceEnd ||
+                hasServiceOverlap(member, initialServiceStart, initialServiceEnd),
+            )
+            .map((member) => member.id),
+      ),
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -160,7 +184,17 @@ export function BillConfirmation({
     totalValid && fixedValid && variableValid && fixedCents + variableCents !== totalCents;
   const servicePeriodMissing = !serviceStart || !serviceEnd;
   const servicePeriodInvalid = Boolean(serviceStart && serviceEnd && serviceEnd < serviceStart);
+  const hasServicePeriod = !servicePeriodMissing && !servicePeriodInvalid;
+  const eligibleMemberIds = useMemo(() => {
+    if (!hasServicePeriod || existing) return new Set(members.map((member) => member.id));
+    return new Set(
+      members
+        .filter((member) => hasServiceOverlap(member, serviceStart, serviceEnd))
+        .map((member) => member.id),
+    );
+  }, [existing, hasServicePeriod, members, serviceEnd, serviceStart]);
   const participantsMissing = selected.size === 0;
+  const noEligibleParticipants = hasServicePeriod && !existing && eligibleMemberIds.size === 0;
   const valid =
     !titleMissing &&
     totalValid &&
@@ -169,7 +203,8 @@ export function BillConfirmation({
     !breakdownMismatch &&
     !servicePeriodMissing &&
     !servicePeriodInvalid &&
-    !participantsMissing;
+    !participantsMissing &&
+    !noEligibleParticipants;
   const servicePeriodError = attemptedSubmit
     ? servicePeriodMissing
       ? "Choose the service start and end dates."
@@ -196,6 +231,8 @@ export function BillConfirmation({
           .filter((member) => selected.has(member.id))
           .map((member) => ({
             memberId: member.id,
+            inDate: member.inDate,
+            outDate: member.outDate,
             absenceRanges: absences
               .filter((range) => range.memberId === member.id)
               .map((range): DateRange => ({ startDate: range.startDate, endDate: range.endDate })),
@@ -276,6 +313,30 @@ export function BillConfirmation({
     });
   }
 
+  function changeServicePeriod(start: string, end: string) {
+    setServiceStart(start);
+    setServiceEnd(end);
+    updateGeneratedTitle(utilityType, start, end);
+    if (!existing && start && end && end >= start) {
+      const eligibleIds = new Set(
+        members
+          .filter((member) => hasServiceOverlap(member, start, end))
+          .map((member) => member.id),
+      );
+      setSelected(
+        (current) => new Set([...current].filter((memberId) => eligibleIds.has(memberId))),
+      );
+    }
+  }
+
+  function changeSelected(next: Set<string>) {
+    if (existing || !hasServicePeriod) {
+      setSelected(next);
+      return;
+    }
+    setSelected(new Set([...next].filter((memberId) => eligibleMemberIds.has(memberId))));
+  }
+
   return (
     <form
       id="bill-facts"
@@ -287,7 +348,7 @@ export function BillConfirmation({
     >
       {missingClassification && (
         <p role="status" className="px-1 text-xs text-[var(--muted)] sm:px-4">
-          Autofill couldn’t complete. Please try again.
+          We filled the details we could verify. Enter the fixed and usage amounts from your bill.
         </p>
       )}
       {lowConfidence && (
@@ -299,11 +360,11 @@ export function BillConfirmation({
           </span>
         </StatusNote>
       )}
-      {error && (
-        <StatusNote tone="error" title={error}>
-          Correct the bill fields and try again.
-        </StatusNote>
-      )}
+      <ErrorDialog
+        error={error}
+        onClose={() => setError("")}
+        hint="Correct the bill fields and try again."
+      />
       <fieldset className="grid gap-4 px-1 py-2 sm:px-4 sm:py-4" disabled={pending}>
         <legend className="screen-reader-only">Bill facts</legend>
         <div
@@ -410,20 +471,32 @@ export function BillConfirmation({
           onPayerChange={setPayer}
           serviceStart={serviceStart}
           serviceEnd={serviceEnd}
-          onServicePeriodChange={(start, end) => {
-            setServiceStart(start);
-            setServiceEnd(end);
-            updateGeneratedTitle(utilityType, start, end);
-          }}
+          onServicePeriodChange={changeServicePeriod}
           selected={selected}
-          onSelectedChange={setSelected}
+          onSelectedChange={changeSelected}
           members={members}
+          disabledParticipantIds={
+            existing
+              ? undefined
+              : new Set(
+                  members
+                    .filter((member) => hasServicePeriod && !eligibleMemberIds.has(member.id))
+                    .map((member) => member.id),
+                )
+          }
           currentMemberId={currentMemberId}
           landlordEnabled={landlordEnabled}
           locale={locale}
           disabled={pending}
           servicePeriodError={servicePeriodError}
         />
+        {attemptedSubmit && (participantsMissing || noEligibleParticipants) && (
+          <p role="alert" className="-mt-3 text-center text-xs font-bold text-[var(--negative)]">
+            {noEligibleParticipants
+              ? "No group members were in the group during this service period."
+              : "Choose at least one person to split this bill with."}
+          </p>
+        )}
       </fieldset>
       {preview && (
         <section className="px-1 sm:px-4">

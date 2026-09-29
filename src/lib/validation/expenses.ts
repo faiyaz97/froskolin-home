@@ -123,7 +123,21 @@ export const landlordPaymentSchema = z.object({
   markAsPaid: z.boolean().default(false),
 });
 
+export const landlordBalancePaymentSchema = z.object({
+  householdId: uuidSchema,
+  payingMemberId: uuidSchema,
+  amountCents: positiveCentsSchema,
+  settlementDate: dateOnlySchema,
+  note: z.string().trim().max(500).optional(),
+  allocateOthers: z.boolean(),
+});
+
 export const reopenLandlordBillSchema = z.object({
   householdId: uuidSchema,
   expenseId: uuidSchema,
+});
+export const voidLandlordPaymentSchema = z.object({
+  householdId: uuidSchema,
+  paymentId: uuidSchema,
+  reason: z.string().trim().min(1).max(280),
 });

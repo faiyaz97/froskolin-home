@@ -1,18 +1,11 @@
-"use client";
-
-import { Check, CheckCircle2, House, ReceiptText, RotateCcw } from "lucide-react";
+import { CheckCircle2, House, ReceiptText } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
 
-import { recordLandlordPaymentAction, reopenLandlordBillAction } from "@/lib/actions";
 import { totalLandlordOutstanding } from "@/lib/domain";
 import { formatMoney } from "@/lib/format";
-import type { LandlordBillBalance } from "@/lib/queries";
+import type { LandlordBillBalance, LandlordPaymentHistoryItem } from "@/lib/queries";
 import { UtilityTypeIcon } from "../bills/bill-meta-controls";
-import { ConfirmationButton } from "../ui/confirmation-button";
-import { iconActionClass } from "../ui/icon-action";
-import { StatusNote } from "../ui/page";
+import { ButtonLink } from "../ui/button";
 
 function formatBillDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {
@@ -23,18 +16,35 @@ function formatBillDate(value: string, locale: string) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function recordPaymentHref(
+  householdId: string,
+  currentMemberId: string,
+  currency: string,
+  amountCents: number,
+) {
+  const params = new URLSearchParams({
+    source: "landlord",
+    payingMemberId: currentMemberId,
+    receivingMemberId: "landlord",
+    amountCents: String(amountCents),
+    currency,
+  });
+  return `/h/${householdId}/add/settlement?${params.toString()}`;
+}
+
 export function LandlordBalanceView({
   householdId,
+  currentMemberId,
   rows,
+  paymentHistory,
   locale,
 }: {
   householdId: string;
+  currentMemberId: string;
   rows: LandlordBillBalance[];
+  paymentHistory?: LandlordPaymentHistoryItem[];
   locale: string;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
   const totals = totalLandlordOutstanding(
     rows.map((row) => ({
       currency: row.currency,
@@ -42,40 +52,19 @@ export function LandlordBalanceView({
       paymentCents: row.payments.map((payment) => payment.amountCents),
     })),
   );
-  const outstanding = rows.filter((row) => row.remainingCents > 0);
-  const completed = rows
-    .filter((row) => row.remainingCents === 0)
-    .sort((a, b) => {
-      const aDate = a.payments[0]?.paymentDate ?? a.expenseDate;
-      const bDate = b.payments[0]?.paymentDate ?? b.expenseDate;
-      return bDate.localeCompare(aDate);
-    })
-    .slice(0, 5);
-
-  function markAsPaid(row: LandlordBillBalance) {
-    setError("");
-    startTransition(async () => {
-      const result = await recordLandlordPaymentAction({
-        householdId,
+  const payments = (
+    paymentHistory ??
+    rows.flatMap((row) =>
+      row.payments.map((payment) => ({
+        ...payment,
+        currency: row.currency,
         expenseId: row.expenseId,
-        markAsPaid: true,
-      });
-      if (!result.ok) setError(result.error);
-      else router.refresh();
-    });
-  }
-
-  function reopenBill(row: LandlordBillBalance) {
-    setError("");
-    startTransition(async () => {
-      const result = await reopenLandlordBillAction({
-        householdId,
-        expenseId: row.expenseId,
-      });
-      if (!result.ok) setError(result.error);
-      else router.refresh();
-    });
-  }
+        title: row.title,
+        beneficiaryMemberId: currentMemberId,
+        beneficiaryName: null,
+      })),
+    )
+  ).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate) || b.id.localeCompare(a.id));
 
   return (
     <div className="grid gap-6">
@@ -83,90 +72,109 @@ export function LandlordBalanceView({
         aria-label="Outstanding landlord balance"
         className="rounded-[22px] bg-white px-3.5 py-3 shadow-[var(--shadow-sm)] sm:px-5"
       >
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
-          <span className="row-span-2 grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)] sm:row-span-1">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-peach)] text-[var(--peach)]">
             <House className="size-5" aria-hidden="true" />
           </span>
-          <h2 className="min-w-0 flex-1 text-sm font-black">Outstanding</h2>
-          <div className="col-start-2 flex min-w-0 flex-wrap justify-start gap-x-3 gap-y-1 sm:col-start-3 sm:row-start-1 sm:justify-end">
-            {totals.length ? (
-              totals.map((total) => (
-                <p
-                  key={total.currency}
-                  className="max-w-full text-[clamp(1rem,5vw,1.25rem)] leading-tight font-black tracking-[-0.035em] [overflow-wrap:anywhere] text-[var(--peach)] tabular-nums"
-                >
-                  {formatMoney(total.amountCents, total.currency, locale)}
-                </p>
-              ))
-            ) : (
-              <p className="text-lg font-black text-[var(--positive)]">All paid</p>
-            )}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-black">Outstanding</h2>
+            <div className="mt-0.5 flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+              {totals.length ? (
+                totals.map((total) => (
+                  <p
+                    key={total.currency}
+                    className="max-w-full text-[clamp(1rem,5vw,1.25rem)] leading-tight font-black tracking-[-0.035em] [overflow-wrap:anywhere] text-[var(--peach)] tabular-nums"
+                  >
+                    {formatMoney(total.amountCents, total.currency, locale)}
+                  </p>
+                ))
+              ) : (
+                <p className="text-lg font-black text-[var(--positive)]">All paid</p>
+              )}
+            </div>
           </div>
         </div>
+        {totals.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2 sm:justify-end">
+            {totals.map((total) => (
+              <ButtonLink
+                key={total.currency}
+                href={recordPaymentHref(
+                  householdId,
+                  currentMemberId,
+                  total.currency,
+                  total.amountCents,
+                )}
+                tone="pastelWarm"
+                className="min-h-10 rounded-full px-4 py-2 text-xs"
+              >
+                {totals.length === 1 ? "Record payment" : `Record ${total.currency} payment`}
+              </ButtonLink>
+            ))}
+          </div>
+        )}
       </section>
 
-      {error && <StatusNote tone="error" title={error} />}
-
-      <section aria-labelledby="landlord-to-pay">
+      <section aria-labelledby="landlord-bills">
         <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
-          <h2 id="landlord-to-pay" className="text-sm font-black">
-            To pay
+          <h2 id="landlord-bills" className="text-sm font-black">
+            Landlord bills
           </h2>
-          {outstanding.length > 0 && (
+          {rows.length > 0 && (
             <span className="text-xs text-[var(--muted)]">
-              {outstanding.length} {outstanding.length === 1 ? "bill" : "bills"}
+              {rows.length} {rows.length === 1 ? "bill" : "bills"}
             </span>
           )}
         </div>
 
-        {outstanding.length ? (
+        {rows.length ? (
           <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
-            {outstanding.map((row) => (
+            {rows.map((row) => (
               <article
                 key={row.expenseId}
-                className="grid min-h-[68px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-[var(--soft-line)] px-3.5 py-3 last:border-0 sm:gap-3 sm:px-5"
+                className="border-b border-[var(--soft-line)] px-3.5 py-3 last:border-0 sm:px-5"
               >
-                <LandlordExpenseIcon row={row} />
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/h/${householdId}/expenses/${row.expenseId}`}
-                    className="line-clamp-2 text-sm leading-5 font-black [overflow-wrap:anywhere] break-words text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
-                  >
-                    {row.title}
-                  </Link>
-                  <p className="mt-0.5 text-xs text-[var(--muted)]">
-                    {formatBillDate(row.expenseDate, locale)}
-                  </p>
+                <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                  <LandlordExpenseIcon row={row} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/h/${householdId}/expenses/${row.expenseId}`}
+                      className="line-clamp-2 text-sm leading-5 font-black [overflow-wrap:anywhere] break-words text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+                    >
+                      {row.title}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-[var(--muted)]">
+                      {formatBillDate(row.expenseDate, locale)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <p className="text-sm font-black whitespace-nowrap text-[var(--peach)] tabular-nums">
-                    {formatMoney(row.remainingCents, row.currency, locale)}
-                  </p>
-                  <button
-                    type="button"
-                    aria-label="Mark paid"
-                    title="Mark paid"
-                    disabled={pending}
-                    onClick={() => markAsPaid(row)}
-                    className={iconActionClass({
-                      tone: "brand",
-                      active: true,
-                      className: "size-9",
-                    })}
-                  >
-                    <Check className="size-4" strokeWidth={3} aria-hidden="true" />
-                  </button>
-                </div>
+                <dl className="mt-3 grid grid-cols-3 gap-2 pl-[50px] sm:pl-[52px]">
+                  <BillAmount
+                    label="Original share"
+                    amountCents={row.originalShareCents}
+                    currency={row.currency}
+                    locale={locale}
+                  />
+                  <BillAmount
+                    label="Paid"
+                    amountCents={row.paidCents}
+                    currency={row.currency}
+                    locale={locale}
+                    tone="positive"
+                  />
+                  <BillAmount
+                    label="Remaining"
+                    amountCents={row.remainingCents}
+                    currency={row.currency}
+                    locale={locale}
+                    tone={row.remainingCents > 0 ? "peach" : "positive"}
+                  />
+                </dl>
               </article>
             ))}
           </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-[22px] bg-white px-4 py-4 shadow-[var(--shadow-sm)]">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--positive-soft)] text-[var(--positive)]">
-              <CheckCircle2 className="size-5" aria-hidden="true" />
-            </span>
-            <p className="text-sm font-black">All paid</p>
-          </div>
+          <p className="px-1 text-sm text-[var(--muted)]">No landlord bills yet.</p>
         )}
       </section>
 
@@ -175,42 +183,42 @@ export function LandlordBalanceView({
           <h2 id="landlord-history" className="text-sm font-black">
             Payment history
           </h2>
+          {payments.length > 0 && (
+            <span className="text-xs text-[var(--muted)]">
+              {payments.length} {payments.length === 1 ? "payment" : "payments"}
+            </span>
+          )}
         </div>
 
-        {completed.length ? (
+        {payments.length ? (
           <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
-            {completed.map((row) => (
+            {payments.map((payment) => (
               <div
-                key={row.expenseId}
+                key={payment.id}
                 className="flex min-h-[68px] items-center gap-3 border-b border-[var(--soft-line)] px-3.5 py-3 last:border-0 sm:px-5"
               >
-                <LandlordExpenseIcon row={row} compact />
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--positive-soft)] text-[var(--positive)]">
+                  <CheckCircle2 className="size-[18px]" aria-hidden="true" />
+                </span>
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/h/${householdId}/expenses/${row.expenseId}`}
+                    href={`/h/${householdId}/expenses/${payment.expenseId}`}
                     className="line-clamp-2 text-sm leading-5 font-black [overflow-wrap:anywhere] break-words text-[var(--ink)] no-underline hover:text-[var(--brand)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
                   >
-                    {row.title}
+                    {payment.title}
                   </Link>
                   <p className="mt-0.5 text-xs text-[var(--muted)]">
-                    {formatBillDate(row.payments[0]?.paymentDate ?? row.expenseDate, locale)}
+                    {formatBillDate(payment.paymentDate, locale)} ·{" "}
+                    {payment.paidByMemberId && payment.paidByMemberId !== currentMemberId
+                      ? `${payment.paidByName ?? "A member"} paid for your share`
+                      : payment.beneficiaryMemberId !== currentMemberId
+                        ? `You paid for ${payment.beneficiaryName ?? "another member"}'s share`
+                        : "You paid"}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-black text-[var(--positive)] tabular-nums">
-                  {formatMoney(row.paidCents, row.currency, locale)}
+                  {formatMoney(payment.amountCents, payment.currency, locale)}
                 </p>
-                <ConfirmationButton
-                  triggerLabel={`Reopen ${row.title}`}
-                  title="Reopen this bill?"
-                  description="Its landlord balance will become outstanding again."
-                  confirmLabel="Reopen"
-                  pendingLabel="Reopening…"
-                  onConfirmAction={() => reopenBill(row)}
-                  disabled={pending}
-                  triggerClassName={iconActionClass({ tone: "brand", className: "size-10" })}
-                >
-                  <RotateCcw className="size-4" aria-hidden="true" />
-                </ConfirmationButton>
               </div>
             ))}
           </div>
@@ -222,20 +230,40 @@ export function LandlordBalanceView({
   );
 }
 
-function LandlordExpenseIcon({
-  row,
-  compact = false,
+function BillAmount({
+  label,
+  amountCents,
+  currency,
+  locale,
+  tone = "default",
 }: {
-  row: LandlordBillBalance;
-  compact?: boolean;
+  label: string;
+  amountCents: number;
+  currency: string;
+  locale: string;
+  tone?: "default" | "positive" | "peach";
 }) {
-  const size = compact ? "size-9 [&>svg]:size-[18px]" : "size-10";
-  if (row.utilityType) return <UtilityTypeIcon value={row.utilityType} className={size} />;
+  const toneClass =
+    tone === "positive"
+      ? "text-[var(--positive)]"
+      : tone === "peach"
+        ? "text-[var(--peach)]"
+        : "text-[var(--ink)]";
   return (
-    <span
-      className={`grid shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)] ${compact ? "size-9" : "size-10"}`}
-    >
-      <ReceiptText className={compact ? "size-[18px]" : "size-5"} aria-hidden="true" />
+    <div className="min-w-0">
+      <dt className="truncate text-[10px] font-bold text-[var(--muted)]">{label}</dt>
+      <dd className={`mt-0.5 truncate text-xs font-black tabular-nums ${toneClass}`}>
+        {formatMoney(amountCents, currency, locale)}
+      </dd>
+    </div>
+  );
+}
+
+function LandlordExpenseIcon({ row }: { row: LandlordBillBalance }) {
+  if (row.utilityType) return <UtilityTypeIcon value={row.utilityType} className="size-10" />;
+  return (
+    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--pastel-mint)] text-[var(--brand)]">
+      <ReceiptText className="size-5" aria-hidden="true" />
     </span>
   );
 }

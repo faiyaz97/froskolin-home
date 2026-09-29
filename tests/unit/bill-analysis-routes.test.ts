@@ -46,6 +46,7 @@ beforeEach(() => {
       },
       error: null,
     }),
+    single: vi.fn().mockResolvedValue({ data: { default_currency: "EUR" }, error: null }),
     then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve),
   };
   authorize.mockResolvedValue({
@@ -93,8 +94,22 @@ describe("bill analysis route boundaries", () => {
     expect(response.status).toBe(200);
     const result = await response.json();
     expect(result.extraction.charges).toMatchObject({ fixedCents: 4000, consumptionCents: 6000 });
-    expect(result.extraction.structuredData).toEqual(rawBill());
+    expect(result.extraction).not.toHaveProperty("structuredData");
+    expect(result.extraction.review.status).toBe("ready");
     expect(authorize).toHaveBeenCalledWith("group");
+  });
+
+  it("does not apply amounts from a bill in another currency", async () => {
+    extract.mockResolvedValue(rawBill({ currency: "GBP" }));
+    const body = new FormData();
+    body.set("householdId", "group");
+    body.set("consent", "true");
+    body.set("file", new File(["bill"], "test.pdf", { type: "application/pdf" }));
+    const response = await uploadPost(
+      new Request("http://localhost/api/bills/extract", { method: "POST", body }),
+    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toContain("group uses EUR");
   });
 
   it("persists versioned raw facts and review status for an existing document", async () => {
@@ -108,10 +123,30 @@ describe("bill analysis route boundaries", () => {
     );
     expect(response.status).toBe(200);
     const result = await response.json();
-    expect(result.extraction.analysis.status).toBe("needs_review");
+    expect(result.extraction.review.status).toBe("needs_review");
     expect(result.extraction.charges.fixedCents).toBeNull();
     expect(updates).toContainEqual(expect.objectContaining({ extraction_schema_version: "2" }));
-    expect(updates).toContainEqual(expect.objectContaining({ extraction: result.extraction }));
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        extraction: expect.objectContaining({
+          analysis: expect.objectContaining({ status: "needs_review" }),
+        }),
+      }),
+    );
+  });
+
+  it("rejects a stored bill in another currency before it can be confirmed", async () => {
+    extract.mockResolvedValue(rawBill({ currency: "GBP" }));
+    const response = await storedPost(
+      new Request("http://localhost/api/bills/document/extract", {
+        method: "POST",
+        body: JSON.stringify({ householdId: "group", consent: true }),
+      }),
+      { params: Promise.resolve({ documentId: "document" }) },
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toContain("group uses EUR");
+    expect(updates).not.toContainEqual(expect.objectContaining({ status: "ready" }));
   });
 
   it("does not extract without explicit consent", async () => {

@@ -1,17 +1,9 @@
 import Link from "next/link";
-import {
-  ChevronRight,
-  CircleDollarSign,
-  House,
-  PawPrint,
-  Plus,
-  ScanLine,
-  Settings,
-  Users,
-} from "lucide-react";
+import { CircleDollarSign, PawPrint, Plus, ScanLine, Settings, Users } from "lucide-react";
 
 import { HouseholdLedger } from "@/components/expenses/household-ledger";
 import { BottomMascotReveal } from "@/components/household/bottom-mascot-reveal";
+import { HomeBalanceCard } from "@/components/household/home-balance-card";
 import { ButtonLink } from "@/components/ui/button";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { PeekingFroskolin } from "@/components/ui/mascot";
@@ -19,7 +11,6 @@ import { Surface } from "@/components/ui/surface";
 import { HomeSummaryMotion } from "@/components/household/home-summary-motion";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { totalLandlordOutstanding } from "@/lib/domain";
-import { formatMoney } from "@/lib/format";
 import {
   getBalances,
   getHousehold,
@@ -56,6 +47,27 @@ export default async function HouseholdHome({
       paymentCents: bill.payments.map((payment) => payment.amountCents),
     })),
   );
+  const superSimplified = home?.landlord_enabled && home.balance_strategy === "super_simplified";
+  const allBalances = [
+    ...new Set([
+      ...ownBalances.map((row) => row.currency),
+      ...landlordTotals.map((row) => row.currency),
+    ]),
+  ]
+    .sort()
+    .map((currency) => ({
+      currency,
+      amountCents:
+        Number(ownBalances.find((row) => row.currency === currency)?.net_cents ?? 0) -
+        (landlordTotals.find((row) => row.currency === currency)?.amountCents ?? 0),
+    }))
+    .filter((row) => row.amountCents !== 0);
+  const displayBalances = superSimplified
+    ? allBalances
+    : ownBalances.map((row) => ({
+        currency: row.currency,
+        amountCents: Number(row.net_cents),
+      }));
   const memberNames = Object.fromEntries(
     members.map((member) => [String(member.id), String(member.display_name)]),
   );
@@ -91,7 +103,7 @@ export default async function HouseholdHome({
                 {activeMembers.length} {activeMembers.length === 1 ? "person" : "people"}
               </p>
             </div>
-            <PeekingFroskolin className="home-summary-mascot pointer-events-none absolute right-12 bottom-[-5px] h-auto sm:right-16" />
+            <PeekingFroskolin className="home-summary-mascot pointer-events-none absolute right-12 z-10 h-auto sm:right-16" />
             <Link
               href={`/h/${householdId}/settings`}
               className={iconActionClass({
@@ -105,108 +117,12 @@ export default async function HouseholdHome({
             </Link>
           </header>
 
-          <div
-            className={`home-summary-balances grid items-center bg-white md:mx-2 md:mb-2 md:rounded-[14px] ${home?.landlord_enabled ? "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "grid-cols-1"}`}
-            aria-label="Your balances"
-          >
-            <Link
-              href={`/h/${householdId}/balances`}
-              className="home-summary-card home-summary-card-group group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
-            >
-              <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] min-[360px]:size-8 sm:size-9">
-                <Users className="size-5 min-[360px]:size-6" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-center">
-                <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">
-                  <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
-                    Group
-                  </span>
-                </span>
-                <span className="mt-0.5 block min-w-0 tabular-nums">
-                  {ownBalances.length ? (
-                    <span className="grid gap-0.5">
-                      {ownBalances.map((balance) => {
-                        const netCents = Number(balance.net_cents);
-                        return (
-                          <span
-                            key={balance.currency}
-                            className={`home-summary-amount block font-black ${netCents > 0 ? "text-[var(--positive)]" : netCents < 0 ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}
-                          >
-                            <span className="screen-reader-only">
-                              {netCents > 0
-                                ? "You are owed "
-                                : netCents < 0
-                                  ? "You owe "
-                                  : "All settled: "}
-                            </span>
-                            <span aria-hidden="true">
-                              {netCents > 0 ? "+" : netCents < 0 ? "−" : ""}
-                            </span>
-                            {formatMoney(Math.abs(netCents), balance.currency, locale)}
-                          </span>
-                        );
-                      })}
-                    </span>
-                  ) : (
-                    <span className="home-summary-amount block font-black text-[var(--ink)]">
-                      <span className="screen-reader-only">All settled: </span>
-                      {formatMoney(0, home?.default_currency ?? "EUR", locale)}
-                    </span>
-                  )}
-                </span>
-              </span>
-              <ChevronRight
-                className="size-3 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 sm:size-4"
-                aria-hidden="true"
-              />
-            </Link>
-
-            {home?.landlord_enabled && (
-              <>
-                <span className="home-summary-divider block w-px" aria-hidden="true" />
-                <Link
-                  href={`/h/${householdId}/landlord`}
-                  className="home-summary-card home-summary-card-landlord group flex min-w-0 items-center px-1.5 py-2 text-[var(--ink)] no-underline sm:px-4"
-                >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#ffdac6] text-[var(--peach)] min-[360px]:size-8 sm:size-9">
-                    <House className="size-5 min-[360px]:size-6" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1 overflow-hidden text-center">
-                    <span className="home-summary-copy mx-auto block overflow-hidden whitespace-nowrap">
-                      <span className="block truncate text-[10px] leading-4 font-black text-[var(--ink)] sm:text-sm">
-                        Landlord
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block min-w-0 tabular-nums">
-                      {landlordTotals.length ? (
-                        <span className="grid gap-0.5">
-                          {landlordTotals.map((row) => (
-                            <span
-                              key={row.currency}
-                              className="home-summary-amount block font-black text-[var(--negative)]"
-                            >
-                              <span className="screen-reader-only">You owe </span>
-                              <span aria-hidden="true">−</span>
-                              {formatMoney(row.amountCents, row.currency, locale)}
-                            </span>
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="home-summary-amount block font-black text-[var(--ink)]">
-                          <span className="screen-reader-only">All settled: </span>
-                          {formatMoney(0, home?.default_currency ?? "EUR", locale)}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    className="size-3 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 sm:size-4"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </>
-            )}
-          </div>
+          <HomeBalanceCard
+            householdId={householdId}
+            currency={home?.default_currency ?? "EUR"}
+            locale={locale}
+            balances={displayBalances}
+          />
         </Surface>
       </HomeSummaryMotion>
 
@@ -215,10 +131,13 @@ export default async function HouseholdHome({
           householdId={householdId}
           currentMemberId={membership.id}
           memberNames={memberNames}
-          expenses={transactions.expenses.slice(0, HOME_PAGE_SIZE)}
-          settlements={transactions.settlements.slice(0, HOME_PAGE_SIZE)}
+          expenses={transactions.expenses}
+          settlements={transactions.settlements}
+          settlementReadCount={transactions.settlementReadCount}
+          landlordPayments={transactions.landlordPayments}
+          landlordLinkedSettlementIds={transactions.landlordLinkedSettlementIds}
           expenseHasMore={transactions.expenses.length > HOME_PAGE_SIZE}
-          settlementHasMore={transactions.settlements.length > HOME_PAGE_SIZE}
+          settlementHasMore={transactions.settlementHasMore}
           locale={locale}
           timezone={home?.timezone ?? "UTC"}
         />

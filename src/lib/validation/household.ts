@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { currencySchema, displayNameSchema, nonEmptyTextSchema, uuidSchema } from "./common";
+import { balanceStrategies } from "@/lib/domain/balance-strategy";
 
 const localeSchema = z
   .string()
@@ -85,6 +86,11 @@ export const updateHouseholdSchema = z.object({
   defaultCurrency: currencySchema,
   joiningEnabled: z.boolean(),
   landlordEnabled: z.boolean(),
+});
+
+export const updateBalanceStrategySchema = z.object({
+  householdId: uuidSchema,
+  balanceStrategy: z.enum(balanceStrategies),
 });
 
 export const removeMemberSchema = z.object({ householdId: uuidSchema, memberId: uuidSchema });

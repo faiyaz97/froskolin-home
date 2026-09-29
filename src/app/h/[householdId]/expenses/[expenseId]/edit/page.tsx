@@ -41,6 +41,8 @@ export default async function EditExpensePage({
         id: member.id,
         name: member.display_name,
         avatarColor: member.avatar_color as AvatarColor | null,
+        inDate: member.in_date,
+        outDate: member.out_date,
       }));
     const { data: absenceRows, error } = await supabase
       .from("absence_periods")

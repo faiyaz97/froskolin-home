@@ -151,3 +151,23 @@ export const extractedBillSchema = z
   });
 
 export type ExtractedBill = z.infer<typeof extractedBillSchema>;
+
+/** Public autofill response. Source rows and allocation diagnostics stay on the server. */
+export const billAutofillSchema = z.object({
+  utilityType: utilityTypeSchema,
+  servicePeriod: z.object({ start: dateOnlySchema, end: dateOnlySchema }),
+  totalDueCents: centsSchema,
+  currency: currencySchema,
+  consumption: z.object({
+    amount: z.number().finite().nonnegative().nullable(),
+    unit: z.string().trim().max(40).nullable(),
+  }),
+  charges: z.object({
+    fixedCents: centsSchema.nullable(),
+    consumptionCents: centsSchema.nullable(),
+  }),
+  extractionConfidence: extractedBillSchema.shape.extractionConfidence,
+  review: z.object({ status: z.enum(["ready", "needs_review"]) }).optional(),
+});
+
+export type BillAutofill = z.infer<typeof billAutofillSchema>;

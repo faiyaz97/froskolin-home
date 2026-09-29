@@ -7,12 +7,11 @@ import { UserRound } from "lucide-react";
 
 import { parseGroupInvitationHash } from "@/lib/group-invitation";
 import { createHouseholdAction, joinHouseholdAction, loginAction } from "@/lib/actions";
-import { currencyFromLocale } from "@/lib/device-currency";
 import { readRememberedDevice, rememberDevice, type RememberedDevice } from "@/lib/device-memory";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Field, Input } from "../ui/field";
-import { StatusNote } from "../ui/page";
+import { ErrorDialog } from "../ui/error-dialog";
 
 type AuthKind = "create" | "join" | "login";
 
@@ -148,7 +147,7 @@ export function PublicForm({ kind }: { kind: AuthKind }) {
               ...common,
               householdName: String(data.get("householdName") ?? ""),
               joinPin: String(data.get("joinPin") ?? ""),
-              defaultCurrency: currencyFromLocale(locale),
+              defaultCurrency: "EUR",
               locale,
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             })
@@ -206,7 +205,7 @@ export function PublicForm({ kind }: { kind: AuthKind }) {
       </h1>
 
       <form className="mt-4 grid gap-3" onSubmit={submit} aria-busy={pending}>
-        {error && <StatusNote tone="error" title={error} />}
+        <ErrorDialog error={error} onClose={() => setError("")} />
 
         {kind === "create" && (
           <>

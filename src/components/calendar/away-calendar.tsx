@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { ConfirmationButton } from "@/components/ui/confirmation-button";
 import { Dialog } from "@/components/ui/dialog";
+import { ErrorDialog } from "@/components/ui/error-dialog";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { replaceAbsencesAction } from "@/lib/actions";
 import { inclusiveDays, normalizeAbsenceRanges } from "@/lib/domain/occupancy";
@@ -471,14 +472,6 @@ export function AwayCalendar({
               </Button>
             </div>
           )}
-          {error && (
-            <p
-              role="alert"
-              className="mt-2 text-right text-xs font-semibold text-[var(--negative)]"
-            >
-              {error}
-            </p>
-          )}
         </div>
       </section>
 
@@ -581,6 +574,7 @@ export function AwayCalendar({
           </div>
         </Dialog>
       )}
+      <ErrorDialog error={error} onClose={() => setError("")} />
     </div>
   );
 }

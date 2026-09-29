@@ -28,6 +28,8 @@ export default async function NewBillPage({
       id: member.id,
       name: member.display_name,
       avatarColor: member.avatar_color as AvatarColor | null,
+      inDate: member.in_date,
+      outDate: member.out_date,
     }));
 
   return (

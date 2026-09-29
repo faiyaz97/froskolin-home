@@ -14,7 +14,7 @@ import {
   Field,
   Input,
 } from "../ui/field";
-import { StatusNote } from "../ui/page";
+import { ErrorDialog } from "../ui/error-dialog";
 import { SelectInput } from "../ui/select-input";
 import { PayerSelect } from "./payer-select";
 
@@ -120,11 +120,11 @@ export function RecurringForm({
   }
   return (
     <form data-mobile-submit className="grid gap-6" onSubmit={submit} aria-busy={pending}>
-      {error && (
-        <StatusNote tone="error" title={error}>
-          Check the amount, dates, and selected roommates.
-        </StatusNote>
-      )}
+      <ErrorDialog
+        error={error}
+        onClose={() => setError("")}
+        hint="Check the amount, dates, and selected members."
+      />
       <Field label="Name">
         <Input
           name="title"

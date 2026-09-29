@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  BanknoteCheck,
   Droplets,
   Flame,
   HandCoins,
@@ -18,6 +19,7 @@ import { useState, useTransition } from "react";
 import { formatMoney, timestampToDateOnly } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { LoadMoreAction } from "../ui/load-more-action";
+import { ErrorDialog } from "../ui/error-dialog";
 
 export type LedgerExpense = {
   id: string;
@@ -46,6 +48,20 @@ export type LedgerSettlement = {
   currency: string;
   settlement_date: string;
   created_at: string;
+};
+
+export type LedgerLandlordPayment = {
+  id: string;
+  expenseId: string;
+  title: string;
+  utilityType: "electricity" | "gas" | "water" | "internet" | "other" | null;
+  currency: string;
+  amountCents: number;
+  paymentDate: string;
+  createdAt: string;
+  paidByMemberId: string | null;
+  paidByName: string | null;
+  affectedBillCount: number;
 };
 
 const categories = [
@@ -122,6 +138,9 @@ export function HouseholdLedger({
   memberNames,
   expenses,
   settlements,
+  settlementReadCount = settlements.length,
+  landlordPayments = [],
+  landlordLinkedSettlementIds = [],
   expenseHasMore,
   settlementHasMore,
   locale,
@@ -132,6 +151,9 @@ export function HouseholdLedger({
   memberNames: Record<string, string>;
   expenses: LedgerExpense[];
   settlements: LedgerSettlement[];
+  settlementReadCount?: number;
+  landlordPayments?: LedgerLandlordPayment[];
+  landlordLinkedSettlementIds?: string[];
   expenseHasMore: boolean;
   settlementHasMore: boolean;
   locale: string;
@@ -140,6 +162,7 @@ export function HouseholdLedger({
   const pageSize = 10;
   const [loadedExpenses, setLoadedExpenses] = useState(expenses);
   const [loadedSettlements, setLoadedSettlements] = useState(settlements);
+  const [settlementOffset, setSettlementOffset] = useState(settlementReadCount);
   const [moreExpenses, setMoreExpenses] = useState(expenseHasMore);
   const [moreSettlements, setMoreSettlements] = useState(settlementHasMore);
   const [visibleCount, setVisibleCount] = useState(pageSize);
@@ -161,6 +184,12 @@ export function HouseholdLedger({
       date: settlement.settlement_date,
       createdAt: settlement.created_at,
       value: settlement,
+    })),
+    ...landlordPayments.map((payment) => ({
+      kind: "landlordPayment" as const,
+      date: payment.paymentDate,
+      createdAt: payment.createdAt,
+      value: payment,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
   const visibleRows = rows.slice(0, visibleCount);
@@ -198,7 +227,7 @@ export function HouseholdLedger({
               .is("voided_at", null)
               .order("settlement_date", { ascending: false })
               .order("created_at", { ascending: false })
-              .range(loadedSettlements.length, loadedSettlements.length + pageSize)
+              .range(settlementOffset, settlementOffset + pageSize)
           : Promise.resolve({ data: [], error: null }),
       ]);
 
@@ -209,8 +238,33 @@ export function HouseholdLedger({
 
       const nextExpenses = (expenseResult.data ?? []) as LedgerExpense[];
       const nextSettlements = (settlementResult.data ?? []) as LedgerSettlement[];
+      const linkedResult = nextSettlements.length
+        ? await supabase
+            .from("landlord_payments")
+            .select("linked_settlement_id")
+            .eq("household_id", householdId)
+            .is("voided_at", null)
+            .in(
+              "linked_settlement_id",
+              nextSettlements.map((row) => row.id),
+            )
+        : { data: [], error: null };
+      if (linkedResult.error) {
+        setLoadError("More transactions could not be loaded.");
+        return;
+      }
+      const linkedIds = new Set([
+        ...landlordLinkedSettlementIds,
+        ...(linkedResult.data ?? []).map(
+          (row: { linked_settlement_id: string | null }) => row.linked_settlement_id,
+        ),
+      ]);
+      const visibleSettlements = nextSettlements.filter(
+        (settlement) => !linkedIds.has(settlement.id),
+      );
       setLoadedExpenses((current) => [...current, ...nextExpenses.slice(0, pageSize)]);
-      setLoadedSettlements((current) => [...current, ...nextSettlements.slice(0, pageSize)]);
+      setLoadedSettlements((current) => [...current, ...visibleSettlements.slice(0, pageSize)]);
+      setSettlementOffset((current) => current + Math.min(nextSettlements.length, pageSize));
       setMoreExpenses(nextExpenses.length > pageSize);
       setMoreSettlements(nextSettlements.length > pageSize);
       setVisibleCount((count) => count + pageSize);
@@ -229,7 +283,7 @@ export function HouseholdLedger({
   );
 
   return (
-    <section aria-label="Expenses" className="w-full max-w-full min-w-0">
+    <section aria-label="Transactions" className="w-full max-w-full min-w-0">
       {groups.length ? (
         <div className="grid min-w-0 gap-5">
           {groups.map((group) => (
@@ -240,8 +294,75 @@ export function HouseholdLedger({
               <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
                 {group.rows.map((row) => {
                   const date = formatDay(row.date, locale);
+                  if (row.kind === "landlordPayment") {
+                    const payment = row.value;
+                    const paidByCurrentMember = payment.paidByMemberId === currentMemberId;
+                    const paidBillType =
+                      payment.affectedBillCount > 1
+                        ? "bills"
+                        : payment.utilityType && payment.utilityType !== "other"
+                          ? payment.utilityType[0].toUpperCase() + payment.utilityType.slice(1)
+                          : "bill";
+                    const billLabel =
+                      payment.affectedBillCount > 1
+                        ? `${payment.title} + ${payment.affectedBillCount - 1} more`
+                        : payment.title;
+                    return (
+                      <Link
+                        key={`landlord-payment-${payment.id}`}
+                        href={`/h/${householdId}/expenses/${payment.expenseId}`}
+                        className="flex min-h-[68px] w-full max-w-full min-w-0 items-center gap-3 border-b border-[var(--soft-line)] bg-white px-3 py-2.5 text-[var(--ink)] no-underline transition-colors last:border-0 hover:bg-[var(--row-hover)] focus-visible:bg-[var(--row-hover)] focus-visible:outline-none sm:px-4"
+                      >
+                        <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
+                          {date.month}
+                          <span className="block text-base leading-4 font-black text-[var(--ink-soft)]">
+                            {date.day}
+                          </span>
+                        </time>
+                        <span
+                          className={`grid size-10 shrink-0 place-items-center rounded-xl ${paidByCurrentMember ? "bg-[var(--brand-soft)] text-[var(--brand)]" : "bg-[var(--soft-line)] text-[var(--muted)]"}`}
+                        >
+                          <BanknoteCheck className="size-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-sm leading-5 font-extrabold [overflow-wrap:anywhere] break-words">
+                            {payment.paidByName ?? "A member"} paid {paidBillType}
+                          </p>
+                          <p className="line-clamp-2 text-xs text-[var(--muted)] sm:text-sm">
+                            {billLabel}
+                          </p>
+                        </div>
+                        <div
+                          className={`shrink-0 text-right ${paidByCurrentMember ? "text-[var(--brand)]" : "text-[var(--muted)]"}`}
+                        >
+                          {paidByCurrentMember && <p className="text-[10px] font-bold">Paid</p>}
+                          <p className="text-sm font-black tabular-nums">
+                            {formatMoney(payment.amountCents, payment.currency, locale)}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  }
                   if (row.kind === "settlement") {
                     const settlement = row.value;
+                    const paymentAmount =
+                      settlement.paying_member_id === currentMemberId
+                        ? {
+                            label: "Paid",
+                            className: "text-[var(--brand)]",
+                            iconClassName: "bg-[var(--brand-soft)] text-[var(--brand)]",
+                          }
+                        : settlement.receiving_member_id === currentMemberId
+                          ? {
+                              label: "Received",
+                              className: "text-[var(--positive)]",
+                              iconClassName: "bg-[var(--positive-soft)] text-[var(--positive)]",
+                            }
+                          : {
+                              label: null,
+                              className: "text-[var(--muted)]",
+                              iconClassName: "bg-[var(--soft-line)] text-[var(--muted)]",
+                            };
                     return (
                       <Link
                         key={`settlement-${settlement.id}`}
@@ -254,7 +375,9 @@ export function HouseholdLedger({
                             {date.day}
                           </span>
                         </time>
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--positive-soft)] text-[var(--positive)]">
+                        <span
+                          className={`grid size-10 shrink-0 place-items-center rounded-xl ${paymentAmount.iconClassName}`}
+                        >
                           <HandCoins className="size-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -266,9 +389,14 @@ export function HouseholdLedger({
                             {memberNames[settlement.receiving_member_id] ?? "Former roommate"}
                           </p>
                         </div>
-                        <p className="shrink-0 text-sm font-black text-[var(--positive)] tabular-nums">
-                          {formatMoney(settlement.amount_cents, settlement.currency, locale)}
-                        </p>
+                        <div className={`shrink-0 text-right ${paymentAmount.className}`}>
+                          {paymentAmount.label && (
+                            <p className="text-[10px] font-bold">{paymentAmount.label}</p>
+                          )}
+                          <p className="text-sm font-black tabular-nums">
+                            {formatMoney(settlement.amount_cents, settlement.currency, locale)}
+                          </p>
+                        </div>
                       </Link>
                     );
                   }
@@ -283,20 +411,24 @@ export function HouseholdLedger({
                   const result = expense.paid_by_landlord
                     ? ownShare > 0
                       ? {
-                          label: "to landlord",
+                          label: "Your share",
                           cents: ownShare,
                           className: "text-[var(--peach)]",
                         }
                       : null
                     : paidByCurrentMember
                       ? lent > 0
-                        ? { label: "you lent", cents: lent, className: "text-[var(--positive)]" }
-                        : { label: "your share", cents: ownShare, className: "text-[var(--muted)]" }
+                        ? {
+                            label: "covered for others",
+                            cents: lent,
+                            className: "text-[var(--positive)]",
+                          }
+                        : { label: "Your share", cents: ownShare, className: "text-[var(--peach)]" }
                       : ownShare > 0
                         ? {
-                            label: "you owe",
+                            label: "Your share",
                             cents: ownShare,
-                            className: "text-[var(--negative)]",
+                            className: "text-[var(--peach)]",
                           }
                         : null;
 
@@ -340,17 +472,19 @@ export function HouseholdLedger({
             </section>
           ))}
           {hasMore && <LoadMoreAction pending={pending} onLoad={loadMore} className="-mt-5" />}
-          {loadError && (
-            <p role="alert" className="text-center text-xs font-bold text-[var(--negative)]">
-              {loadError}
-            </p>
-          )}
         </div>
       ) : (
-        <div className="rounded-2xl bg-white px-4 py-5 shadow-[var(--shadow-sm)] sm:px-5">
-          <p className="text-sm text-[var(--muted)]">No expenses yet</p>
+        <div className="grid gap-2">
+          {hasMore ? (
+            <LoadMoreAction pending={pending} onLoad={loadMore} />
+          ) : (
+            <div className="rounded-2xl bg-white px-4 py-5 shadow-[var(--shadow-sm)] sm:px-5">
+              <p className="text-sm text-[var(--muted)]">No expenses yet</p>
+            </div>
+          )}
         </div>
       )}
+      <ErrorDialog error={loadError} onClose={() => setLoadError("")} />
     </section>
   );
 }

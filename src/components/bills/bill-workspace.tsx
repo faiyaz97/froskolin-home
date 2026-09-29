@@ -2,14 +2,20 @@
 
 import { useRef, useState } from "react";
 
-import { extractedBillSchema, type ExtractedBill } from "@/lib/validation";
+import { billAutofillSchema, type BillAutofill } from "@/lib/validation";
 import type { AvatarColor } from "../household/member-avatar";
-import { StatusNote } from "../ui/page";
+import { ErrorDialog } from "../ui/error-dialog";
 import { BillConfirmation, type ExistingUtility } from "./bill-confirmation";
 import { BillUpload, type PreparedBillDraft } from "./bill-upload";
 import { BillAutofillLoadingDialog } from "./bill-autofill-loading-dialog";
 
-type Member = { id: string; name: string; avatarColor?: AvatarColor | null };
+type Member = {
+  id: string;
+  name: string;
+  avatarColor?: AvatarColor | null;
+  inDate?: string;
+  outDate?: string | null;
+};
 type Absence = { memberId: string; startDate: string; endDate: string };
 
 export function BillWorkspace({
@@ -36,7 +42,7 @@ export function BillWorkspace({
   cancelHref?: string;
 }) {
   const [selectedFile, setSelectedFile] = useState<File>();
-  const [extraction, setExtraction] = useState<ExtractedBill>();
+  const [extraction, setExtraction] = useState<BillAutofill>();
   const [extractionRevision, setExtractionRevision] = useState(0);
   const [autofillPending, setAutofillPending] = useState(false);
   const [autofillError, setAutofillError] = useState("");
@@ -83,7 +89,7 @@ export function BillWorkspace({
         error?: string;
       };
       if (!response.ok) throw new Error(result.error ?? "AI could not read this bill.");
-      const parsed = extractedBillSchema.safeParse(result.extraction);
+      const parsed = billAutofillSchema.safeParse(result.extraction);
       if (!parsed.success) throw new Error("AI returned incomplete bill data.");
       setExtraction(parsed.data);
       setExtractionRevision((revision) => revision + 1);
@@ -136,11 +142,11 @@ export function BillWorkspace({
         onRemove={removeDocument}
         onError={setAutofillError}
       />
-      {autofillError && (
-        <StatusNote tone="error" title={autofillError}>
-          Complete the form manually or try again.
-        </StatusNote>
-      )}
+      <ErrorDialog
+        error={autofillError}
+        onClose={() => setAutofillError("")}
+        hint="Complete the form manually or try again."
+      />
       <BillConfirmation
         key={extractionRevision}
         householdId={householdId}

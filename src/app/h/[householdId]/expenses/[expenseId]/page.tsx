@@ -1,7 +1,7 @@
 import {
   ArrowLeft,
   FileText,
-  House,
+  HandCoins,
   Paperclip,
   Pencil,
   ReceiptText,
@@ -13,18 +13,32 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { UtilityTypeIcon } from "@/components/bills/bill-meta-controls";
+import { BillMemberStatus } from "@/components/expenses/bill-member-status";
+import { UndoLandlordPaymentButton } from "@/components/expenses/undo-landlord-payment-button";
 import { MobilePageTitle } from "@/components/household/app-shell";
 import { ConfirmationButton } from "@/components/ui/confirmation-button";
-import { MemberAvatar, type AvatarColor } from "@/components/household/member-avatar";
+import {
+  MemberAvatar,
+  resolveAvatarColor,
+  type AvatarColor,
+} from "@/components/household/member-avatar";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { PageHeader } from "@/components/ui/page";
 import { voidExpenseAction } from "@/lib/actions";
+import { requireHouseholdMembership } from "@/lib/auth";
+import { calculateConstrainedAllBalances } from "@/lib/domain/constrained-all-balances";
+import { routeDepartedSuggestions } from "@/lib/domain/balance-exit";
+import { projectBillPaymentPlan, type PlannedBillShare } from "@/lib/domain/bill-payment-plan";
+import { calculateBillMemberContributions } from "@/lib/domain/bill-member-contributions";
 import { formatMoney, timestampToDateOnly } from "@/lib/format";
 import {
   getExpenseAttachment,
   getExpenseDetail,
+  getBalances,
+  getAllLandlordShareBalances,
   getHousehold,
   getHouseholdMembers,
+  getLandlordBillPaymentGroups,
   getRecurringExpenseSchedule,
 } from "@/lib/queries";
 
@@ -57,6 +71,14 @@ function formatDate(value: string, locale: string) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function formatDay(value: string, locale: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  return {
+    month: new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(date),
+    day: new Intl.DateTimeFormat(locale, { day: "2-digit", timeZone: "UTC" }).format(date),
+  };
+}
+
 function splitMethodLabel(method: string) {
   if (method === "exact") return "By amounts";
   if (method === "percentage") return "By percentages";
@@ -69,7 +91,8 @@ export default async function ExpenseDetail({
   params: Promise<{ householdId: string; expenseId: string }>;
 }) {
   const { householdId, expenseId } = await params;
-  const [group, members, rawExpense] = await Promise.all([
+  const [{ membership, user }, group, members, rawExpense] = await Promise.all([
+    requireHouseholdMembership(householdId),
     getHousehold(householdId),
     getHouseholdMembers(householdId),
     getExpenseDetail(householdId, expenseId),
@@ -106,12 +129,80 @@ export default async function ExpenseDetail({
     ? timestampToDateOnly(expense.created_at, timezone)
     : expense.expense_date;
   const notes = utility?.classification_note?.trim() || expense.note?.trim();
-  const [attachment, recurringSchedule] = await Promise.all([
-    utility ? Promise.resolve(null) : getExpenseAttachment(householdId, expenseId),
-    expense.recurring_rule_id
-      ? getRecurringExpenseSchedule(householdId, expense.recurring_rule_id)
-      : Promise.resolve(null),
-  ]);
+  const [attachment, recurringSchedule, landlordPaymentGroups, allLandlordShares, groupBalances] =
+    await Promise.all([
+      utility ? Promise.resolve(null) : getExpenseAttachment(householdId, expenseId),
+      expense.recurring_rule_id
+        ? getRecurringExpenseSchedule(householdId, expense.recurring_rule_id)
+        : Promise.resolve(null),
+      expense.paid_by_landlord && !expense.voided_at
+        ? getLandlordBillPaymentGroups(householdId, expenseId)
+        : Promise.resolve([]),
+      expense.paid_by_landlord && !expense.voided_at
+        ? getAllLandlordShareBalances(householdId)
+        : Promise.resolve([]),
+      expense.paid_by_landlord &&
+      !expense.voided_at &&
+      group?.balance_strategy === "super_simplified"
+        ? getBalances(householdId)
+        : Promise.resolve([]),
+    ]);
+  let plannedBillShares: PlannedBillShare[] = [];
+  if (expense.paid_by_landlord && !expense.voided_at) {
+    if (group?.balance_strategy === "super_simplified" && group.landlord_enabled) {
+      const projection = calculateConstrainedAllBalances(
+        groupBalances.map((row) => ({
+          memberId: row.member_id,
+          currency: row.currency,
+          amountCents: Number(row.net_cents),
+        })),
+        allLandlordShares,
+      );
+      const departedIds = new Set(
+        members.filter((member) => member.removed_at).map((member) => member.id),
+      );
+      plannedBillShares = projectBillPaymentPlan(
+        allLandlordShares,
+        routeDepartedSuggestions(projection.suggestions, departedIds),
+        departedIds,
+      ).filter((row) => row.expenseId === expenseId);
+    } else {
+      plannedBillShares = allLandlordShares
+        .filter((row) => row.expenseId === expenseId)
+        .map((row) => ({
+          ...row,
+          currentDueCents: row.remainingCents,
+          coveredByOthersCents: 0,
+          plannedPayers: row.remainingCents
+            ? [{ memberId: row.memberId, amountCents: row.remainingCents }]
+            : [],
+        }));
+    }
+  }
+  plannedBillShares.sort(
+    (a, b) =>
+      shares.findIndex((share) => share.member_id === a.memberId) -
+      shares.findIndex((share) => share.member_id === b.memberId),
+  );
+  const billContributions = calculateBillMemberContributions(
+    plannedBillShares,
+    landlordPaymentGroups.flatMap((payment) =>
+      payment.breakdown
+        .filter((part) => part.expenseId === expenseId)
+        .map((part) => ({
+          memberId: part.memberId,
+          paidByMemberId: payment.paidByMemberId,
+          amountCents: part.amountCents,
+        })),
+    ),
+  ).sort((a, b) => {
+    const order = (memberId: string) => {
+      const index = shares.findIndex((share) => share.member_id === memberId);
+      return index < 0 ? shares.length : index;
+    };
+    return order(a.memberId) - order(b.memberId);
+  });
+  const hasRecordedLandlordPayments = expense.paid_by_landlord && landlordPaymentGroups.length > 0;
   const nextRecurringDate =
     recurringSchedule?.active &&
     !recurringSchedule.archived_at &&
@@ -218,108 +309,149 @@ export default async function ExpenseDetail({
               </strong>
             </div>
 
-            <div className="relative flex min-h-11 items-center gap-2">
-              <span className="relative z-10">
-                {expense.paid_by_landlord ? (
-                  <span className="grid size-9 place-items-center rounded-full bg-[var(--peach-soft)] text-[var(--peach)]">
-                    <House className="size-4" aria-hidden="true" />
-                  </span>
-                ) : payerMember ? (
-                  <MemberAvatar
-                    name={payerMember.name}
-                    color={payerMember.avatarColor}
-                    className="size-9 border-0 shadow-none"
+            {!expense.paid_by_landlord && (
+              <div className="relative flex min-h-11 items-center gap-2">
+                <span className="relative z-10">
+                  {payerMember ? (
+                    <MemberAvatar
+                      name={payerMember.name}
+                      color={payerMember.avatarColor}
+                      className="size-9 border-0 shadow-none"
+                    />
+                  ) : (
+                    <span className="grid size-9 place-items-center rounded-full bg-[var(--soft-line)] text-[var(--muted)]">
+                      <UserRound className="size-4" aria-hidden="true" />
+                    </span>
+                  )}
+                </span>
+                <strong className="truncate text-sm">{payerName}</strong>
+                <span className="text-xs text-[var(--muted)]">paid</span>
+                <span className="ml-auto shrink-0 text-xs font-bold text-[var(--muted)]">
+                  {shares.length} {shares.length === 1 ? "person" : "people"}
+                  {!utility && (
+                    <>
+                      <span className="px-1.5">·</span>
+                      {splitMethodLabel(expense.split_method).toLowerCase()}
+                    </>
+                  )}
+                </span>
+                {shares.length > 0 && (
+                  <span
+                    className="absolute top-[calc(50%+18px)] bottom-[-12px] left-[17px] w-0.5 bg-[var(--pastel-mint-line)]"
+                    aria-hidden="true"
                   />
-                ) : (
-                  <span className="grid size-9 place-items-center rounded-full bg-[var(--soft-line)] text-[var(--muted)]">
-                    <UserRound className="size-4" aria-hidden="true" />
-                  </span>
                 )}
-              </span>
-              <strong className="truncate text-sm">{payerName}</strong>
-              <span className="text-xs text-[var(--muted)]">paid</span>
-              <span className="ml-auto shrink-0 text-xs font-bold text-[var(--muted)]">
-                {shares.length} {shares.length === 1 ? "person" : "people"}
-                {!utility && (
-                  <>
-                    <span className="px-1.5">·</span>
-                    {splitMethodLabel(expense.split_method).toLowerCase()}
-                  </>
-                )}
-              </span>
-              {shares.length > 0 && (
-                <span
-                  className="absolute top-[calc(50%+18px)] bottom-[-12px] left-[17px] w-0.5 bg-[var(--pastel-mint-line)]"
-                  aria-hidden="true"
-                />
-              )}
-            </div>
+              </div>
+            )}
 
-            <ul className="relative">
-              {shares.map((share, index) => {
-                const member = memberProfiles.get(share.member_id);
-                const memberName = member?.name ?? "Former member";
-                const connectorColor = "var(--pastel-mint-line)";
-                return (
-                  <li key={share.member_id} className="relative flex min-h-14 items-center pl-11">
-                    {index < shares.length - 1 && (
+            {expense.paid_by_landlord && !expense.voided_at ? (
+              <BillMemberStatus
+                rows={billContributions}
+                memberProfiles={memberProfiles}
+                presenceDaysByMemberId={
+                  utility
+                    ? new Map(shares.map((share) => [share.member_id, share.presence_days ?? 0]))
+                    : undefined
+                }
+                shareBreakdownByMemberId={
+                  utility
+                    ? new Map(
+                        shares
+                          .filter(
+                            (share) =>
+                              share.fixed_share_cents !== null &&
+                              share.variable_share_cents !== null,
+                          )
+                          .map((share) => [
+                            share.member_id,
+                            {
+                              fixedCents: Number(share.fixed_share_cents),
+                              usageCents: Number(share.variable_share_cents),
+                            },
+                          ]),
+                      )
+                    : undefined
+                }
+                locale={locale}
+                householdId={householdId}
+                expenseId={expenseId}
+                currentMemberId={group?.landlord_enabled ? membership.id : undefined}
+              />
+            ) : (
+              <ul className="relative">
+                {shares.map((share, index) => {
+                  const member = memberProfiles.get(share.member_id);
+                  const memberName = member?.name ?? "Former member";
+                  const connectorColor = "var(--pastel-mint-line)";
+                  return (
+                    <li key={share.member_id} className="relative flex min-h-14 items-center pl-11">
+                      {index < shares.length - 1 && (
+                        <span
+                          className="absolute top-0 bottom-0 left-[17px] w-0.5 bg-[var(--pastel-mint-line)]"
+                          aria-hidden="true"
+                        />
+                      )}
                       <span
-                        className="absolute top-0 bottom-0 left-[17px] w-0.5 bg-[var(--pastel-mint-line)]"
+                        className="absolute top-0 left-[17px] h-1/2 w-[27px] rounded-bl-lg border-b-2 border-l-2"
+                        style={{ borderColor: connectorColor }}
                         aria-hidden="true"
                       />
-                    )}
-                    <span
-                      className="absolute top-0 left-[17px] h-1/2 w-[27px] rounded-bl-lg border-b-2 border-l-2"
-                      style={{ borderColor: connectorColor }}
-                      aria-hidden="true"
-                    />
-                    <div
-                      className={`flex min-w-0 flex-1 items-center gap-3 py-2 ${index < shares.length - 1 ? "border-b border-[var(--soft-line)]" : ""}`}
-                    >
-                      {member ? (
-                        <MemberAvatar
-                          name={member.name}
-                          color={member.avatarColor}
-                          className="size-9 border-0 shadow-none"
-                        />
-                      ) : (
-                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--soft-line)] text-[var(--muted)]">
-                          <UserRound className="size-4" aria-hidden="true" />
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm">{memberName}</strong>
-                        {utility && (
-                          <span className="mt-0.5 block text-[10px] text-[var(--muted)]">
-                            {share.presence_days ?? 0} days at home
+                      <div
+                        className={`flex min-w-0 flex-1 items-center gap-3 py-2 ${index < shares.length - 1 ? "border-b border-[var(--soft-line)]" : ""}`}
+                      >
+                        {member ? (
+                          <MemberAvatar
+                            name={member.name}
+                            color={member.avatarColor}
+                            className="size-9 border-0 shadow-none"
+                          />
+                        ) : (
+                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--soft-line)] text-[var(--muted)]">
+                            <UserRound className="size-4" aria-hidden="true" />
                           </span>
                         )}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <strong className="block text-sm tabular-nums">
-                          {formatMoney(Number(share.share_cents), expense.currency, locale)}
-                        </strong>
-                        {utility && (
-                          <span className="mt-0.5 block text-[10px] text-[var(--muted)] tabular-nums">
-                            {formatMoney(
-                              Number(share.fixed_share_cents ?? 0),
-                              expense.currency,
-                              locale,
-                            )}
-                            {" + "}
-                            {formatMoney(
-                              Number(share.variable_share_cents ?? 0),
-                              expense.currency,
-                              locale,
-                            )}
+                        <div className="min-w-0 flex-1">
+                          <strong className="block truncate text-sm">{memberName}</strong>
+                          {utility && (
+                            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">
+                              {share.presence_days ?? 0} days at home
+                            </span>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="block text-[10px] font-semibold text-[var(--muted)]">
+                            Share
                           </span>
-                        )}
+                          <strong className="block text-sm tabular-nums">
+                            {formatMoney(Number(share.share_cents), expense.currency, locale)}
+                          </strong>
+                          {utility && (
+                            <span className="mt-0.5 block text-[10px] text-[var(--muted)] tabular-nums">
+                              {formatMoney(
+                                Number(share.fixed_share_cents ?? 0),
+                                expense.currency,
+                                locale,
+                              )}
+                              {" + "}
+                              {formatMoney(
+                                Number(share.variable_share_cents ?? 0),
+                                expense.currency,
+                                locale,
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!expense.paid_by_landlord && utility && (
+              <p className="mt-3 border-t border-[var(--soft-line)] pt-3 text-xs leading-5 text-[var(--muted)]">
+                Payments between members settle your Group balance, not a specific bill share.
+              </p>
+            )}
             {notes && (
               <p className="mt-3 border-t border-[var(--soft-line)] pt-3 text-sm leading-5 whitespace-pre-wrap text-[var(--ink-soft)]">
                 <strong className="text-[var(--ink)]">Notes:</strong> {notes}
@@ -329,6 +461,84 @@ export default async function ExpenseDetail({
         </div>
       </article>
 
+      {expense.paid_by_landlord && !expense.voided_at && (
+        <section className="mt-6" aria-labelledby="bill-payment-history-title">
+          <h2 id="bill-payment-history-title" className="mb-2 px-1 text-sm font-black">
+            Payment history
+          </h2>
+          {landlordPaymentGroups.length ? (
+            <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
+              {landlordPaymentGroups.map((payment) => {
+                const payerName = payment.paidByMemberId
+                  ? (memberProfiles.get(payment.paidByMemberId)?.name ?? "A member")
+                  : null;
+                const coversOtherBills = payment.breakdown.some(
+                  (part) => part.expenseId !== expenseId,
+                );
+                const day = formatDay(payment.paymentDate, locale);
+                return (
+                  <div
+                    key={payment.id}
+                    className="flex min-h-[68px] items-center gap-2 border-b border-[var(--soft-line)] px-3 py-2.5 last:border-0 sm:gap-3 sm:px-4"
+                  >
+                    <time className="w-8 shrink-0 text-center text-[10px] leading-4 font-bold text-[var(--muted)] uppercase">
+                      {day.month}
+                      <span className="block text-base leading-4 font-black text-[var(--ink-soft)]">
+                        {day.day}
+                      </span>
+                    </time>
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-xl text-[var(--ink)]"
+                      style={{
+                        background: payerName
+                          ? resolveAvatarColor(
+                              payerName,
+                              memberProfiles.get(payment.paidByMemberId!)?.avatarColor,
+                            )
+                          : "var(--soft-line)",
+                      }}
+                    >
+                      <HandCoins className="size-4.5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs sm:text-sm">
+                      <strong>{payerName ?? "Recorded payment"}</strong>{" "}
+                      <span className="text-[10px] font-normal text-[var(--muted)]">
+                        paid to Landlord
+                      </span>
+                    </span>
+                    <strong className="shrink-0 text-xs tabular-nums sm:text-sm">
+                      {formatMoney(payment.onThisBillCents, expense.currency, locale)}
+                    </strong>
+                    {(membership.role === "owner" ||
+                      payment.paidByMemberId === membership.id ||
+                      (!payment.paidByMemberId && payment.createdByUserId === user.id)) && (
+                      <UndoLandlordPaymentButton
+                        householdId={householdId}
+                        paymentId={payment.paymentId}
+                        totalCents={payment.totalCents}
+                        currency={expense.currency}
+                        locale={locale}
+                        coversOtherBills={coversOtherBills}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-[22px] bg-white px-4 py-4 text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
+              No payments recorded for this bill yet.
+            </p>
+          )}
+        </section>
+      )}
+
+      {hasRecordedLandlordPayments && !expense.voided_at && (
+        <p className="mt-4 px-1 text-xs leading-5 text-[var(--muted)]">
+          Undo all payments in Payment history before editing or voiding this bill. Ask the payer or
+          an admin to undo any payment you can’t reverse.
+        </p>
+      )}
       <div className="mt-4 mb-6 flex items-center justify-between px-1">
         <div>
           {(utility?.bill_document_id || attachment) && (
@@ -353,17 +563,20 @@ export default async function ExpenseDetail({
         <div className="flex items-center gap-2">
           <ConfirmationButton
             triggerLabel={utility ? "Void bill" : "Void expense"}
+            triggerTitle={
+              hasRecordedLandlordPayments ? "Undo all payments before voiding" : undefined
+            }
             title={utility ? "Void this bill?" : "Void this expense?"}
             description="This will remove it from balances. It will remain visible in Activity."
             confirmLabel="Void"
             pendingLabel="Voiding…"
-            disabled={Boolean(expense.voided_at)}
+            disabled={Boolean(expense.voided_at) || hasRecordedLandlordPayments}
             onConfirmAction={voidExpense}
             triggerClassName={iconActionClass({ tone: "negative", className: "size-12" })}
           >
             <Trash2 className="size-5" aria-hidden="true" />
           </ConfirmationButton>
-          {!expense.voided_at && (
+          {!expense.voided_at && !hasRecordedLandlordPayments && (
             <Link
               href={editHref}
               aria-label={
@@ -384,6 +597,19 @@ export default async function ExpenseDetail({
             >
               <Pencil className="size-5" aria-hidden="true" />
             </Link>
+          )}
+          {!expense.voided_at && hasRecordedLandlordPayments && (
+            <button
+              type="button"
+              disabled
+              aria-label={
+                utility ? "Edit bill after undoing payments" : "Edit expense after undoing payments"
+              }
+              title="Undo all payments before editing"
+              className={iconActionClass({ tone: "brand", className: "size-12" })}
+            >
+              <Pencil className="size-5" aria-hidden="true" />
+            </button>
           )}
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { BillConfirmation } from "@/components/bills/bill-confirmation";
-import { PageHeader } from "@/components/ui/page";
+import { PageHeader, StatusNote } from "@/components/ui/page";
 import { requireHouseholdMembership } from "@/lib/auth";
 import { extractedBillSchema } from "@/lib/validation";
 
@@ -21,7 +21,7 @@ export default async function ConfirmBillPage({
       .single(),
     supabase
       .from("household_members")
-      .select("id, display_name, removed_at")
+      .select("id, display_name, removed_at, in_date, out_date")
       .eq("household_id", householdId)
       .is("removed_at", null)
       .order("joined_at"),
@@ -41,6 +41,8 @@ export default async function ConfirmBillPage({
     throw homeResult.error ?? membersResult.error ?? absencesResult.error ?? documentResult.error;
   }
   const extraction = extractedBillSchema.safeParse(documentResult.data?.extraction);
+  const currencyMismatch =
+    extraction.success && extraction.data.currency !== homeResult.data.default_currency;
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
@@ -48,6 +50,12 @@ export default async function ConfirmBillPage({
         title="Check this bill"
         description="Nothing affects balances until you confirm. Correct any value the document reader got wrong."
       />
+      {currencyMismatch && (
+        <StatusNote tone="warning" title="This bill uses another currency">
+          The bill uses {extraction.data.currency}, but this group uses{" "}
+          {homeResult.data.default_currency}. Its amounts were not filled in.
+        </StatusNote>
+      )}
       <BillConfirmation
         householdId={householdId}
         documentId={documentId}
@@ -55,10 +63,12 @@ export default async function ConfirmBillPage({
         locale={homeResult.data.locale}
         currentMemberId={membership.id}
         landlordEnabled={homeResult.data.landlord_enabled}
-        initial={extraction.success ? extraction.data : undefined}
+        initial={extraction.success && !currencyMismatch ? extraction.data : undefined}
         members={(membersResult.data ?? []).map((member) => ({
           id: member.id,
           name: member.display_name,
+          inDate: member.in_date,
+          outDate: member.out_date,
         }))}
         absences={(absencesResult.data ?? []).map((range) => ({
           memberId: range.member_id,

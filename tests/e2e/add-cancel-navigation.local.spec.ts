@@ -12,12 +12,13 @@ test("add expense and utility bill cancel back to group home", async ({ page }) 
 
   await expect(page).toHaveURL(/\/h\/[0-9a-f-]+$/, { timeout: 15_000 });
   const homeUrl = page.url();
+  const backLabel = (page.viewportSize()?.width ?? 0) < 768 ? "Go back" : "Cancel";
 
   await page.goto(`${homeUrl}/add/expense`);
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: backLabel, exact: true }).click();
   await expect(page).toHaveURL(homeUrl);
 
   await page.goto(`${homeUrl}/add/bill`);
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: backLabel, exact: true }).click();
   await expect(page).toHaveURL(homeUrl);
 });
