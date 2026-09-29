@@ -27,6 +27,8 @@ jobs:
       - name: Configure local browser-test environment
         run: |
           while IFS='=' read -r name value; do
+            value="${value#\"}"
+            value="${value%\"}"
             case "$name" in
               API_URL) echo "NEXT_PUBLIC_SUPABASE_URL=$value" >> "$GITHUB_ENV" ;;
               PUBLISHABLE_KEY) echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$value" >> "$GITHUB_ENV" ;;
