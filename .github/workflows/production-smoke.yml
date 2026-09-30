@@ -1,0 +1,37 @@
+name: Production smoke
+
+on:
+  deployment_status:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production' &&
+       github.event.deployment.creator.login == 'vercel[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PRODUCTION_BASE_URL: https://froskolin.vercel.app
+      SMOKE_GROUP_CODE: ${{ secrets.SMOKE_GROUP_CODE }}
+      SMOKE_MEMBER_NAME: ${{ secrets.SMOKE_MEMBER_NAME }}
+      SMOKE_PERSONAL_PIN: ${{ secrets.SMOKE_PERSONAL_PIN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --config=playwright.production.config.ts
