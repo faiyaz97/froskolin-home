@@ -62,6 +62,13 @@ describe("HomeSummaryMotion", () => {
     vi.stubGlobal("scrollY", 96);
     fireEvent.resize(window);
     frames.shift()!(48);
-    expect(summary.style.getPropertyValue("--home-detail-opacity")).toBe("1");
+    expect(summary.style.getPropertyValue("--home-detail-opacity")).toBe("");
+    expect(summary.dataset.collapsed).toBe("false");
+
+    vi.stubGlobal("innerWidth", 320);
+    fireEvent.resize(window);
+    frames.shift()!(64);
+    expect(summary.style.getPropertyValue("--home-detail-opacity")).toBe("0");
+    expect(summary.dataset.collapsed).toBe("true");
   });
 });
