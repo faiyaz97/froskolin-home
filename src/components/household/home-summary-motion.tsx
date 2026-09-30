@@ -49,6 +49,11 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
 
     function update() {
       frame = 0;
+      if (window.innerWidth >= MOBILE_BREAKPOINT) {
+        style.cssText = "";
+        dataset.collapsed = "false";
+        return;
+      }
       paint(getTargetProgress());
     }
 
@@ -56,7 +61,7 @@ export function HomeSummaryMotion({ children }: { children: ReactNode }) {
       if (!frame) frame = window.requestAnimationFrame(update);
     }
 
-    paint(getTargetProgress());
+    update();
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     return () => {

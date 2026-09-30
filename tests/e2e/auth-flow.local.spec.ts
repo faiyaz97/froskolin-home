@@ -335,7 +335,7 @@ test("create, remembered login, access rotation, failed login, and join", async 
     .getByRole("dialog", { name: `Reset ${memberName}'s PIN?` })
     .getByRole("button", { name: "Reset PIN" })
     .click();
-  await expect(page.getByText(/Temporary PIN/)).toBeVisible();
+  await expect(page.getByText("Temporary PIN generated.", { exact: true })).toBeVisible();
   const temporaryPinText = await page.locator("code").filter({ hasText: memberName }).textContent();
   const temporaryPin = temporaryPinText?.match(/(\d{4}|\d{6})$/)?.[1];
   expect(temporaryPin).toBeTruthy();
