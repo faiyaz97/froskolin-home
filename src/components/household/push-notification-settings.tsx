@@ -13,6 +13,7 @@ import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { ErrorDialog } from "../ui/error-dialog";
 import { StatusNote } from "../ui/page";
+import { ToastNotice } from "../ui/toast-notice";
 
 type SupportState = "checking" | "ready" | "unsupported" | "insecure" | "ios-home-screen";
 type PermissionState = "default" | "granted" | "denied" | "unknown";
@@ -276,7 +277,7 @@ export function PushNotificationSettings({
       setEnabled(true);
       rememberNotificationState(configuration.userId, true);
       setPromptOpen(false);
-      setMessage("");
+      setMessage("Notifications are on for this device.");
     } catch {
       setMessage("We couldn't enable notifications on this device. Please try again.");
     } finally {
@@ -331,14 +332,23 @@ export function PushNotificationSettings({
     !configurationError;
 
   if (promptOnly) {
-    if (!promptOpen || !canInteract || enabled) return null;
-    return (
-      <NotificationPermissionDialog
-        busy={busy}
+    const notice = (
+      <ToastNotice
         message={message}
-        onEnable={enableNotifications}
-        onClose={() => setPromptOpen(false)}
+        tone={enabled ? "success" : "error"}
+        onClose={() => setMessage("")}
       />
+    );
+    if (!promptOpen || !canInteract || enabled) return notice;
+    return (
+      <>
+        <NotificationPermissionDialog
+          busy={busy}
+          onEnable={enableNotifications}
+          onClose={() => setPromptOpen(false)}
+        />
+        {notice}
+      </>
     );
   }
 
@@ -396,21 +406,18 @@ export function PushNotificationSettings({
           <StatusNote tone="info" title={unavailableMessage} />
         </div>
       )}
-      {message === "Notifications are off on this device." && (
-        <div
-          className="border-t border-[var(--soft-line)] px-4 py-3 text-sm font-bold text-[var(--brand-strong)] sm:px-5"
-          role="status"
-        >
-          {message}
-        </div>
-      )}
+      <ToastNotice
+        message={message}
+        tone={
+          message.startsWith("Notifications are on") || message.startsWith("Notifications are off")
+            ? "success"
+            : "error"
+        }
+        onClose={() => setMessage("")}
+      />
       <ErrorDialog
         error={configurationErrorDismissed ? null : configurationError}
         onClose={() => setConfigurationErrorDismissed(true)}
-      />
-      <ErrorDialog
-        error={message !== "Notifications are off on this device." ? message : null}
-        onClose={() => setMessage("")}
       />
       {permission === "denied" && !enabled && !message && (
         <p className="px-4 pb-4 text-xs text-[var(--muted)] sm:px-5">
@@ -452,12 +459,10 @@ export async function unregisterCurrentDevicePushSubscription() {
 
 export function NotificationPermissionDialog({
   busy,
-  message,
   onEnable,
   onClose,
 }: {
   busy: boolean;
-  message: string;
   onEnable: () => void;
   onClose: () => void;
 }) {
@@ -467,11 +472,6 @@ export function NotificationPermissionDialog({
         <p className="text-sm leading-6 text-[var(--muted)]">
           Alerts for expenses and payments involving you.
         </p>
-        {message && (
-          <p role="status" className="mt-3 text-sm text-[var(--ink-soft)]">
-            {message}
-          </p>
-        )}
         <div className="mt-5 flex justify-end gap-2">
           <Button tone="quiet" onClick={onClose} disabled={busy}>
             Not now

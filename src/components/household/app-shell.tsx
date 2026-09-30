@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, Check, CircleCheck, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Check, LoaderCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import { cn } from "../ui/cn";
 import { CatMark } from "../ui/brand";
 import { iconActionClass } from "../ui/icon-action";
+import { ToastNotice } from "../ui/toast-notice";
 import { AppNavigation } from "./app-navigation";
 
 const MobileTitleContext = createContext<((title: string | null) => void) | null>(null);
@@ -167,20 +168,7 @@ export function AppShell({
           </main>
         </div>
 
-        {saveComplete && (
-          <div
-            role="status"
-            className={cn(
-              "pointer-events-none fixed inset-x-3 z-50 mx-auto flex w-fit max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full bg-[var(--positive)] px-4 py-2.5 text-sm font-bold text-white shadow-[var(--shadow-float)] md:hidden",
-              isPrimaryPage
-                ? "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
-                : "bottom-[calc(1rem+env(safe-area-inset-bottom))]",
-            )}
-          >
-            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-            {saveComplete}
-          </div>
-        )}
+        <ToastNotice message={saveComplete} onClose={() => setSaveComplete(null)} />
 
         <AppNavigation
           householdId={householdId}

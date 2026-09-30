@@ -8,6 +8,7 @@ import { Dialog } from "../ui/dialog";
 import { controlClass } from "../ui/field";
 import { cn } from "../ui/cn";
 import { iconActionClass } from "../ui/icon-action";
+import { ToastNotice } from "../ui/toast-notice";
 import { FacebookIcon, InstagramIcon, WhatsAppIcon } from "./invitation-social-icons";
 
 const socialTargets = [
@@ -287,11 +288,11 @@ function InvitationDialog({
             )}
           </div>
         )}
-        {message && (
-          <p role="status" className="text-xs font-semibold text-[var(--muted)]">
-            {message}
-          </p>
-        )}
+        <ToastNotice
+          message={message}
+          tone={message === "Link copied." ? "success" : "info"}
+          onClose={() => setMessage("")}
+        />
         <p className="text-center text-[11px] text-[var(--muted)]">
           Anyone with this invitation can join your group.
         </p>

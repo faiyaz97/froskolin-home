@@ -65,10 +65,10 @@ describe("AI bill loading dialog", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Reading your bill" })).toBeNull(),
     );
-    expect(screen.getByRole("dialog", { name: "Something went wrong" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy(), { timeout: 5_000 });
     expect(screen.getByText("Could not read bill")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss message" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(document.body.style.overflow).not.toBe("hidden");
   });
 });

@@ -10,7 +10,7 @@ import { updateRememberedMemberName } from "@/lib/device-memory";
 import { Dialog } from "../ui/dialog";
 import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
-import { StatusNote } from "../ui/page";
+import { ToastNotice } from "../ui/toast-notice";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 import {
   PushNotificationSettings,
@@ -53,9 +53,11 @@ export function PersonalSettingsPanel({
   const [newPin, setNewPin] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [dialogError, setDialogError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   function saveProfile(nextName: string, nextAvatar: AvatarColor, onSaved: () => void) {
     setDialogError("");
+    setSuccessMessage("");
     startTransition(async () => {
       const displayName = nextName.trim();
       const result = await updatePersonalSettingsAction({
@@ -71,6 +73,7 @@ export function PersonalSettingsPanel({
       setAvatarColor(nextAvatar);
       updateRememberedMemberName(houseCode, displayName);
       onSaved();
+      setSuccessMessage(displayName === name ? "Avatar saved." : "Display name saved.");
       router.refresh();
     });
   }
@@ -78,12 +81,14 @@ export function PersonalSettingsPanel({
   function openNameDialog() {
     setDraftName(name);
     setDialogError("");
+    setSuccessMessage("");
     setNameDialogOpen(true);
   }
 
   function openAvatarDialog() {
     setDraftAvatar(avatarColor);
     setDialogError("");
+    setSuccessMessage("");
     setAvatarDialogOpen(true);
   }
 
@@ -92,11 +97,13 @@ export function PersonalSettingsPanel({
     setNewPin("");
     setConfirmation("");
     setDialogError("");
+    setSuccessMessage("");
     setPinDialogOpen(true);
   }
 
   function savePin() {
     setDialogError("");
+    setSuccessMessage("");
     if (newPin !== confirmation) {
       setDialogError("The two new PINs do not match.");
       return;
@@ -111,6 +118,7 @@ export function PersonalSettingsPanel({
       setCurrentPin("");
       setNewPin("");
       setConfirmation("");
+      setSuccessMessage(forcePinChange ? "Personal PIN set." : "Personal PIN changed.");
       router.refresh();
     });
   }
@@ -120,6 +128,8 @@ export function PersonalSettingsPanel({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
+      <ToastNotice message={dialogError} tone="error" onClose={() => setDialogError("")} />
+      <ToastNotice message={successMessage} onClose={() => setSuccessMessage("")} />
       <header className="sticky top-0 z-20 -mx-3 -mt-3 overflow-hidden rounded-b-[28px] bg-[linear-gradient(135deg,var(--pastel-sky),var(--pastel-mint))] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 shadow-[var(--shadow-sm)] md:relative md:mx-0 md:mt-0 md:rounded-[28px] md:p-7">
         <div
           className="pointer-events-none absolute -top-16 -right-14 size-52 rounded-full opacity-45 blur-2xl"
@@ -211,7 +221,6 @@ export function PersonalSettingsPanel({
           doneDisabled={pending || !draftName.trim() || draftName.trim() === name}
         >
           <div className="grid gap-4 px-2 pt-2 pb-3">
-            {dialogError && <StatusNote tone="error" title={dialogError} />}
             <Field label="Display name">
               <Input
                 value={draftName}
@@ -234,7 +243,6 @@ export function PersonalSettingsPanel({
           doneDisabled={pending || draftAvatar === avatarColor}
         >
           <div className="grid gap-4 px-1 pt-2 pb-3">
-            {dialogError && <StatusNote tone="error" title={dialogError} />}
             <div className="grid grid-cols-3 gap-3">
               {avatarChoices.map((avatarId) => {
                 const selected = draftAvatar === avatarId;
@@ -284,7 +292,6 @@ export function PersonalSettingsPanel({
           dismissible={!forcePinChange}
         >
           <div className="grid gap-3 px-2 pt-2 pb-3">
-            {dialogError && <StatusNote tone="error" title={dialogError} />}
             <Field label="Current or temporary PIN">
               <Input
                 value={currentPin}

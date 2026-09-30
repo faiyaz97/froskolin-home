@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { voidLandlordPaymentAction } from "@/lib/actions";
 import { formatMoney } from "@/lib/format";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { ErrorDialog } from "@/components/ui/error-dialog";
@@ -42,6 +43,7 @@ export function UndoLandlordPaymentButton({
         return;
       }
       setOpen(false);
+      announceSaveComplete("Payment undone");
       router.refresh();
     });
   }

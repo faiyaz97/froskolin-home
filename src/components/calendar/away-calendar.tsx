@@ -18,6 +18,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { ErrorDialog } from "@/components/ui/error-dialog";
 import { iconActionClass } from "@/components/ui/icon-action";
 import { replaceAbsencesAction } from "@/lib/actions";
+import { announceSaveComplete } from "@/lib/save-feedback";
 import { inclusiveDays, normalizeAbsenceRanges } from "@/lib/domain/occupancy";
 
 type Range = { start: string; end: string };
@@ -186,6 +187,7 @@ export function AwayCalendar({
         return;
       }
       setRanges(nextRanges);
+      announceSaveComplete("Days away updated");
       onSuccess?.();
     });
   }

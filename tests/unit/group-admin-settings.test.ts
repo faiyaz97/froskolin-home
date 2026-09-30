@@ -205,7 +205,7 @@ describe("member bill dates and departure", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
   });
 
-  it("shows a failed leave action in a dismissible dialog", async () => {
+  it("shows a failed leave action in a dismissible toast", async () => {
     leaveGroup.mockResolvedValue({
       ok: false,
       error: "Settle every balance before leaving this group.",
@@ -214,14 +214,10 @@ describe("member bill dates and departure", () => {
     fireEvent.click(screen.getByRole("button", { name: "Leave group" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Leave group" })[1]);
 
-    await waitFor(() =>
-      expect(screen.getByRole("dialog", { name: "Something went wrong" })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy(), { timeout: 5_000 });
     expect(screen.getByRole("alert").textContent).toContain("Settle every balance");
     expect(replace).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Something went wrong" })).toBeNull(),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss message" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 });

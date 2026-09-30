@@ -110,7 +110,7 @@ describe("push notification settings", () => {
     expect(serviceWorker.register).toHaveBeenCalledWith("/push-sw.js", { scope: "/" });
     expect(pushManager.subscribe).toHaveBeenCalledOnce();
     await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(await screen.findByText("Notifications are on for this device.")).toBeTruthy();
   });
 
   it("keeps the device disabled when notification permission is denied", async () => {

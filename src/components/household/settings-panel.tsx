@@ -46,10 +46,9 @@ import { cn } from "../ui/cn";
 import { ConfirmationButton } from "../ui/confirmation-button";
 import { DateInput } from "../ui/date-input";
 import { Dialog } from "../ui/dialog";
-import { ErrorDialog } from "../ui/error-dialog";
 import { Field, Input } from "../ui/field";
 import { iconActionClass } from "../ui/icon-action";
-import { StatusNote } from "../ui/page";
+import { ToastNotice } from "../ui/toast-notice";
 import { GroupInvitationAction } from "./group-invitation-action";
 import { MemberAvatar, type AvatarColor } from "./member-avatar";
 
@@ -352,9 +351,9 @@ export function SettingsPanel({
         </div>
       </header>
 
-      {message && messageIsSuccess && <StatusNote tone="success" title={message} />}
-      <ErrorDialog
-        error={message && !messageIsSuccess ? message : null}
+      <ToastNotice
+        message={message}
+        tone={messageIsSuccess ? "success" : "error"}
         onClose={() => setMessage("")}
       />
 
@@ -595,7 +594,7 @@ export function SettingsPanel({
                         const result = await resetMemberPinAction(householdId, member.id);
                         if (result.ok) {
                           setTemporaryPin(`${member.name}: ${result.data.temporaryPin}`);
-                          setMessage(result.message ?? "");
+                          setMessage(result.message ?? "Temporary PIN generated.");
                         } else setMessage(result.error);
                       }}
                     >

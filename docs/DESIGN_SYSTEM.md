@@ -212,7 +212,7 @@ Canonical primitive: `src/components/ui/dialog.tsx` (`Dialog`).
 - Width: `min(22rem, viewport - 24px)`; maximum height leaves 16px top and bottom; 24px radius; white surface; subdued navy backdrop.
 - Edit/selection dialogs use a sticky three-column header: Back, centered title, Done check.
 - Informational dialogs without Done use title plus Close.
-- Failed actions and asynchronous loads use the shared `ErrorDialog`: a concise error message on a soft red surface with an OK dismissal. Do not insert action errors as page sections or move the surrounding layout. Keep field-level validation beside the field and non-error warnings in context.
+- Action results and asynchronous load failures use the shared `ToastNotice`: a compact fixed message above the bottom navigation on mobile and above the floating dock on desktop. Success and information messages dismiss after a short delay; errors stay until dismissed so longer guidance can be read. A visible close control and live-region semantics make each message accessible. The existing `ErrorDialog` interface renders an error toast for callers. Keep field-level validation beside the field and non-error warnings in context.
 - Non-dismissible pending dialogs hide and disable Close; Escape and backdrop clicks must not dismiss them. AI bill autofill uses `src/components/bills/bill-autofill-loading-dialog.tsx`: supplied reading-cat artwork, a subtle pulse and loading spinner, and concise status text. Reduced-motion mode stops the cat pulse and slows the spinner to a three-second rotation rather than stopping the loading indicator. The shared bill workspace mounts it only during extraction and closes it on success or failure.
 - Enter submits from a focused text input when Done is available and enabled.
 - Keep dialog bodies concise; use standard `Field` controls or `ChoiceRow` lists.
@@ -345,7 +345,7 @@ The bill member-status layout uses soft row dividers and one compact, unfilled s
 
 ### Status, validation, and empty states
 
-- Shared status primitive: `StatusNote` in `src/components/ui/page.tsx` for page/form-level success, warning, information, or server errors.
+- Shared action-feedback primitive: `ToastNotice` in `src/components/ui/toast-notice.tsx` for success, information, and failure messages. Keep `StatusNote` in `src/components/ui/page.tsx` for persistent warnings and explanatory state that must remain visible during editing.
 - Do not show a large summary list for ordinary missing fields. On submit, highlight each required control and show one short local explanation.
 - Cross-field feedback (split total, bill fee/usage total) belongs immediately below the related controls and may use a compact negative-soft surface.
 - Live feedback is appropriate when values must reconcile mathematically; required-empty feedback waits for submit.
@@ -378,6 +378,7 @@ The bill member-status layout uses soft row dividers and one compact, unfilled s
 | Dialog                        | `src/components/ui/dialog.tsx`                                      | Canonical                                                           |
 | Sensitive-action confirmation | `src/components/ui/confirmation-button.tsx`                         | Canonical for void/remove/delete/archive and credential reset       |
 | Page/status helpers           | `src/components/ui/page.tsx`                                        | `PageHeader`/`StatusNote` canonical; `EmptyState` visual unresolved |
+| Action toast                  | `src/components/ui/toast-notice.tsx`                                | Canonical transient action feedback                                 |
 | Inline selections/choice rows | `src/components/expenses/expense-sharing-controls.tsx`              | Canonical across expense and bill forms                             |
 | Date dialog/tool              | `src/components/expenses/expense-date-action.tsx`                   | Canonical for expense date/recurrence                               |
 | Transaction note tool         | `src/components/expenses/transaction-note-action.tsx`               | Canonical across expense, bill, and payment forms                   |
