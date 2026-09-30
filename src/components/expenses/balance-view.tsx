@@ -205,16 +205,18 @@ export function BalanceView({
               {suggestions.length} {suggestions.length === 1 ? "payment" : "payments"}
             </span>
           </div>
-          <div className="overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_max-content_max-content] overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-sm)]">
             {suggestions.map((payment) => (
               <div
                 key={`${payment.currency}-${payment.fromMemberId}-${payment.toMemberId}`}
-                className="flex min-h-[72px] flex-wrap items-center gap-2 border-b border-[var(--soft-line)] px-3 py-3 last:border-0 sm:gap-3 sm:px-5"
+                className="col-span-3 grid min-h-[72px] grid-cols-subgrid items-center gap-x-2 border-b border-[var(--soft-line)] px-3 py-3 last:border-0 sm:gap-x-3 sm:px-5"
               >
                 <div
                   className={cn(
-                    "flex min-w-0 items-center gap-2 sm:min-w-[180px] sm:flex-1",
-                    payment.fromMemberId === currentMemberId ? "w-full sm:w-auto" : "flex-1",
+                    "flex min-w-0 items-center gap-2",
+                    payment.fromMemberId === currentMemberId
+                      ? "col-span-3 sm:col-span-1"
+                      : "col-span-2 sm:col-span-1",
                   )}
                 >
                   {avatarFor(payment.fromMemberId, "size-8 sm:size-9")}
@@ -231,7 +233,7 @@ export function BalanceView({
                   <Button
                     type="button"
                     tone="pastel"
-                    className="ml-auto min-h-[22px] shrink-0 rounded-full border-0 px-2.5 py-1 text-[10px] font-black shadow-[0_2px_6px_rgb(3_105_161/0.22)] hover:shadow-[0_2px_6px_rgb(3_105_161/0.22)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+                    className="col-start-2 row-start-2 min-h-[22px] rounded-full border-0 px-2.5 py-1 text-[10px] font-black shadow-[0_2px_6px_rgb(3_105_161/0.22)] hover:shadow-[0_2px_6px_rgb(3_105_161/0.22)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] sm:row-start-1"
                     onClick={() => {
                       setError("");
                       setSelected(payment);
@@ -240,7 +242,14 @@ export function BalanceView({
                     Settle up
                   </Button>
                 )}
-                <strong className="w-10 shrink-0 text-right text-sm tabular-nums sm:w-12">
+                <strong
+                  className={cn(
+                    "col-start-3 text-right text-sm whitespace-nowrap tabular-nums",
+                    payment.fromMemberId === currentMemberId
+                      ? "row-start-2 sm:row-start-1"
+                      : "row-start-1",
+                  )}
+                >
                   {formatMoney(payment.amountCents, payment.currency, locale)}
                 </strong>
               </div>
