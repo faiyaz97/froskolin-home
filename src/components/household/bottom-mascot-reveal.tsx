@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
+import sleepingAnimation from "../../../public/assets/animations/froskolin-sleeping.webp";
 import sleepingCat from "../../../public/assets/froskolin-sleeping.png";
 
 export function BottomMascotReveal() {
@@ -53,14 +54,23 @@ export function BottomMascotReveal() {
       ref={containerRef}
       className="relative flex h-36 items-end justify-start px-5 md:justify-center"
     >
-      <Image
-        ref={imageRef}
-        src={sleepingCat}
-        sizes="(max-width: 767px) 108px, 120px"
-        alt=""
-        aria-hidden="true"
-        className="bottom-mascot-image pointer-events-none h-auto w-[108px] opacity-0 will-change-transform md:w-30"
-      />
+      <picture className="contents">
+        <source
+          srcSet={sleepingAnimation.src}
+          type="image/webp"
+          width={sleepingAnimation.width}
+          height={sleepingAnimation.height}
+        />
+        <Image
+          ref={imageRef}
+          src={sleepingCat}
+          unoptimized
+          sizes="(max-width: 767px) 108px, 120px"
+          alt=""
+          aria-hidden="true"
+          className="bottom-mascot-image pointer-events-none h-auto w-[108px] opacity-0 will-change-transform md:w-30"
+        />
+      </picture>
     </div>
   );
 }

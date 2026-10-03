@@ -320,12 +320,15 @@ The bill member-status layout uses soft row dividers and one compact, unfilled s
 
 ### Avatars and imagery
 
+- The AI bill-analysis dialog automatically loops the transparent three-second Higgsfield scanning mascot at 160/176px. Its receipt contains abstract gray bars only. Use the matching static poster for reduced motion or unsupported WebP, with no CSS pulse on the mascot; keep the existing pending status and dialog behavior.
 - Canonical avatar: `src/components/household/member-avatar.tsx`; avatar data: `src/lib/avatar.ts`; assets: `public/assets/avatars/*`.
 - Use the selected avatar’s own background color. User Settings echoes that color as a restrained blurred glow inside the header only.
 - Member rows and participant choices use the avatar image, generally 36–40px with no extra border/shadow.
 - Home mascot components/assets are intentional brand elements: `PeekingFroskolin`, `BottomMascotReveal`, and `public/assets/froskolin-*.png`.
 - `CatMark` in `src/components/ui/brand.tsx` uses the supplied combined cat-and-text artwork `public/assets/froskolin-header-logo.png`, preserving its aspect ratio without a separate text wordmark. `CatBadge` uses `froskolin-tab-logo.png`. The smiley cat with bandana also supplies the browser tab, Apple touch icon, and 192/512px installation icons referenced by `src/app/manifest.ts`. Android installation uses separate opaque, full-bleed maskable variants so the system icon shape is filled without a white inset.
 - Peeking and sleeping mascots use the supplied blue-and-white cat artwork with transparent backgrounds. Preserve their natural aspect ratios and use static image imports for intrinsic dimensions and asset cache invalidation.
+- `PeekingFroskolin` automatically plays the five-second transparent Higgsfield loop in `public/assets/animations/froskolin-peeking.webp` above Balances. Keep the original PNG as the picture's format fallback, serve it unoptimized, and preserve the existing mascot positioning and scroll transforms. Like the sleeping mascot, automatic playback follows the requested mascot exception to reduced motion and needs no playback button.
+- `BottomMascotReveal` automatically loops the transparent animated WebP in `public/assets/animations/froskolin-sleeping.webp`, with no playback button. Per the requested mascot behavior, this animation also plays when reduced motion is enabled; other reduced-motion rules remain unchanged. The picture retains the original PNG as a format fallback. Serve the animation unoptimized, preserving the existing responsive widths and scroll reveal.
 
 ### Navigation, headers, and actions
 
