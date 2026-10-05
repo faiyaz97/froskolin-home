@@ -251,6 +251,7 @@ Canonical feature component: `src/components/calendar/away-calendar.tsx` (`AwayC
 
 - Keep the calendar focused on one member. The selected member appears as an avatar-and-name pill above the calendar; only a group owner can open its `ChoiceRow` dialog to switch members.
 - Month and year labels are direct controls. They open compact month and year grids, matching the date selector used by expense forms.
+- Open the Calendar on the group's current month, even when saved away periods are in another month. The shared date picker for bill service dates and member In/Out dates uses the same month and year grids so older dates are reachable without repeated arrow taps.
 - Calendar cells are wide, inset canvas tiles with consistent white gutters on every side. The active range is one uniform blue sequence with clearly rounded first and last days and square middle days; do not darken the endpoints. A start-only selection must still have an obvious blue fill and outline. Saved ranges use a light pastel tint derived from the selected member's avatar color with the same rounded-end/square-middle shape; the period-list dot uses the exact avatar color. Never expose other members' saved dates as dots or markers.
 - After a complete range is selected, show a compact summary row directly below the grid with the formatted dates and day count on one line, plus a right-aligned `Add period` action.
 - Save additions and edits at the point of action. Removing a saved period uses the shared sensitive-action confirmation dialog before persisting.

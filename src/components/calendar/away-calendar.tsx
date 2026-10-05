@@ -76,6 +76,7 @@ function rangeKey(range: Range) {
 }
 
 export function AwayCalendar({
+  today,
   householdId,
   memberId,
   memberName,
@@ -83,6 +84,7 @@ export function AwayCalendar({
   members,
   initialRanges,
 }: {
+  today: string;
   householdId: string;
   memberId: string;
   memberName: string;
@@ -91,11 +93,10 @@ export function AwayCalendar({
   initialRanges: Range[];
 }) {
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
   const [ranges, setRanges] = useState(() => normalizeRanges(initialRanges));
   const [selection, setSelection] = useState<PickerRange>();
   const [editingKey, setEditingKey] = useState<string>();
-  const [month, setMonth] = useState(() => dateOnlyToDate(ranges.at(-1)?.start ?? today));
+  const [month, setMonth] = useState(() => dateOnlyToDate(today));
   const [calendarView, setCalendarView] = useState<CalendarView>("calendar");
   const [yearPageStart, setYearPageStart] = useState(() => month.getUTCFullYear() - 5);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -346,6 +347,7 @@ export function AwayCalendar({
               resetOnSelect
               month={month}
               onMonthChange={setMonth}
+              today={dateOnlyToDate(today)}
               startMonth={calendarBounds.start}
               endMonth={calendarBounds.end}
               disabled={pending}
